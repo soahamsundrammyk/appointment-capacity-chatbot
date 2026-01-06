@@ -1,0 +1,51 @@
+services:
+  # Capacity Chatbot Backend Service
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: capacity-chatbot-backend
+    environment:
+      # LangGraph Configuration
+      PORT: 8000
+      
+      # Database Configuration (SQLite)
+      SQLITE_DB_PATH: /app/data/checkpoints.sqlite
+      
+      # OpenAI Configuration
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      MODEL: ${MODEL:-gpt-4o-mini}
+      
+      # LangSmith Configuration (for monitoring and tracing)
+      LANGSMITH_API_KEY: ${LANGSMITH_API_KEY}
+      LANGCHAIN_TRACING_V2: ${LANGCHAIN_TRACING_V2:-true}
+      LANGCHAIN_PROJECT: ${LANGCHAIN_PROJECT:-capacity-chatbot}
+      
+      # KAppointment API Configuration
+      # KAPPOINTMENT_API_BASE_URL: ${KAPPOINTMENT_API_BASE_URL:-https://srishti244.mykaarma.dev}
+      KAPPOINTMENT_API_BASE_URL: ${KAPPOINTMENT_API_BASE_URL:-http://localhost:2828/}
+      MYKAARMA_MKID: ${MYKAARMA_MKID}
+      
+      # Required UUIDs (defaults, can be overridden by UI)
+      DEFAULT_DEPARTMENT_UUID: ${DEFAULT_DEPARTMENT_UUID}
+      DEFAULT_DEALER_UUID: ${DEFAULT_DEALER_UUID}
+      
+      # Logging
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    networks:
+      - chatbot-network
+    volumes:
+      - ./src:/app/src
+      - sqlite_data:/app/data
+    restart: unless-stopped
+
+networks:
+  chatbot-network:
+    driver: bridge
+
+volumes:
+  sqlite_data:
+    driver: local
+

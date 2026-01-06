@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: capacity-chatbot-config
+  namespace: default  # Change to your namespace if needed
+data:
+  # Model Configuration
+  model: "gpt-4o-mini"
+  
+  # LangSmith Configuration
+  langchain-tracing-v2: "true"
+  langchain-project: "capacity-chatbot"
+  
+  # KAppointment API Configuration
+  kappointment-api-base-url: "http://kappointment-api-service:2828/"  # Adjust based on your kappointment-api service name
+  
+  # Logging
+  log-level: "INFO"
+

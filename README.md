@@ -1,0 +1,143 @@
+# Capacity Chatbot Service
+
+AI-powered chatbot for answering capacity-related questions by intelligently orchestrating kappointment-api endpoints.
+
+## Features
+
+- 🤖 Natural language interface for capacity queries
+- 🔍 Smart API orchestration
+- 💬 Conversation memory (SQLite)
+- 📊 LangSmith integration for monitoring
+- 🎨 **Two UI Options**: LangGraph Studio (dev) + Agent Chat UI (production)
+
+## Setup
+
+1. **Install dependencies**:
+```bash
+pip install -e ".[dev]"
+```
+
+2. **Configure environment**:
+```bash
+cp .env.example .env
+# Edit .env with your API keys
+```
+
+3. **Start LangGraph Server**:
+```bash
+langgraph dev
+```
+
+This starts LangGraph Studio at `http://localhost:8123` - **the built-in UI for LangGraph**!
+
+#### 🎨 LangGraph Studio Features:
+- 💬 **Chat Interface**: Interactive chat to test your chatbot
+- 📊 **Graph Visualization**: Visual representation of your graph
+- 🔍 **State Inspector**: View state at each node execution
+- 📝 **Message History**: All conversations automatically saved
+- 🧵 **Thread Management**: Switch between conversation threads
+- 🐛 **Debug Mode**: Step through execution node by node
+- 🔄 **Auto-reload**: Automatically reloads when you save code
+
+**This is your primary development and testing interface!**
+
+## 🎨 Production Chat UI (Agent Chat UI)
+
+For a **production-ready chat interface**, see [CHAT_UI_SETUP.md](./CHAT_UI_SETUP.md).
+
+**Quick Start**:
+1. Start LangGraph server: `langgraph dev`
+2. Use deployed UI: https://agentchat.vercel.app
+   - Enter URL: `http://localhost:2024`
+   - Graph ID: `capacity_agent`
+3. Start chatting!
+
+Or run locally:
+```bash
+git clone https://github.com/langchain-ai/agent-chat-ui.git capacity-chat-ui
+cd capacity-chat-ui
+pnpm install
+echo "NEXT_PUBLIC_API_URL=http://localhost:2024" > .env
+echo "NEXT_PUBLIC_ASSISTANT_ID=capacity_agent" >> .env
+pnpm dev
+```
+
+## Project Structure
+
+```
+capacity-chatbot-service/
+├── src/
+│   └── capacity_chatbot/
+│       ├── __init__.py
+│       ├── graph.py              # Main LangGraph definition
+│       ├── state.py              # State definitions
+│       ├── nodes/                # Graph nodes
+│       │   ├── __init__.py
+│       │   ├── message_parse.py
+│       │   ├── intent_classify.py
+│       │   ├── call_capacity_api.py
+│       │   └── compose_response.py
+│       ├── api/                  # API clients
+│       │   ├── __init__.py
+│       │   └── kappointment_client.py
+│       └── utils/
+│           └── __init__.py
+├── langgraph.json               # LangGraph Studio config
+├── pyproject.toml
+└── README.md
+```
+
+## Usage
+
+### Development with LangGraph Studio
+
+```bash
+langgraph dev
+```
+
+Open `http://localhost:8123` to:
+- Test conversations
+- Visualize the graph
+- Debug node execution
+- View conversation history
+
+### Programmatic Usage
+
+```python
+from langgraph.checkpoint.sqlite import SqliteSaver
+from capacity_chatbot.graph import graph
+
+# Initialize checkpointer for conversation storage
+checkpointer = SqliteSaver.from_conn_string("./checkpoints.sqlite")
+app = graph.compile(checkpointer=checkpointer)
+
+# Run a conversation
+config = {"configurable": {"thread_id": "user-123"}}
+result = app.invoke(
+    {
+        "messages": [{"role": "user", "content": "What's the capacity for tomorrow?"}],
+        "department_uuid": "dept-uuid-here"
+    },
+    config=config
+)
+```
+
+## Conversation Storage
+
+Conversations are automatically stored in SQLite (default: `./checkpoints.sqlite`). Each conversation thread is identified by a `thread_id` in the config.
+
+## LangSmith Integration
+
+LangSmith is automatically enabled when `LANGCHAIN_TRACING_V2=true`. You can:
+- View traces in LangSmith dashboard
+- Monitor API calls
+- Debug LLM interactions
+- Evaluate performance
+
+## Quick Start Guide
+
+See [QUICK_START.md](./QUICK_START.md) for a 5-minute setup guide.
+
+## Chat UI Setup
+
+See [CHAT_UI_SETUP.md](./CHAT_UI_SETUP.md) for setting up the production chat interface.
