@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: capacity-chatbot-pvc
+  name: appointment-capacity-chatbot-pvc
   namespace: default  # Change to your namespace if needed
 spec:
   accessModes:

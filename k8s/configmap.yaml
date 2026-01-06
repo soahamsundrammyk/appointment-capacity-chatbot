@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: capacity-chatbot-config
+  name: appointment-capacity-chatbot-config
   namespace: default  # Change to your namespace if needed
 data:
   # Model Configuration

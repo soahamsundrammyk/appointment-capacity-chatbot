@@ -1,24 +1,24 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: capacity-chatbot-service
+  name: appointment-capacity-chatbot
   namespace: default  # Change to your namespace if needed
   labels:
-    app: capacity-chatbot-service
+    app: appointment-capacity-chatbot
     version: "0.1.0"
 spec:
   replicas: 2  # Adjust based on your needs
   selector:
     matchLabels:
-      app: capacity-chatbot-service
+      app: appointment-capacity-chatbot
   template:
     metadata:
       labels:
-        app: capacity-chatbot-service
+        app: appointment-capacity-chatbot
         version: "0.1.0"
     spec:
       containers:
-      - name: capacity-chatbot-backend
+      - name: appointment-capacity-chatbot-backend
         image: 578061096415.dkr.ecr.us-east-1.amazonaws.com/appointment-capacity-chatbot:0.1.0  # Update version as needed
         imagePullPolicy: Always
         ports:
@@ -38,60 +38,60 @@ spec:
         - name: OPENAI_API_KEY
           valueFrom:
             secretKeyRef:
-              name: capacity-chatbot-secrets
+              name: appointment-capacity-chatbot-secrets
               key: openai-api-key
         - name: MODEL
           valueFrom:
             configMapKeyRef:
-              name: capacity-chatbot-config
+              name: appointment-capacity-chatbot-config
               key: model
         
         # LangSmith Configuration
         - name: LANGSMITH_API_KEY
           valueFrom:
             secretKeyRef:
-              name: capacity-chatbot-secrets
+              name: appointment-capacity-chatbot-secrets
               key: langsmith-api-key
         - name: LANGCHAIN_TRACING_V2
           valueFrom:
             configMapKeyRef:
-              name: capacity-chatbot-config
+              name: appointment-capacity-chatbot-config
               key: langchain-tracing-v2
         - name: LANGCHAIN_PROJECT
           valueFrom:
             configMapKeyRef:
-              name: capacity-chatbot-config
+              name: appointment-capacity-chatbot-config
               key: langchain-project
         
         # KAppointment API Configuration
         - name: KAPPOINTMENT_API_BASE_URL
           valueFrom:
             configMapKeyRef:
-              name: capacity-chatbot-config
+              name: appointment-capacity-chatbot-config
               key: kappointment-api-base-url
         - name: MYKAARMA_MKID
           valueFrom:
             secretKeyRef:
-              name: capacity-chatbot-secrets
+              name: appointment-capacity-chatbot-secrets
               key: mykaarma-mkid
         
         # Required UUIDs
         - name: DEFAULT_DEPARTMENT_UUID
           valueFrom:
             secretKeyRef:
-              name: capacity-chatbot-secrets
+              name: appointment-capacity-chatbot-secrets
               key: default-department-uuid
         - name: DEFAULT_DEALER_UUID
           valueFrom:
             secretKeyRef:
-              name: capacity-chatbot-secrets
+              name: appointment-capacity-chatbot-secrets
               key: default-dealer-uuid
         
         # Logging
         - name: LOG_LEVEL
           valueFrom:
             configMapKeyRef:
-              name: capacity-chatbot-config
+              name: appointment-capacity-chatbot-config
               key: log-level
         
         resources:
@@ -131,7 +131,7 @@ spec:
       volumes:
       - name: sqlite-data
         persistentVolumeClaim:
-          claimName: capacity-chatbot-pvc
+          claimName: appointment-capacity-chatbot-pvc
       
       # Image pull secrets for ECR (if needed)
       imagePullSecrets:

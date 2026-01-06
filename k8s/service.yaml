@@ -1,10 +1,10 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: capacity-chatbot-service
+  name: appointment-capacity-chatbot
   namespace: default  # Change to your namespace if needed
   labels:
-    app: capacity-chatbot-service
+    app: appointment-capacity-chatbot
 spec:
   type: ClusterIP  # Use LoadBalancer or NodePort if you need external access
   ports:
@@ -13,6 +13,6 @@ spec:
     protocol: TCP
     name: http
   selector:
-    app: capacity-chatbot-service
+    app: appointment-capacity-chatbot
   sessionAffinity: ClientIP  # Useful for maintaining conversation state
 

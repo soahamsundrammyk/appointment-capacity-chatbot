@@ -39,10 +39,10 @@ sed -i.bak "s|namespace:.*|namespace: $NAMESPACE|" *.yaml
 
 # Check if secrets exist
 echo "🔍 Checking for secrets..."
-if ! kubectl get secret capacity-chatbot-secrets -n $NAMESPACE &> /dev/null; then
-    echo "⚠️  Warning: Secret 'capacity-chatbot-secrets' not found!"
+if ! kubectl get secret appointment-capacity-chatbot-secrets -n $NAMESPACE &> /dev/null; then
+    echo "⚠️  Warning: Secret 'appointment-capacity-chatbot-secrets' not found!"
     echo "   Please create it first:"
-    echo "   kubectl create secret generic capacity-chatbot-secrets \\"
+    echo "   kubectl create secret generic appointment-capacity-chatbot-secrets \\"
     echo "     --from-literal=openai-api-key='...' \\"
     echo "     --from-literal=langsmith-api-key='...' \\"
     echo "     --from-literal=mykaarma-mkid='...' \\"
@@ -88,28 +88,28 @@ kubectl apply -f service.yaml -n $NAMESPACE
 # Wait for deployment
 echo ""
 echo "⏳ Waiting for deployment to be ready..."
-kubectl rollout status deployment/capacity-chatbot-service -n $NAMESPACE --timeout=300s
+kubectl rollout status deployment/appointment-capacity-chatbot -n $NAMESPACE --timeout=300s
 
 # Show status
 echo ""
 echo "✅ Deployment complete!"
 echo ""
 echo "📊 Status:"
-kubectl get pods -l app=capacity-chatbot-service -n $NAMESPACE
+kubectl get pods -l app=appointment-capacity-chatbot -n $NAMESPACE
 echo ""
-kubectl get service capacity-chatbot-service -n $NAMESPACE
+kubectl get service appointment-capacity-chatbot -n $NAMESPACE
 echo ""
 
 # Show logs
 echo "📋 Recent logs (last 20 lines):"
-kubectl logs -l app=capacity-chatbot-service -n $NAMESPACE --tail=20
+kubectl logs -l app=appointment-capacity-chatbot -n $NAMESPACE --tail=20
 
 echo ""
 echo "🔗 Useful commands:"
-echo "   View logs:    kubectl logs -f -l app=capacity-chatbot-service -n $NAMESPACE"
-echo "   Get pods:     kubectl get pods -l app=capacity-chatbot-service -n $NAMESPACE"
-echo "   Port forward: kubectl port-forward service/capacity-chatbot-service 8000:8000 -n $NAMESPACE"
-echo "   Restart:      kubectl rollout restart deployment/capacity-chatbot-service -n $NAMESPACE"
+echo "   View logs:    kubectl logs -f -l app=appointment-capacity-chatbot -n $NAMESPACE"
+echo "   Get pods:     kubectl get pods -l app=appointment-capacity-chatbot -n $NAMESPACE"
+echo "   Port forward: kubectl port-forward service/appointment-capacity-chatbot 8000:8000 -n $NAMESPACE"
+echo "   Restart:      kubectl rollout restart deployment/appointment-capacity-chatbot -n $NAMESPACE"
 
 # Restore backup files
 rm -f *.bak
