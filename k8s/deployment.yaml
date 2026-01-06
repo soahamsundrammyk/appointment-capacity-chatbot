@@ -100,8 +100,7 @@ spec:
       
       volumes:
       - name: sqlite-data
-        persistentVolumeClaim:
-          claimName: appointment-capacity-chatbot-pvc
+        emptyDir: {}  # Using emptyDir for testing - data will be lost on pod restart
       
       # Image pull secrets for ECR (if needed)
       imagePullSecrets:
