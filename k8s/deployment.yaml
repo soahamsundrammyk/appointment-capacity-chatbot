@@ -36,63 +36,33 @@ spec:
         
         # OpenAI Configuration
         - name: OPENAI_API_KEY
-          valueFrom:
-            secretKeyRef:
-              name: appointment-capacity-chatbot-secrets
-              key: openai-api-key
+          value: "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"  # TODO: Replace with your key
         - name: MODEL
-          valueFrom:
-            configMapKeyRef:
-              name: appointment-capacity-chatbot-config
-              key: model
+          value: "gpt-4o-mini"
         
         # LangSmith Configuration
         - name: LANGSMITH_API_KEY
-          valueFrom:
-            secretKeyRef:
-              name: appointment-capacity-chatbot-secrets
-              key: langsmith-api-key
+          value: "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"  # TODO: Replace with your key
         - name: LANGCHAIN_TRACING_V2
-          valueFrom:
-            configMapKeyRef:
-              name: appointment-capacity-chatbot-config
-              key: langchain-tracing-v2
+          value: "true"
         - name: LANGCHAIN_PROJECT
-          valueFrom:
-            configMapKeyRef:
-              name: appointment-capacity-chatbot-config
-              key: langchain-project
+          value: "capacity-chatbot"
         
         # KAppointment API Configuration
         - name: KAPPOINTMENT_API_BASE_URL
-          valueFrom:
-            configMapKeyRef:
-              name: appointment-capacity-chatbot-config
-              key: kappointment-api-base-url
+          value: "http://kappointment-api-service:2828/"  # TODO: Update if needed
         - name: MYKAARMA_MKID
-          valueFrom:
-            secretKeyRef:
-              name: appointment-capacity-chatbot-secrets
-              key: mykaarma-mkid
+          value: "e0340870-dec8-476a-99ff-8a3ce4980488"  # TODO: Replace with your MKID
         
         # Required UUIDs
         - name: DEFAULT_DEPARTMENT_UUID
-          valueFrom:
-            secretKeyRef:
-              name: appointment-capacity-chatbot-secrets
-              key: default-department-uuid
+          value: "8ec821aefe98664ab15df7c426c3c46f9c37d0b1aeda9ff58df3db89bb0a55a3"  # TODO: Replace with your UUID
         - name: DEFAULT_DEALER_UUID
-          valueFrom:
-            secretKeyRef:
-              name: appointment-capacity-chatbot-secrets
-              key: default-dealer-uuid
+          value: "cb731d36fd635ddd6ef8dd43500892b0c0249d1c01a46dbcc445a809c0a8e3b2"  # TODO: Replace with your UUID
         
         # Logging
         - name: LOG_LEVEL
-          valueFrom:
-            configMapKeyRef:
-              name: appointment-capacity-chatbot-config
-              key: log-level
+          value: "INFO"
         
         resources:
           requests:
