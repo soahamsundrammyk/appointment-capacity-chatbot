@@ -15,8 +15,8 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
-    "pytest>=8.3.5",
-    "langgraph-cli[inmem]>=0.4.7",
+    "mypy>=1.11.1",
+    "ruff>=0.6.1",
 ]
 
 [build-system]
