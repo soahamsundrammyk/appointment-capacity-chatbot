@@ -36,4 +36,5 @@ ENV PYTHONUNBUFFERED=1
 ENV PORT=3334
 
 # Start LangGraph server in production mode
-CMD ["langgraph", "up", "--host", "0.0.0.0", "--port", "3334"]
+# Using dev with --no-reload for production-like behavior inside container
+CMD ["langgraph", "dev", "--host", "0.0.0.0", "--port", "3334", "--no-reload", "--no-browser"]
