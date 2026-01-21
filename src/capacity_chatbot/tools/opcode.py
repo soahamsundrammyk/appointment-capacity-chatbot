@@ -1,7 +1,4 @@
-"""Search opcode tool for capacity chatbot.
-
-This module contains everything related to the search_opcode tool.
-"""
+"""Search opcode tool for capacity chatbot."""
 
 import logging
 import os
@@ -17,10 +14,6 @@ from capacity_chatbot.config import KAppointmentAPIConfig
 
 logger = logging.getLogger(__name__)
 
-
-# =============================================================================
-# Tool Wrapper
-# =============================================================================
 
 @tool
 async def search_opcode_tool(
@@ -83,10 +76,6 @@ async def search_opcode_tool(
         logger.error(f"Error in search_opcode_tool: {e}", exc_info=True)
         return f"Error: {str(e)}"
 
-
-# =============================================================================
-# Implementation
-# =============================================================================
 
 async def _search_opcode_impl(
     concern_text: str,
@@ -155,11 +144,8 @@ async def _fetch_operations_with_limits_impl(
         await client.close()
 
 
-# =============================================================================
-# Formatters
-# =============================================================================
-
 DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+
 
 def _format_opcode_response(result: Dict[str, Any]) -> str:
     """Format opcode search response."""

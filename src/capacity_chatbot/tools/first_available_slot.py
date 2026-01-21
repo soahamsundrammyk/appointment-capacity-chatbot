@@ -24,10 +24,6 @@ from capacity_chatbot.utils.uuid_mapper import UUIDMapper
 logger = logging.getLogger(__name__)
 
 
-# =============================================================================
-# Tool Wrapper
-# =============================================================================
-
 @tool
 async def get_first_available_slot_tool(
     advisor_names: Optional[List[str]] = None,
@@ -108,10 +104,6 @@ async def get_first_available_slot_tool(
         return f"Error finding first available slot: {str(e)}"
 
 
-# =============================================================================
-# Implementation
-# =============================================================================
-
 async def _get_first_available_slot_impl(
     department_uuid: str,
     advisor_names: Optional[List[str]] = None,
@@ -169,8 +161,23 @@ async def _get_first_available_slot_impl(
         selected_attributes["transportOptionUuidList"] = transport_uuids
     
     request_payload = {"selectedAvailabilityAttributes": selected_attributes}
+    
+    # Parse natural language dates using date_parser
     if dates:
-        request_payload["dates"] = dates
+        from capacity_chatbot.utils.date_parser import parse_date_query
+        parsed_dates = []
+        for d in dates:
+            parsed = parse_date_query(d)
+            parsed_dates.extend(parsed)
+        if parsed_dates:
+            request_payload["dates"] = parsed_dates
+    else:
+        # Default to next 7 days if no dates specified
+        from datetime import date, timedelta
+        today = date.today()
+        default_dates = [(today + timedelta(days=i)).strftime("%Y-%m-%d") for i in range(7)]
+        request_payload["dates"] = default_dates
+    
     if start_time:
         request_payload["startTime"] = start_time
     if end_time:

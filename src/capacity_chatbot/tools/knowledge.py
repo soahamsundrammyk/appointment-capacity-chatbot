@@ -1,7 +1,4 @@
-"""Knowledge base tool for ReAct agent.
-
-This tool provides Q&A answers from the static knowledge base.
-"""
+"""Knowledge base tool for answering conceptual and how-to questions."""
 
 import logging
 
@@ -34,15 +31,8 @@ async def get_knowledge_answer(
     - "How do I create a capacity rule?"
     - "How do I change team assignments?"
     
-    IMPORTANT:
-    - This tool does NOT make API calls - it retrieves static knowledge
-    - For CURRENT data (e.g., "what's capacity for tomorrow?"), use get_capacity
-    - Returns step-by-step instructions with exact navigation paths
-    
     Args:
-        query: The user's question. Be specific about the entity type.
-               Good: "How do I increase transport option capacity?"
-               Bad: "How do I increase capacity?" (too vague)
+        query: The user's question (be specific about entity type for how-to questions)
         config: RunnableConfig (automatically provided)
     
     Returns:
@@ -70,7 +60,6 @@ The knowledge base covers:
 Try rephrasing your question."""
 
 
-# Export the knowledge tool
 KNOWLEDGE_TOOLS = [
     get_knowledge_answer,
 ]

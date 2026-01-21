@@ -1,10 +1,4 @@
-"""Entity validation utilities for capacity chatbot.
-
-This module provides functions to validate and confirm entity names
-(advisors, teams, transport options) before making API calls.
-This helps prevent hallucinations by ensuring the LLM is working
-with real entities that exist in the system.
-"""
+"""Entity validation utilities for matching names to UUIDs."""
 
 from typing import Any, Dict, List, Optional, Tuple
 from difflib import SequenceMatcher

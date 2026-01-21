@@ -1,10 +1,4 @@
-"""Capacity tool for capacity chatbot.
-
-This module contains everything related to the get_capacity tool:
-- Tool wrapper (LangChain @tool)
-- Implementation (API calls)
-- Formatters (response formatting)
-"""
+"""Capacity tool for fetching appointment capacity data."""
 
 import json
 import logging
@@ -25,10 +19,6 @@ from capacity_chatbot.utils.date_parser import parse_date_query
 
 logger = logging.getLogger(__name__)
 
-
-# =============================================================================
-# Tool Wrapper
-# =============================================================================
 
 @tool
 async def get_capacity_tool(
@@ -220,10 +210,6 @@ async def get_capacity_tool(
         return f"Error fetching capacity: {str(e)}"
 
 
-# =============================================================================
-# Implementation
-# =============================================================================
-
 async def _get_capacity_impl(
     department_uuid: str,
     dates: List[str],
@@ -267,10 +253,6 @@ async def _get_capacity_impl(
     finally:
         await client.close()
 
-
-# =============================================================================
-# Formatters
-# =============================================================================
 
 def _format_capacity_response(
     api_response: Dict[str, Any],

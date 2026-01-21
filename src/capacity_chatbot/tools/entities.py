@@ -1,7 +1,4 @@
-"""Entity tools for ReAct agent.
-
-Tools for listing and validating entities from cached data.
-"""
+"""Entity tools for listing and validating entities from cached data."""
 
 import logging
 from typing import Optional
@@ -23,20 +20,10 @@ async def get_available_entities(
     """Get available transport options, advisors, or teams from cached data.
     
     Use this tool when user wants to see a list of available entities:
-    
-    EXAMPLES:
     - "What transport options are available?" → entity_type="transport_options"
     - "List all advisors" → entity_type="advisors"
     - "What teams are there?" → entity_type="teams"
     - "Show me the service advisors" → entity_type="advisors"
-    - "What drop-off options do you have?" → entity_type="transport_options"
-    
-    RETURNS:
-    - transport_options: List of transport option names (Loaner, Drop Off, Pickup, etc.)
-    - advisors: List of advisor names (first + last name or nickname)
-    - teams: List of team names with their members
-    
-    NOTE: This tool uses cached data, no API call. For capacity data, use get_capacity.
     
     Args:
         entity_type: One of 'transport_options', 'advisors', or 'teams'
@@ -64,7 +51,6 @@ async def get_available_entities(
     
     entity_type_lower = entity_type.lower().strip()
     
-    # Transport options
     if entity_type_lower in ["transport_options", "transport", "transportation"]:
         options = cached_data.get("transport_options", [])
         if not options:
@@ -73,7 +59,6 @@ async def get_available_entities(
         names = [t.get("customName") or t.get("optionName", "") for t in options if t.get("customName") or t.get("optionName")]
         return f"Available transport options ({len(names)}):\n" + "\n".join(f"- {n}" for n in names)
     
-    # Advisors
     elif entity_type_lower in ["advisors", "advisor", "service_advisors"]:
         advisors = cached_data.get("advisors", [])
         if not advisors:
@@ -87,7 +72,6 @@ async def get_available_entities(
         
         return f"Available advisors ({len(names)}):\n" + "\n".join(f"- {n}" for n in names)
     
-    # Teams
     elif entity_type_lower in ["teams", "team"]:
         teams = cached_data.get("teams", [])
         if not teams:
@@ -121,23 +105,12 @@ async def confirm_entity(
 ) -> str:
     """Validate entity names before making API calls to prevent errors.
     
-    Use this tool when you're UNSURE if an entity name is correct:
-    
-    WHEN TO USE:
-    - User provides a name that might be misspelled
-    - User provides a partial name (e.g., "John" instead of "John Smith")
-    - You want to verify before calling get_capacity or get_first_available_slot
-    
-    EXAMPLES:
+    Use this when you're unsure if an entity name is correct:
     - User says "capacity for John" → confirm_entity("advisor", "John")
     - User says "loaner capacity" → confirm_entity("transport", "Loaner")
     - User says "express team" → confirm_entity("team", "express")
     
-    RETURNS:
-    - Confirmed: List of validated names that match
-    - Suggestions: Did-you-mean alternatives for invalid names
-    
-    NOTE: Uses fuzzy matching, so "Visal" will match "Vishal".
+    Uses fuzzy matching so "Visal" will match "Vishal".
     
     Args:
         entity_type: 'advisor', 'team', or 'transport'
@@ -187,7 +160,6 @@ async def confirm_entity(
     return "\n".join(parts)
 
 
-# Export all entity tools
 ENTITY_TOOLS = [
     get_available_entities,
     confirm_entity,

@@ -1,10 +1,4 @@
-"""Rules tool for capacity chatbot.
-
-This module contains everything related to the get_rules tool:
-- Tool wrapper (LangChain @tool)
-- Implementation (API calls)
-- Formatters (response formatting)
-"""
+"""Rules tool for fetching capacity and assignment rules."""
 
 import logging
 import os
@@ -21,10 +15,6 @@ from capacity_chatbot.utils.uuid_mapper import UUIDMapper
 
 logger = logging.getLogger(__name__)
 
-
-# =============================================================================
-# Tool Wrapper
-# =============================================================================
 
 @tool
 async def get_rules_tool(
@@ -127,10 +117,6 @@ async def get_rules_tool(
         return f"Error fetching rules: {str(e)}"
 
 
-# =============================================================================
-# Implementation
-# =============================================================================
-
 async def _get_rules_impl(
     department_uuid: str,
     rule_type_list: List[str],
@@ -166,10 +152,6 @@ async def _get_rules_impl(
     finally:
         await client.close()
 
-
-# =============================================================================
-# Formatters
-# =============================================================================
 
 def _format_rules_response(
     api_response: Dict[str, Any], 
@@ -758,10 +740,6 @@ def _format_time(time_str: str) -> str:
     except:
         return time_str
 
-
-# =============================================================================
-# Conflict Detection
-# =============================================================================
 
 def _detect_assignment_rule_conflicts(rules: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """Detect conflicting assignment rules.

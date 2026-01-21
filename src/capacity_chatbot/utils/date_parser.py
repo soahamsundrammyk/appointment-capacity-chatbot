@@ -1,8 +1,4 @@
-"""Date parsing utilities for natural language date expressions.
-
-This module provides functions to parse relative date expressions
-like 'tomorrow', 'Thursday', 'this week', etc. into YYYY-MM-DD format.
-"""
+"""Date parsing utilities for natural language date expressions."""
 
 import re
 from datetime import date, datetime, timedelta

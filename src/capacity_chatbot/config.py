@@ -1,7 +1,7 @@
 """Configuration for KAppointment API client."""
 
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Optional
 
 
@@ -10,13 +10,12 @@ class KAppointmentAPIConfig:
     """Configuration for KAppointment API client."""
     
     base_url: Optional[str] = None
-    timeout: int = 30
+    timeout: Optional[int] = None
     mkid: Optional[str] = None
     basic_auth_username: Optional[str] = None
     basic_auth_password: Optional[str] = None
     
     def __post_init__(self):
-        """Set defaults from environment variables if not provided."""
         if self.base_url is None:
             self.base_url = os.environ.get("KAPPOINTMENT_API_BASE_URL", "http://localhost:8080").rstrip('/')
         
@@ -33,9 +32,7 @@ class KAppointmentAPIConfig:
             self.basic_auth_password = os.environ.get("KAPPOINTMENT_API_PASSWORD", "1")
     
     def get_cookies(self) -> dict:
-        """Get cookies for API requests."""
         return {"mkid": self.mkid}
     
     def get_auth(self) -> tuple:
-        """Get basic auth credentials."""
         return (self.basic_auth_username, self.basic_auth_password)
