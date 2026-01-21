@@ -176,8 +176,7 @@ async def get_capacity_tool(
             entity_map["OPERATION_UUID"] = opcodes
             field_combinations.append(["OPERATION_UUID"])
     
-    # Map source parameter to API value
-    source_list = None
+    # Override SOURCE in entityMap when user specifies source filter
     if source:
         source_mapping = {
             "web": "Web",
@@ -188,17 +187,16 @@ async def get_capacity_tool(
             "dms": "DMS",
         }
         mapped_source = source_mapping.get(source.lower(), source)
-        source_list = [mapped_source]
+        entity_map["SOURCE"] = [mapped_source]  # Override default with user's choice
     
     try:
         result = await _get_capacity_impl(
             department_uuid=department_uuid,
             dates=dates,
-            entity_map=entity_map,  # Always has at least SOURCE
-            field_combinations=field_combinations,  # Always has at least SOURCE
+            entity_map=entity_map,
+            field_combinations=field_combinations,
             mkid=mkid,
             cached_data=cached_data,
-            source_list=source_list,
             has_entity_filters=has_entity_filters,
         )
         
@@ -217,7 +215,6 @@ async def _get_capacity_impl(
     field_combinations: Optional[List[List[str]]] = None,
     mkid: Optional[str] = None,
     cached_data: Optional[Dict[str, Any]] = None,
-    source_list: Optional[List[str]] = None,
     has_entity_filters: bool = False,
 ) -> Dict[str, Any]:
     """Fetch capacity information from the API."""
@@ -226,15 +223,13 @@ async def _get_capacity_impl(
         "applicabilityFieldValues": list(set(dates)),
         "capacityTypeSet": [CapacityType.APPOINTMENT_COUNT.value],
         "ruleMatchingCriteria": RuleMatchingCriteria.EXACTLY_MATCHES.value,
-        "includeDiagnostics": True,  # Always include diagnostics for better bottleneck info
+        "includeDiagnostics": True,
     }
     
     if entity_map:
         request_payload["entityMap"] = {k: list(set(v)) for k, v in entity_map.items()}
     if field_combinations:
         request_payload["fieldCombinations"] = [list(set(c)) for c in field_combinations]
-    if source_list:
-        request_payload["SOURCE"] = source_list
     
     logger.info(f"get_capacity API Request: {json.dumps(request_payload, indent=2)}")
     

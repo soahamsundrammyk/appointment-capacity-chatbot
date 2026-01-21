@@ -108,19 +108,19 @@ def _get_next_weekday(from_date: date, target_weekday: int, skip_this_week: bool
         Date string in YYYY-MM-DD format
     """
     current_weekday = from_date.weekday()
+    days_ahead = (target_weekday - current_weekday) % 7
     
     if skip_this_week:
-        # Always go to next week's occurrence
-        days_ahead = (target_weekday - current_weekday) % 7
-        if days_ahead == 0:
-            days_ahead = 7  # Same day, go to next week
-        else:
-            days_ahead += 7  # Go to next week
+        # "next Monday" means next week's Monday regardless of current day
+        # If today is Tuesday and target is Monday, days_ahead = 6 (already next week)
+        # If today is Monday and target is Monday, days_ahead = 0, need to add 7
+        # If today is Wednesday and target is Friday, days_ahead = 2 (this week), need to add 7
+        if days_ahead == 0 or days_ahead > 0:
+            days_ahead += 7
     else:
-        # Find next occurrence (could be today or this week)
-        days_ahead = (target_weekday - current_weekday) % 7
+        # Find next occurrence (could be this week)
         if days_ahead == 0:
-            days_ahead = 7  # Same day means next week
+            days_ahead = 7  # Same day means next occurrence
     
     result_date = from_date + timedelta(days=days_ahead)
     return result_date.strftime("%Y-%m-%d")
