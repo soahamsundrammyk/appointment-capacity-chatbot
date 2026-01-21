@@ -29,12 +29,11 @@ RUN pip install "langgraph-cli[inmem]>=0.4.7"
 RUN mkdir -p /app/data
 
 # Expose LangGraph port
-EXPOSE 8000
+EXPOSE 3334
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
-ENV PORT=8000
+ENV PORT=3334
 
-# Start LangGraph server
-# --no-browser prevents opening browser with 0.0.0.0 URL
-CMD ["langgraph", "dev", "--host", "0.0.0.0", "--port", "8000", "--no-browser"]
+# Start LangGraph server in production mode
+CMD ["langgraph", "up", "--host", "0.0.0.0", "--port", "3334"]
