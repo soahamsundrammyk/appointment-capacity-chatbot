@@ -223,7 +223,7 @@ async def _get_capacity_impl(
         "applicabilityFieldValues": list(set(dates)),
         "capacityTypeSet": [CapacityType.APPOINTMENT_COUNT.value],
         "ruleMatchingCriteria": RuleMatchingCriteria.EXACTLY_MATCHES.value,
-        "includeDiagnostics": True,
+        "includeLimitInfo": True,
     }
     
     if entity_map:
@@ -325,7 +325,7 @@ def _format_capacity_response(
             for combo_key, cap_data in filtered.items():
                 used = cap_data.get("usedCount", 0.0)
                 total = cap_data.get("totalCount", float('inf'))
-                diagnostics = cap_data.get("diagnostics")
+                limit_info = cap_data.get("limitInfo")
                 
                 # Build entity display name
                 entity_display = ""
@@ -350,27 +350,27 @@ def _format_capacity_response(
                     avail = max(0, total - used)
                     formatted_parts.append(f"For {date_key} {entity_display}:\n• Total: {total:.0f}\n• Booked: {used:.0f}\n• Available: {avail:.0f}")
                 
-                # Add bottleneck info (using new simplified BottleneckInfo structure)
-                if diagnostics:
-                    # New structure: bottleneck, bottleneckValue, details, allLimits
-                    bottleneck_type = diagnostics.get("bottleneck", "")
-                    bottleneck_value = diagnostics.get("bottleneckValue")
-                    bottleneck_details = diagnostics.get("details", "")
+                # Add limiting factor info (using new LimitInfo structure)
+                if limit_info:
+                    # New structure: limitingFactor, limitValue, details, allLimits
+                    limiting_factor = limit_info.get("limitingFactor", "")
+                    limit_value = limit_info.get("limitValue")
+                    limit_details = limit_info.get("details", "")
                     
-                    if bottleneck_value is not None and bottleneck_value < 1e308:
+                    if limit_value is not None and limit_value < 1e308:
                         friendly = {
                             "TRANSPORT_OPTION": "transport option limit",
                             "CAPACITY_RULE": "capacity rule",
                             "DEALER_SCHEDULE": "dealer schedule",
                             "INDIVIDUAL_SCHEDULE": "advisor schedule",
-                            "OPERATION": "service/opcode limit",
+                            "OPCODE_DAILY_LIMIT": "opcode daily limit",
                             "TEAM": "team limit",
-                        }.get(bottleneck_type, bottleneck_type.lower().replace("_", " "))
+                        }.get(limiting_factor, limiting_factor.lower().replace("_", " "))
                         
-                        bottleneck_str = f"\nBottleneck: {friendly} ({bottleneck_value:.0f})"
-                        if bottleneck_details:
-                            bottleneck_str += f" - {bottleneck_details}"
-                        formatted_parts.append(bottleneck_str)
+                        limit_str = f"\nLimiting Factor: {friendly} ({limit_value:.0f})"
+                        if limit_details:
+                            limit_str += f" - {limit_details}"
+                        formatted_parts.append(limit_str)
                         formatted_parts.append("\nWould you like me to explain how to increase this capacity?")
     
     return "\n".join(formatted_parts)

@@ -8,9 +8,9 @@ COMMON_QUESTIONS: List[Dict[str, str]] = [
     # ========== CORE CONCEPTS ==========
     {
         "question": "What is capacity?",
-        "answer": "Capacity refers to the maximum number of appointments that can be scheduled for a given time period, advisor, team, or transport option. It's controlled by multiple factors: dealer schedule limits, individual advisor limits, capacity rules, and transport option limits. The system calculates the effective capacity by taking the minimum of all these limits - the lowest one becomes the 'bottleneck' that constrains booking.",
+        "answer": "Capacity refers to the maximum number of appointments that can be scheduled for a given time period, advisor, team, or transport option. It's controlled by multiple factors: dealer schedule limits, individual advisor limits, capacity rules, and transport option limits. The system calculates the effective capacity by taking the minimum of all these limits - the lowest one becomes the 'limiting factor' that constrains booking.",
         "category": "concept",
-        "keywords": ["capacity", "what is", "definition", "limit", "bottleneck", "maximum", "appointments per day", "appt per slot", "settings"]
+        "keywords": ["capacity", "what is", "definition", "limit", "limiting factor", "maximum", "appointments per day", "appt per slot", "settings"]
     },
     {
         "question": "What is a transport option?",
@@ -31,14 +31,14 @@ COMMON_QUESTIONS: List[Dict[str, str]] = [
         "keywords": ["opcode", "operation", "service", "oil change", "tire rotation", "brake", "skill"]
     },
     {
-        "question": "What does bottleneck mean in diagnostics?",
-        "answer": "The bottleneck is the limit that's constraining capacity. The system calculates multiple limits: dealer schedule limit, individual schedule limit, capacity rule limit, transport option limit, and operation limit. The LOWEST of these becomes the effective limit (bottleneck). Diagnostics show which limit is the bottleneck and its source, helping you know exactly what to change to increase capacity.",
-        "category": "diagnostics",
-        "keywords": ["bottleneck", "limiting", "constraining", "diagnostics", "effective limit", "source"]
+        "question": "What does limiting factor mean in limit info?",
+        "answer": "The limiting factor is the limit that's constraining capacity. The system calculates multiple limits: dealer schedule limit, individual schedule limit, capacity rule limit, transport option limit, and opcode daily limit. The LOWEST of these becomes the effective limit (limiting factor). Limit info shows which limit is the limiting factor and its source, helping you know exactly what to change to increase capacity.",
+        "category": "limit-info",
+        "keywords": ["limiting factor", "limiting", "constraining", "limit info", "effective limit", "source"]
     },
     {
         "question": "Why is capacity showing 0?",
-        "answer": "Capacity of 0 means one of these is blocking appointments: 1) A capacity rule explicitly blocks that day/advisor/transport (ruleLimit = 0), 2) Individual advisor schedule has 0 appointments for that day, 3) Transport option is disabled or has 0 limit, 4) Dealer schedule has 0 for that day. Check the diagnostics 'bottleneckReason' field to see the exact cause and limiting source.",
+        "answer": "Capacity of 0 means one of these is blocking appointments: 1) A capacity rule explicitly blocks that day/advisor/transport (ruleLimit = 0), 2) Individual advisor schedule has 0 appointments for that day, 3) Transport option is disabled or has 0 limit, 4) Dealer schedule has 0 for that day. Check the 'limitingFactor' field in the limit info to see the exact cause and limiting source.",
         "category": "troubleshooting",
         "keywords": ["zero", "0", "none", "no capacity", "blocked", "why", "can't book", "unavailable", "showing zero", "no available", "not allow", "error message", "no appointments"]
     },
@@ -58,7 +58,7 @@ COMMON_QUESTIONS: List[Dict[str, str]] = [
     },
     {
         "question": "How do I increase capacity limited by a capacity rule?",
-        "answer": "To increase capacity limited by a capacity rule: 1) Go to Settings > Capacity Rules, 2) Find the rule (name shown in diagnostics limitSourceDetails field), 3) Click Edit, 4) In the THEN clause, increase the limit value (e.g., change <= 30 to <= 50), 5) Save the rule. The change takes effect immediately for new capacity calculations.",
+        "answer": "To increase capacity limited by a capacity rule: 1) Go to Settings > Capacity Rules, 2) Find the rule (name shown in limitInfo details field), 3) Click Edit, 4) In the THEN clause, increase the limit value (e.g., change <= 30 to <= 50), 5) Save the rule. The change takes effect immediately for new capacity calculations.",
         "category": "how-to",
         "keywords": ["increase", "capacity", "rule", "limit", "how to", "change", "modify", "capacity rule", "then clause"]
     },
@@ -311,7 +311,7 @@ IMPORTANT NOTES:
     # ========== TROUBLESHOOTING ==========
     {
         "question": "Why can't customers book appointments?",
-        "answer": "Common reasons customers can't book: 1) Capacity is 0 (check diagnostics for bottleneck), 2) All slots are disabled in dealer/individual schedule (red or gray slots), 3) Transport option is disabled or at limit, 4) A capacity rule blocks that day/time/service, 5) Assignment rule doesn't route to any available advisor. Use get_capacity tool with includeDiagnostics=true to see the exact bottleneck and limiting factor.",
+        "answer": "Common reasons customers can't book: 1) Capacity is 0 (check limitInfo for limiting factor), 2) All slots are disabled in dealer/individual schedule (red or gray slots), 3) Transport option is disabled or at limit, 4) A capacity rule blocks that day/time/service, 5) Assignment rule doesn't route to any available advisor. Use get_capacity tool with includeLimitInfo=true to see the exact limiting factor.",
         "category": "troubleshooting",
         "keywords": ["can't book", "cannot book", "unable to book", "booking failed", "no availability", "blocked"]
     },
@@ -335,7 +335,7 @@ IMPORTANT NOTES:
     },
     {
         "question": "How do I find which rule is blocking appointments?",
-        "answer": "To find the blocking rule: 1) Use get_capacity tool with the specific date/advisor/transport, 2) Check the diagnostics in the response, 3) Look at 'limitSource' field - if it says 'CAPACITY_RULE', the 'limitSourceDetails' will show the rule name and UUID, 4) Go to Settings > Capacity Rules and search for that rule name to modify it.",
+        "answer": "To find the blocking rule: 1) Use get_capacity tool with the specific date/advisor/transport, 2) Check the limitInfo in the response, 3) Look at 'limitingFactor' field - if it says 'CAPACITY_RULE', the 'details' will show the rule name, 4) Go to Settings > Capacity Rules and search for that rule name to modify it.",
         "category": "troubleshooting",
         "keywords": ["find", "which", "rule", "blocking", "limiting", "identify", "source"]
     },
@@ -441,7 +441,7 @@ This manually closes the scheduler for that day. For recurring closures (like ev
     # ========== ADVANCED CONCEPTS ==========
     {
         "question": "What is the priority order of limits?",
-        "answer": "The system calculates all applicable limits and uses the MINIMUM (most restrictive): 1) Dealer Schedule Limit, 2) Individual Advisor Schedule Limit, 3) Capacity Rule Limit, 4) Transport Option Limit, 5) Operation/Opcode Limit. The lowest becomes the 'effective limit' and is shown as the bottleneck in diagnostics. To increase capacity, you must increase the bottleneck limit specifically.",
+        "answer": "The system calculates all applicable limits and uses the MINIMUM (most restrictive): 1) Dealer Schedule Limit, 2) Individual Advisor Schedule Limit, 3) Capacity Rule Limit, 4) Transport Option Limit, 5) Opcode Daily Limit. The lowest becomes the 'effective limit' and is shown as the limiting factor in limitInfo. To increase capacity, you must increase the limiting factor specifically.",
         "category": "concept",
         "keywords": ["priority", "order", "limits", "minimum", "effective", "which", "override"]
     },
@@ -491,7 +491,7 @@ This manually closes the scheduler for that day. For recurring closures (like ev
     },
     {
         "question": "How do I allow unlimited capacity?",
-        "answer": "To allow unlimited appointments: 1) Remove any capacity rules that restrict that entity, 2) Set high limits (like 999) in dealer/individual schedules, 3) Set high limits for transport options. Note: True 'unlimited' isn't recommended as it can cause overbooking. The system uses a very large number (Double.MAX_VALUE) internally to represent 'no limit set'. You'll see this as scientific notation (1.79e+308) in diagnostics.",
+        "answer": "To allow unlimited appointments: 1) Remove any capacity rules that restrict that entity, 2) Set high limits (like 999) in dealer/individual schedules, 3) Set high limits for transport options. Note: True 'unlimited' isn't recommended as it can cause overbooking. The system uses a very large number (Double.MAX_VALUE) internally to represent 'no limit set'. You'll see this as scientific notation (1.79e+308) in the response.",
         "category": "how-to",
         "keywords": ["unlimited", "no limit", "remove limit", "maximum", "infinite"]
     },

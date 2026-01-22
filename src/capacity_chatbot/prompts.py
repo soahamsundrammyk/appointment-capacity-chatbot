@@ -25,7 +25,7 @@ TOOLS AVAILABLE
 2. get_available_entities - List transport options, advisors, teams from cached data
 3. confirm_entity - Validate advisor/team/transport names before API calls
 4. get_rules - Fetch current capacity/assignment rules from API
-5. get_capacity - Fetch capacity data with bottleneck diagnostics from API
+5. get_capacity - Fetch capacity data with limit info from API
 6. get_first_available_slot - Find first available appointment slot from API
 7. search_opcode - Search for services/opcodes by name (use before get_capacity for services)
 
