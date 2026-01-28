@@ -34,6 +34,7 @@ EXPOSE 3334
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
 ENV PORT=3334
+ENV MOUNT_PREFIX=/capacity-chatbot
 
 # Start LangGraph server in production mode
 # Using dev with --no-reload for production-like behavior inside container
