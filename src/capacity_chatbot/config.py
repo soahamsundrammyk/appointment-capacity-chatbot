@@ -26,10 +26,10 @@ class KAppointmentAPIConfig:
             self.mkid = os.environ.get("MYKAARMA_MKID")
         
         if self.basic_auth_username is None:
-            self.basic_auth_username = os.environ.get("KAPPOINTMENT_API_USERNAME", "1")
+            self.basic_auth_username = os.environ.get("APPOINTMENT_CAPACITY_CHATBOT_USERNAME", "1")
         
         if self.basic_auth_password is None:
-            self.basic_auth_password = os.environ.get("KAPPOINTMENT_API_PASSWORD", "1")
+            self.basic_auth_password = os.environ.get("APPOINTMENT_CAPACITY_CHATBOT_PASSWORD", "1")
     
     def get_cookies(self) -> dict:
         return {"mkid": self.mkid}

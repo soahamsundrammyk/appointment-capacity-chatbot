@@ -52,7 +52,8 @@ async def get_first_available_slot_tool(
     
     DATE SUPPORT:
     - Supports natural language: 'tomorrow', 'Thursday', 'this week', 'next week'
-    - Defaults to next 7 days if not specified
+    - If multiple dates provided, uses the first date as the start date
+    - If no dates specified, API defaults to today and searches forward up to 90 days
     
     Args:
         advisor_names: List of advisor names (optional - all advisors if not specified)
@@ -163,6 +164,7 @@ async def _get_first_available_slot_impl(
     request_payload = {"selectedAvailabilityAttributes": selected_attributes}
     
     # Parse natural language dates using date_parser
+    # NOTE: first-available-slot API requires exactly ONE date (or none to default to today)
     if dates:
         from capacity_chatbot.utils.date_parser import parse_date_query
         parsed_dates = []
@@ -170,13 +172,9 @@ async def _get_first_available_slot_impl(
             parsed = parse_date_query(d)
             parsed_dates.extend(parsed)
         if parsed_dates:
-            request_payload["dates"] = parsed_dates
-    else:
-        # Default to next 7 days if no dates specified
-        from datetime import date, timedelta
-        today = date.today()
-        default_dates = [(today + timedelta(days=i)).strftime("%Y-%m-%d") for i in range(7)]
-        request_payload["dates"] = default_dates
+            # Take only the first date - API requires exactly one date as start date
+            request_payload["dates"] = [parsed_dates[0]]
+    # If no dates specified, don't send dates - API will default to today
     
     if start_time:
         request_payload["startTime"] = start_time
@@ -185,8 +183,8 @@ async def _get_first_available_slot_impl(
     if opcodes:
         request_payload["selectedOperationUuidSet"] = opcodes
     
-    basic_auth_username = os.getenv("KAPPOINTMENT_API_USERNAME", "1")
-    basic_auth_password = os.getenv("KAPPOINTMENT_API_PASSWORD", "1")
+    basic_auth_username = os.getenv("APPOINTMENT_CAPACITY_CHATBOT_USERNAME", "1")
+    basic_auth_password = os.getenv("APPOINTMENT_CAPACITY_CHATBOT_PASSWORD", "1")
     
     config = KAppointmentAPIConfig(mkid=mkid, basic_auth_username=basic_auth_username, basic_auth_password=basic_auth_password)
     client = KAppointmentAPIClient(config=config)
