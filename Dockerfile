@@ -29,6 +29,7 @@ EXPOSE 3334
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONPATH=/app/src
 ENV PORT=3334
+ENV MOUNT_PREFIX=/capacity-chatbot
 
 # Start FastAPI server with uvicorn
 # Using custom API server for PostgreSQL persistence support

@@ -31,20 +31,48 @@ logger = logging.getLogger(__name__)
 # FastAPI App Setup
 # ============================================================================
 
-app = FastAPI(
+# Get mount prefix from environment (for HAProxy routing)
+MOUNT_PREFIX = os.getenv("MOUNT_PREFIX", "")
+
+# Create the internal API app with all the routes
+api_app = FastAPI(
     title="Capacity Chatbot API",
     description="AI-powered chatbot for capacity-related questions",
     version="1.0.0",
 )
 
-# CORS middleware
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+# Create the main app - routes will be mounted under MOUNT_PREFIX if set
+app = FastAPI(
+    title="Capacity Chatbot",
+    version="1.0.0",
 )
+
+# CORS middleware on both apps
+for fast_app in [app, api_app]:
+    fast_app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
+# Mount the API under the prefix (e.g., /capacity-chatbot)
+if MOUNT_PREFIX:
+    # Add root-level health check for Kubernetes probes (works without prefix)
+    @app.get("/health")
+    async def root_health_check():
+        return {"status": "healthy"}
+    
+    @app.get("/ok")
+    async def root_ok_check():
+        return {"status": "ok"}
+    
+    app.mount(MOUNT_PREFIX, api_app)
+    logger.info(f"API mounted under prefix: {MOUNT_PREFIX}")
+else:
+    # No prefix - use api_app directly
+    app = api_app
 
 
 # ============================================================================
@@ -83,19 +111,19 @@ class ThreadState(BaseModel):
 # Health & Info Endpoints
 # ============================================================================
 
-@app.get("/health")
+@api_app.get("/health")
 async def health_check():
     """Health check endpoint for Kubernetes probes."""
     return {"status": "healthy"}
 
 
-@app.get("/ok")
+@api_app.get("/ok")
 async def ok_check():
     """Simple OK check."""
     return {"status": "ok"}
 
 
-@app.get("/info")
+@api_app.get("/info")
 async def info():
     """Service information."""
     return {
@@ -108,14 +136,14 @@ async def info():
 # Thread Management Endpoints
 # ============================================================================
 
-@app.post("/threads")
+@api_app.post("/threads")
 async def create_thread():
     """Create a new thread and return its ID."""
     thread_id = str(uuid.uuid4())
     return {"thread_id": thread_id}
 
 
-@app.get("/threads/{thread_id}/state")
+@api_app.get("/threads/{thread_id}/state")
 async def get_thread_state(thread_id: str):
     """Get the current state of a thread."""
     try:
@@ -237,7 +265,7 @@ async def run_graph_stream(thread_id: str, input_data: Dict[str, Any], stream_mo
         yield f"event: error\ndata: {json.dumps(error_data)}\n\n"
 
 
-@app.post("/threads/{thread_id}/runs/stream")
+@api_app.post("/threads/{thread_id}/runs/stream")
 async def create_run_stream(thread_id: str, request: RunRequest):
     """
     Create a run and stream results - main chat endpoint.
@@ -257,7 +285,7 @@ async def create_run_stream(thread_id: str, request: RunRequest):
     )
 
 
-@app.post("/threads/{thread_id}/runs")
+@api_app.post("/threads/{thread_id}/runs")
 async def create_run(thread_id: str, request: RunRequest):
     """Create a run and return result (non-streaming)."""
     graph = get_graph()
@@ -306,7 +334,7 @@ async def create_run(thread_id: str, request: RunRequest):
 # Assistants Endpoint (for UI compatibility)
 # ============================================================================
 
-@app.get("/assistants")
+@api_app.get("/assistants")
 async def get_assistants():
     """Return available assistants (graphs)."""
     return [
@@ -318,7 +346,7 @@ async def get_assistants():
     ]
 
 
-@app.get("/assistants/search")
+@api_app.get("/assistants/search")
 async def search_assistants():
     """Search assistants (returns all for simplicity)."""
     return [
@@ -334,7 +362,7 @@ async def search_assistants():
 # Startup Event
 # ============================================================================
 
-@app.on_event("startup")
+@api_app.on_event("startup")
 async def startup_event():
     """Initialize the graph on startup to establish DB connection early."""
     logger.info("Starting Capacity Chatbot API server...")
