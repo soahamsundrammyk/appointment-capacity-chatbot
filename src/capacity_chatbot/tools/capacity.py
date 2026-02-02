@@ -15,7 +15,7 @@ from capacity_chatbot.config import KAppointmentAPIConfig
 from capacity_chatbot.utils.enums import ApplicabilityRuleField, CapacityType, RuleMatchingCriteria
 from capacity_chatbot.tools.validation import validate_advisor_names, validate_transport_option_names, validate_team_names
 from capacity_chatbot.utils.uuid_mapper import UUIDMapper
-from capacity_chatbot.utils.date_parser import parse_date_query
+from capacity_chatbot.utils.date_parser import parse_date_query, parse_time_query
 
 logger = logging.getLogger(__name__)
 
@@ -28,6 +28,7 @@ async def get_capacity_tool(
     team_names: Optional[List[str]] = None,
     opcodes: Optional[List[str]] = None,
     source: Optional[str] = None,
+    start_time: Optional[str] = None,
     config: RunnableConfig = None,
 ) -> str:
     """Fetch capacity information for appointments.
@@ -35,7 +36,7 @@ async def get_capacity_tool(
     This tool retrieves capacity data showing:
     - How many appointments are used vs available
     - Capacity broken down by advisors, transport options
-    - Bottleneck information when filtering by specific entities
+    - limiting factors information when filtering by specific entities
     
     SIMPLE QUERY (no filters):
     - "How many slots tomorrow?" → Just call with dates, no other filters
@@ -43,7 +44,7 @@ async def get_capacity_tool(
     
     FILTERED QUERY (with entities):
     - "Capacity for Loaner?" → transport_option_names=["Loaner"]
-    - Returns breakdown with bottleneck info
+    - Returns breakdown with limiting factors info
     
     SOURCE FILTER (by booking channel):
     - "Online scheduler capacity" → source="Web"
@@ -56,6 +57,12 @@ async def get_capacity_tool(
     - Response shows capacity for each advisor+loaner combination
     - Use this for "which X has most/least Y?" queries
     
+    TIME SLOT FILTER:
+    - "Capacity at 9 AM" → start_time="9 AM"
+    - "Capacity at 2:30 PM" → start_time="2:30 PM"
+    - "Morning capacity" → start_time="morning"
+    - Formats: "9 AM", "9:30 AM", "14:00", "morning", "afternoon", "evening"
+    
     Args:
         dates: List of dates in YYYY-MM-DD format OR natural language expressions.
                Supports: 'tomorrow', 'Thursday', 'this week', 'next week', 'next 7 days'.
@@ -65,6 +72,7 @@ async def get_capacity_tool(
         team_names: List of team names (auto-mapped to UUIDs).
         opcodes: List of opcode UUIDs from search_opcode tool.
         source: Booking source filter - "Web" (online scheduler), "DealerApp", or "DMS".
+        start_time: Time slot filter in natural language (e.g., '9 AM', '14:00', 'morning').
         config: RunnableConfig (automatically provided by ReAct agent)
     
     Returns:
@@ -189,6 +197,13 @@ async def get_capacity_tool(
         mapped_source = source_mapping.get(source.lower(), source)
         entity_map["SOURCE"] = [mapped_source]  # Override default with user's choice
     
+    # Parse time if specified
+    parsed_start_time = None
+    if start_time:
+        parsed_start_time = parse_time_query(start_time)
+        if not parsed_start_time:
+            return f"Error: Could not parse time '{start_time}'. Use formats like '9 AM', '14:00', or 'morning'."
+    
     try:
         result = await _get_capacity_impl(
             department_uuid=department_uuid,
@@ -198,6 +213,7 @@ async def get_capacity_tool(
             mkid=mkid,
             cached_data=cached_data,
             has_entity_filters=has_entity_filters,
+            start_time=parsed_start_time,
         )
         
         if isinstance(result, dict) and "formatted_summary" in result:
@@ -216,15 +232,23 @@ async def _get_capacity_impl(
     mkid: Optional[str] = None,
     cached_data: Optional[Dict[str, Any]] = None,
     has_entity_filters: bool = False,
+    start_time: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Fetch capacity information from the API."""
+    # Use DATE_AND_TIME when time is specified, otherwise DATE
+    applicability_field = ApplicabilityRuleField.DATE_AND_TIME.value if start_time else ApplicabilityRuleField.DATE.value
+    
     request_payload = {
-        "applicabilityRuleField": ApplicabilityRuleField.DATE.value,
+        "applicabilityRuleField": applicability_field,
         "applicabilityFieldValues": list(set(dates)),
         "capacityTypeSet": [CapacityType.APPOINTMENT_COUNT.value],
         "ruleMatchingCriteria": RuleMatchingCriteria.EXACTLY_MATCHES.value,
         "includeLimitInfo": True,
     }
+    
+    # Add startTime if specified
+    if start_time:
+        request_payload["startTime"] = start_time
     
     if entity_map:
         request_payload["entityMap"] = {k: list(set(v)) for k, v in entity_map.items()}

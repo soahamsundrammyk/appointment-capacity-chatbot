@@ -4,17 +4,17 @@ FROM python:3.11-slim
 # Set working directory
 WORKDIR /app
 
-# Install system dependencies
+# Install system dependencies (including libpq-dev for PostgreSQL)
 RUN apt-get update && apt-get install -y \
     build-essential \
     curl \
     tzdata \
+    libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy project files
 COPY pyproject.toml ./
 COPY src/ ./src/
-COPY langgraph.json ./
 
 # Install UV package manager for faster dependency installation
 RUN pip install uv
@@ -22,20 +22,15 @@ RUN pip install uv
 # Install Python dependencies using uv
 RUN uv pip install --system -e ".[dev]"
 
-# Install LangGraph CLI
-RUN pip install "langgraph-cli[inmem]>=0.4.7"
-
-# Create data directory for SQLite database
-RUN mkdir -p /app/data
-
-# Expose LangGraph port
+# Expose API port
 EXPOSE 3334
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
+ENV PYTHONPATH=/app/src
 ENV PORT=3334
-ENV MOUNT_PREFIX=/capacity-chatbot
 
-# Start LangGraph server in production mode
-# Using dev with --no-reload for production-like behavior inside container
-CMD ["langgraph", "dev", "--host", "0.0.0.0", "--port", "3334", "--no-reload", "--no-browser"]
+# Start FastAPI server with uvicorn
+# Using custom API server for PostgreSQL persistence support
+CMD ["uvicorn", "capacity_chatbot.api:app", "--host", "0.0.0.0", "--port", "3334"]
+

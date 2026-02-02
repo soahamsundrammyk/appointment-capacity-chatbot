@@ -161,3 +161,60 @@ def is_date_expression(query: str) -> bool:
         return True
     
     return False
+
+
+def parse_time_query(query: str) -> Optional[str]:
+    """Parse natural language time expressions to HH:MM format (24-hour).
+    
+    Args:
+        query: Natural language time expression or HH:MM/H:MM format
+        
+    Returns:
+        Time string in HH:MM format (24-hour), or None if parsing fails
+        
+    Examples:
+        parse_time_query("9 AM") -> "09:00"
+        parse_time_query("9:30 AM") -> "09:30"
+        parse_time_query("2 PM") -> "14:00"
+        parse_time_query("14:00") -> "14:00"
+        parse_time_query("morning") -> "08:00"
+        parse_time_query("afternoon") -> "12:00"
+    """
+    if not query:
+        return None
+    
+    query_lower = query.lower().strip()
+    
+    # Handle time period keywords (return start of period)
+    time_periods = {
+        "morning": "08:00",
+        "afternoon": "12:00",
+        "evening": "17:00",
+    }
+    if query_lower in time_periods:
+        return time_periods[query_lower]
+    
+    # Try to match HH:MM (24-hour) format first
+    match_24h = re.match(r'^(\d{1,2}):(\d{2})$', query)
+    if match_24h:
+        hour = int(match_24h.group(1))
+        minute = int(match_24h.group(2))
+        if 0 <= hour <= 23 and 0 <= minute <= 59:
+            return f"{hour:02d}:{minute:02d}"
+    
+    # Try to match 12-hour format: "9 AM", "9:30 AM", "9AM", "9:30AM"
+    match_12h = re.match(r'^(\d{1,2})(?::(\d{2}))?\s*(am|pm)$', query_lower)
+    if match_12h:
+        hour = int(match_12h.group(1))
+        minute = int(match_12h.group(2)) if match_12h.group(2) else 0
+        period = match_12h.group(3)
+        
+        if period == "pm" and hour != 12:
+            hour += 12
+        elif period == "am" and hour == 12:
+            hour = 0
+        
+        if 0 <= hour <= 23 and 0 <= minute <= 59:
+            return f"{hour:02d}:{minute:02d}"
+    
+    return None

@@ -66,7 +66,12 @@ async def get_available_entities(
         
         names = []
         for a in advisors:
-            name = a.get("nickname") or f"{a.get('firstName', '')} {a.get('lastName', '')}".strip()
+            first_name = a.get("firstName", "")
+            last_name = a.get("lastName", "")
+            name = f"{first_name} {last_name}".strip()
+            if not name:
+                # Fallback to associateName or name fields if firstName/lastName not available
+                name = a.get("associateName", "") or a.get("name", "")
             if name:
                 names.append(name)
         

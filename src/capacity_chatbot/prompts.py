@@ -55,7 +55,7 @@ HOW-TO QUESTIONS
 ═══════════════════════════════════════════════════════════════════════════════
 
 When user asks how to increase capacity, change limits, modify settings:
-1. Call get_knowledge_answer with the specific bottleneck type from capacity data
+1. Call get_knowledge_answer with the specific limiting factors type from capacity data
 2. Provide EXACT step-by-step instructions from the knowledge base
 3. NEVER generate vague advice like "optimize scheduling" or "adjust limits"
 

@@ -8,7 +8,6 @@ from langchain_core.tools import tool
 from langchain_core.runnables import RunnableConfig
 
 from capacity_chatbot.state import CapacityChatbotState
-from capacity_chatbot.clients.kopcode_client import KopcodeAPIClient
 from capacity_chatbot.clients.kappointment_client import KAppointmentAPIClient
 from capacity_chatbot.config import KAppointmentAPIConfig
 
@@ -24,7 +23,7 @@ async def search_opcode_tool(
     """Search for opcodes/services OR list all opcodes with daily limits.
     
     TWO MODES:
-    1. SEARCH MODE (concern_text provided): RAG search for specific service
+    1. SEARCH MODE (concern_text provided): Search for specific service by name
        - "Oil change capacity" → search_opcode(concern_text="oil change")
        - Returns matching opcodes with UUIDs for use with get_capacity
     
@@ -63,11 +62,9 @@ async def search_opcode_tool(
             result = await _fetch_operations_with_limits_impl(department_uuid=department_uuid, mkid=mkid)
         else:
             # MODE 1: Search for specific opcode
-            if not concern_text:
-                return "Error: Either concern_text or list_all_with_limits=True is required"
-            if not dealer_uuid:
-                return "Error: Dealer UUID is required for opcode search"
-            result = await _search_opcode_impl(concern_text=concern_text, dealer_uuid=dealer_uuid, mkid=mkid)
+            if not department_uuid:
+                return "Error: Department UUID is required for opcode search"
+            result = await _search_opcode_impl(search_token=concern_text, department_uuid=department_uuid, mkid=mkid)
         
         if isinstance(result, dict) and "formatted_summary" in result:
             return result["formatted_summary"]
@@ -78,23 +75,25 @@ async def search_opcode_tool(
 
 
 async def _search_opcode_impl(
-    concern_text: str,
-    dealer_uuid: str,
+    search_token: str,
+    department_uuid: str,
     mkid: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """Search for opcodes using RAG endpoint."""
+    """Search for opcodes using kappointment operations endpoint."""
+    if not search_token:
+        return {"formatted_summary": "Error: Search term is required", "raw_data": None, "opcode_uuids": [], "opcode_names": [], "has_data": False}
+    
     config = KAppointmentAPIConfig(mkid=mkid) if mkid else None
-    client = KopcodeAPIClient(config=config)
+    client = KAppointmentAPIClient(config=config)
     
     try:
-        result = await client.search_opcode(dealer_uuid, concern_text)
+        result = await client.search_operations(department_uuid, search_token)
         
-        matched_opcodes = result.get("matchedOpcodes", [])
+        operation_list = result.get("operationList", [])
         opcode_uuids = []
         opcode_names = []
         
-        for match in matched_opcodes:
-            op = match.get("operationDTO", {})
+        for op in operation_list:
             if op.get("uuid"):
                 opcode_uuids.append(op["uuid"])
             if op.get("opCodeName") or op.get("laborOpCode"):
@@ -149,19 +148,16 @@ DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "
 
 def _format_opcode_response(result: Dict[str, Any]) -> str:
     """Format opcode search response."""
-    if not result or "matchedOpcodes" not in result:
+    if not result or "operationList" not in result:
         return "No opcodes found matching your query."
     
-    matched = result.get("matchedOpcodes", [])
-    if not matched:
+    operation_list = result.get("operationList", [])
+    if not operation_list:
         return "No opcodes found matching your query. Try different keywords."
     
-    parts = [f"Found {len(matched)} matching opcode(s):\n"]
+    parts = [f"Found {len(operation_list)} matching opcode(s):\n"]
     
-    for idx, match in enumerate(matched, 1):
-        op = match.get("operationDTO", {})
-        score = match.get("score", 0.0)
-        
+    for idx, op in enumerate(operation_list, 1):
         name = op.get("opCodeName", "Unknown")
         uuid = op.get("uuid", "Unknown")
         desc = op.get("description", "")
@@ -176,7 +172,6 @@ def _format_opcode_response(result: Dict[str, Any]) -> str:
             text += f"   - Description: {desc}\n"
         if duration:
             text += f"   - Duration: {duration} minutes\n"
-        text += f"   - Match Score: {score:.2%}\n"
         
         # Add daily limits if available
         daily_limits = op.get("dailyLimitConfigDTOList", [])

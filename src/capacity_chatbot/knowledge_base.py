@@ -361,21 +361,34 @@ Note: Existing failed appointments may need to be manually retried or recreated.
         "keywords": ["red warning", "DMS", "push failure", "sync", "error", "warning sign", "DMS ID", "exclamation"]
     },
     {
-        "question": "How does 'No Preference' advisor work?",
-        "answer": """When customers select 'No Preference' for their service advisor:
+        "question": "How does 'No Preference' advisor assignment work?",
+        "answer": """The 'No Preference' feature intelligently assigns appointments to service advisors when no specific advisor is selected.
 
-**Default Behavior:**
-- Appointments are distributed via round-robin to available advisors
-- The system automatically assigns to the next available advisor in rotation
+**IMPORTANT: This is NOT a round-robin algorithm.** It's a load-balancing system based on capacity percentage.
 
-**Alternative Setup:**
-- 'No Preference' can be configured as a standalone advisor category
-- This requires a specific DMS ID to be assigned
-- Contact support to enable this configuration
+**How It Works:**
+When 'No Preference' is selected:
+1. Scheduler evaluates all eligible advisors available for the selected date/time slot
+2. Calculates each advisor's current capacity percentage (booked ÷ total capacity)
+3. Assigns the appointment to the advisor with the LOWEST capacity percentage for that day
+4. Advisors not available for that day/time are excluded from consideration
 
-Note: If round-robin isn't working as expected, verify that all target advisors have availability enabled in their individual schedules.""",
+**Example:** If 3 advisors are booked at 70%, 60%, and 50% of their daily capacity, the appointment goes to the 50% advisor - ensuring fair workload distribution.
+
+**Eligibility Conditions:**
+- Only advisors marked available for the selected date/time are eligible
+- If no advisors are available, the slot won't show in Consumer Scheduler
+- Assignment won't occur if no advisor's availability includes the selected slot
+
+**CS 4.0 Default:** 'No Preference' is ENABLED by default in Consumer Scheduler 4.0. If disabled, the system picks the first advisor on the list, causing all appointments to go to one advisor - this is problematic for dealerships!
+
+**Enabling 'No Preference':**
+Contact myKaarma support to enable or configure the 'No Preference' feature for your dealership.
+
+**CRITICAL - Dummy Advisor Warning:**
+Some dealerships used to create 'No Preference' as a dummy advisor with a DMS ID. The system now uses a blank/null DMS ID for proper load-balancing. If a DMS ID is assigned to the No Preference user, it behaves like a regular advisor and the load-balancing logic WILL NOT WORK.""",
         "category": "concept",
-        "keywords": ["no preference", "advisor", "round robin", "assignment", "any advisor", "automatic", "rotation"]
+        "keywords": ["no preference", "advisor", "assignment", "any advisor", "automatic", "load balancing", "capacity percentage", "least occupied", "dummy advisor", "DMS ID", "CS 4.0", "consumer scheduler", "dealerapp", "workload distribution"]
     },
     {
         "question": "How do I close the scheduler for holidays or specific dates?",

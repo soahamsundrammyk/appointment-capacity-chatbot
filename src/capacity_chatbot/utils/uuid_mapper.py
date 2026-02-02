@@ -25,21 +25,22 @@ class UUIDMapper:
     
     def _build_maps(self, cached_data: Dict[str, Any]):
         """Build UUID-to-name mappings from cached data."""
-        # Map advisors: uuid -> "FirstName LastName" or "nickname"
+        # Map advisors: uuid -> "FirstName LastName"
         advisors = cached_data.get("advisors", [])
         for advisor in advisors:
             uuid = advisor.get("uuid")
             if uuid:
-                # Use nickname if available, otherwise firstName + lastName
-                nickname = advisor.get("nickname")
-                if nickname:
-                    self.advisor_map[uuid] = nickname
+                # Use firstName + lastName
+                first_name = advisor.get("firstName", "")
+                last_name = advisor.get("lastName", "")
+                name = f"{first_name} {last_name}".strip()
+                if name:
+                    self.advisor_map[uuid] = name
                 else:
-                    first_name = advisor.get("firstName", "")
-                    last_name = advisor.get("lastName", "")
-                    name = f"{first_name} {last_name}".strip()
-                    if name:
-                        self.advisor_map[uuid] = name
+                    # Fallback to associateName or name fields if firstName/lastName not available
+                    fallback_name = advisor.get("associateName", "") or advisor.get("name", "")
+                    if fallback_name:
+                        self.advisor_map[uuid] = fallback_name
         
         # Map teams: uuid -> name
         teams = cached_data.get("teams", [])

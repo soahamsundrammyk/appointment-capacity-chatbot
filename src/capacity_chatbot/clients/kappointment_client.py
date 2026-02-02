@@ -116,6 +116,41 @@ class KAppointmentAPIClient:
             logger.error(f"HTTP error calling fetch_operations_with_limits: {e}")
             raise
 
+    async def search_operations(self, department_uuid: str, search_token: str, result_size: int = 20) -> Dict[str, Any]:
+        """Search for opcodes using the operations endpoint.
+        
+        Endpoint: POST /v2/consumer/webservice/department/{dealerDepartmentUuid}/operations
+        Uses searchToken field to search for opcodes by name/description.
+        
+        Args:
+            department_uuid: Department UUID
+            search_token: Search term for finding opcodes
+            result_size: Max number of results to return (default 20)
+            
+        Returns:
+            Response with operationList array containing matching operations
+        """
+        url = f"{self.config.base_url}/appointment/v2/consumer/webservice/department/{department_uuid}/operations"
+        
+        request_body = {
+            "searchToken": search_token,
+            "typeList": ["OPCODE"],
+            "resultSize": result_size,
+            "startPosition": 0,
+        }
+        
+        try:
+            cookies = self._get_cookies()
+            logger.info(f"POST {url}")
+            logger.info(f"Request: {json.dumps(request_body, indent=2)}")
+            
+            response = await self._client.post(url, json=request_body, cookies=cookies)
+            response.raise_for_status()
+            return response.json()
+        except httpx.HTTPStatusError as e:
+            logger.error(f"HTTP error calling search_operations: {e}")
+            raise
+
     async def close(self):
         """Close the HTTP client."""
         await self._client.aclose()

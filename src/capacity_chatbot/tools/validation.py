@@ -78,7 +78,7 @@ def validate_advisor_names(
         }
     
     # Build name -> uuid mapping
-    # Note: Match how UUIDMapper extracts names: nickname first, then firstName + lastName
+    # Note: Match how UUIDMapper extracts names: firstName + lastName
     name_to_uuid = {}
     all_names = []
     for advisor in advisors:
@@ -87,17 +87,12 @@ def validate_advisor_names(
         if not uuid:
             continue
             
-        # Get name - prefer nickname, then construct from firstName + lastName
-        # This matches UUIDMapper's logic
-        nickname = advisor.get("nickname", "")
-        if nickname:
-            name = nickname
-        else:
-            first_name = advisor.get("firstName", "") or ""
-            last_name = advisor.get("lastName", "") or ""
-            name = f"{first_name} {last_name}".strip()
+        # Get name - use firstName + lastName
+        first_name = advisor.get("firstName", "") or ""
+        last_name = advisor.get("lastName", "") or ""
+        name = f"{first_name} {last_name}".strip()
             
-        # Fallback to associateName or name fields
+        # Fallback to associateName or name fields if firstName/lastName not available
         if not name:
             name = advisor.get("associateName", "") or advisor.get("name", "")
         

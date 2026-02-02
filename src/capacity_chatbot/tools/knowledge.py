@@ -25,8 +25,8 @@ async def get_knowledge_answer(
     - "What is a transport option?"
     - "What are teams?"
     
-    HOW-TO QUESTIONS (after identifying bottleneck from get_capacity):
-    - "How do I increase transport option capacity?" → query with bottleneck type
+    HOW-TO QUESTIONS (after identifying limiting factors from get_capacity):
+    - "How do I increase transport option capacity?" → query with limiting factors type
     - "How do I modify advisor schedule?"
     - "How do I create a capacity rule?"
     - "How do I change team assignments?"
