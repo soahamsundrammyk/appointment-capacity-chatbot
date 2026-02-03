@@ -232,12 +232,8 @@ async def run_graph_stream(thread_id: str, input_data: Dict[str, Any], stream_mo
         
         logger.info(f"Running graph for thread {thread_id}")
         
-        # Run graph (invoke is synchronous, so use run_in_executor)
-        loop = asyncio.get_event_loop()
-        result = await loop.run_in_executor(
-            None, 
-            lambda: graph.invoke(graph_input, config)
-        )
+        # Run graph using async API (capacity_agent is async)
+        result = await graph.ainvoke(graph_input, config)
         
         # Stream based on mode
         if "messages-tuple" in stream_mode:
@@ -314,8 +310,8 @@ async def create_run(thread_id: str, request: RunRequest):
                 "cached_data": request.input.cached_data,
             }
         
-        # Run graph
-        result = graph.invoke(graph_input, config)
+        # Run graph using async API
+        result = await graph.ainvoke(graph_input, config)
         
         # Return serialized result
         return {
