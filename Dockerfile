@@ -31,6 +31,10 @@ ENV PYTHONPATH=/app/src
 ENV PORT=3334
 ENV MOUNT_PREFIX=/capacity-chatbot
 
+# LangSmith tracing (always enabled)
+ENV LANGCHAIN_TRACING_V2=true
+ENV LANGCHAIN_PROJECT=capacity-chatbot
+
 # Start FastAPI server with uvicorn
 # Using custom API server for PostgreSQL persistence support
 CMD ["uvicorn", "capacity_chatbot.api:app", "--host", "0.0.0.0", "--port", "3334"]

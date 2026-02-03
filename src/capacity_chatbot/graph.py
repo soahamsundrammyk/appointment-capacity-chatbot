@@ -32,74 +32,66 @@ def build_graph() -> StateGraph:
     return builder
 
 
-# Global connection pool for Postgres checkpointer
-_postgres_pool = None
-
-
 def get_checkpointer():
     """
-    Get the appropriate checkpointer based on configuration.
+    Get the appropriate checkpointer.
     
-    Returns PostgresSaver if POSTGRES_CONNECTION_STRING is configured, 
-    otherwise MemorySaver for local development.
+    Currently using MemorySaver for development/testing.
+    PostgreSQL support can be enabled by uncommenting the code below
+    and setting POSTGRES_CONNECTION_STRING environment variable.
     """
-    global _postgres_pool
-    
-    postgres_conn_string = os.getenv("POSTGRES_CONNECTION_STRING")
-    
-    if postgres_conn_string:
-        try:
-            from langgraph.checkpoint.postgres import PostgresSaver
-            from psycopg_pool import ConnectionPool
-            import psycopg
-            
-            # Create a persistent connection pool (only once)
-            if _postgres_pool is None:
-                _postgres_pool = ConnectionPool(
-                    conninfo=postgres_conn_string,
-                    min_size=1,
-                    max_size=10,
-                )
-                
-                # Setup tables using a direct connection with autocommit
-                # CREATE INDEX CONCURRENTLY cannot run inside a transaction block
-                try:
-                    setup_conn = psycopg.connect(postgres_conn_string, autocommit=True)
-                    setup_checkpointer = PostgresSaver(conn=setup_conn)
-                    setup_checkpointer.setup()  # Create required tables
-                    setup_conn.close()
-                    logger.info("Postgres checkpointer tables initialized")
-                except Exception as setup_error:
-                    # If setup fails, log but continue (tables might already exist)
-                    logger.warning(f"Postgres setup had issues (may already be initialized): {setup_error}")
-            
-            # Create checkpointer with the pool (for actual operations)
-            checkpointer = PostgresSaver(conn=_postgres_pool)
-            
-            logger.info("Using Postgres checkpointer for persistence")
-            return checkpointer
-        except ImportError as e:
-            logger.warning(f"Missing package: {e}, falling back to MemorySaver")
-        except Exception as e:
-            logger.error(f"Postgres connection failed: {e}, falling back to MemorySaver")
+    # =========================================================================
+    # PostgreSQL Checkpointer (COMMENTED OUT FOR NOW)
+    # Uncomment this section when deploying to production with Postgres access
+    # =========================================================================
+    # postgres_conn_string = os.getenv("POSTGRES_CONNECTION_STRING")
+    # if postgres_conn_string:
+    #     try:
+    #         from langgraph.checkpoint.postgres import PostgresSaver
+    #         from psycopg_pool import ConnectionPool
+    #         import psycopg
+    #         
+    #         # Add connection timeout
+    #         conn_params = postgres_conn_string
+    #         if "connect_timeout" not in conn_params:
+    #             separator = "&" if "?" in conn_params else "?"
+    #             conn_params = f"{conn_params}{separator}connect_timeout=10"
+    #         
+    #         pool = ConnectionPool(
+    #             conninfo=conn_params,
+    #             min_size=1,
+    #             max_size=10,
+    #             timeout=30,
+    #         )
+    #         
+    #         # Setup tables
+    #         setup_conn = psycopg.connect(conn_params, autocommit=True, connect_timeout=10)
+    #         setup_checkpointer = PostgresSaver(conn=setup_conn)
+    #         setup_checkpointer.setup()
+    #         setup_conn.close()
+    #         
+    #         checkpointer = PostgresSaver(conn=pool)
+    #         logger.info("Using Postgres checkpointer for persistence")
+    #         return checkpointer
+    #     except Exception as e:
+    #         logger.warning(f"Postgres failed: {e}, falling back to MemorySaver")
     
     logger.info("Using in-memory checkpointer (data lost on restart)")
     return MemorySaver()
 
 
-# Cached graph instance to preserve memory across requests
+# Cached graph instance
 _cached_graph = None
 
 
 def get_graph():
     """
-    Get the default compiled graph with persistence.
+    Get the compiled graph with checkpointer.
     
-    Returns the cached graph instance to ensure checkpointer persists.
-    Uses PostgreSQL if configured, otherwise falls back to MemorySaver.
-    
-    Returns:
-        Compiled LangGraph
+    LangSmith tracing is automatic when these env vars are set:
+    - LANGSMITH_API_KEY (required)
+    - LANGCHAIN_TRACING_V2=true (enables tracing)
+    - LANGCHAIN_PROJECT (optional, defaults to "default")
     """
     global _cached_graph
     if _cached_graph is None:
@@ -110,9 +102,9 @@ def get_graph():
     return _cached_graph
 
 
-# For backward compatibility - compile without checkpointer for langgraph CLI
-# (though we'll use custom FastAPI server now)
+# For backward compatibility
 graph = build_graph().compile()
+
 
 
 
