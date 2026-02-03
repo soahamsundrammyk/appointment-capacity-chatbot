@@ -201,7 +201,7 @@ def serialize_message(msg) -> Dict[str, Any]:
 
 
 async def run_graph_stream(thread_id: str, input_data: Dict[str, Any], stream_mode: List[str]):
-    """Run the graph and stream results."""
+    """Run the graph and stream results with real-time tool call events."""
     graph = get_graph()
     config = {"configurable": {"thread_id": thread_id}}
     
@@ -230,25 +230,54 @@ async def run_graph_stream(thread_id: str, input_data: Dict[str, Any], stream_mo
                 "cached_data": input_data.get("cached_data"),
             }
         
-        logger.info(f"Running graph for thread {thread_id}")
+        logger.info(f"Running graph for thread {thread_id} with astream_events")
         
-        # Run graph using async API (capacity_agent is async)
-        result = await graph.ainvoke(graph_input, config)
+        # Use astream_events for real-time tool call visibility
+        final_messages = []
         
-        # Stream based on mode
-        if "messages-tuple" in stream_mode:
-            # Stream messages in tuple format
-            for msg in result.get("messages", []):
-                event = {
-                    "event": "messages/partial",
-                    "data": [serialize_message(msg), {}]
+        async for event in graph.astream_events(graph_input, config, version="v2"):
+            event_type = event.get("event", "")
+            
+            # Tool start events
+            if event_type == "on_tool_start":
+                tool_name = event.get("name", "unknown")
+                event_data = {
+                    "event": "on_tool_start",
+                    "name": tool_name,
                 }
-                yield f"event: messages/partial\ndata: {json.dumps(event['data'])}\n\n"
+                yield f"event: on_tool_start\ndata: {json.dumps(event_data)}\n\n"
+                logger.debug(f"Tool started: {tool_name}")
+            
+            # Tool end events
+            elif event_type == "on_tool_end":
+                tool_name = event.get("name", "unknown")
+                event_data = {
+                    "event": "on_tool_end", 
+                    "name": tool_name,
+                }
+                yield f"event: on_tool_end\ndata: {json.dumps(event_data)}\n\n"
+                logger.debug(f"Tool ended: {tool_name}")
+            
+            # Chat model stream (token by token)
+            elif event_type == "on_chat_model_stream":
+                chunk = event.get("data", {}).get("chunk")
+                if chunk and hasattr(chunk, "content") and chunk.content:
+                    event_data = {
+                        "event": "on_chat_model_stream",
+                        "data": {"chunk": {"content": chunk.content}}
+                    }
+                    yield f"event: on_chat_model_stream\ndata: {json.dumps(event_data)}\n\n"
+            
+            # Capture final state from chain end
+            elif event_type == "on_chain_end" and event.get("name") == "LangGraph":
+                output = event.get("data", {}).get("output", {})
+                if "messages" in output:
+                    final_messages = output["messages"]
         
-        if "values" in stream_mode:
-            # Stream final values
+        # Stream final values
+        if "values" in stream_mode and final_messages:
             final_values = {
-                "messages": [serialize_message(m) for m in result.get("messages", [])]
+                "messages": [serialize_message(m) for m in final_messages]
             }
             yield f"event: values\ndata: {json.dumps(final_values)}\n\n"
         
