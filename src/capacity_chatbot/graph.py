@@ -87,11 +87,6 @@ _cached_graph = None
 def get_graph():
     """
     Get the compiled graph with checkpointer.
-
-    LangSmith tracing is automatic when these env vars are set:
-    - LANGSMITH_API_KEY (required)
-    - LANGCHAIN_TRACING_V2=true (enables tracing)
-    - LANGCHAIN_PROJECT (optional, defaults to "default")
     """
     global _cached_graph
     if _cached_graph is None:
@@ -100,3 +95,8 @@ def get_graph():
         _cached_graph = builder.compile(checkpointer=checkpointer)
         logger.info("Graph compiled with checkpointer")
     return _cached_graph
+
+
+# Module-level graph export for langgraph CLI (required by langgraph.json)
+# This is used by `langgraph dev` command
+graph = build_graph().compile()

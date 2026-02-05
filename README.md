@@ -167,27 +167,19 @@ src/capacity_chatbot/
 
 All endpoints are mounted under `MOUNT_PREFIX` (default: `/capacity-chatbot`).
 
-### Health & Info
+### Health
 
 | Method | Path | Description |
 |--------|------|-------------|
 | `GET` | `/health` | Kubernetes liveness probe |
 | `GET` | `/ok` | Kubernetes readiness probe |
-| `GET` | `/info` | Service version and metadata |
-
-### Thread Management
-
-| Method | Path | Description |
-|--------|------|-------------|
-| `POST` | `/threads` | Create a new conversation thread |
-| `GET` | `/threads/{thread_id}/state` | Get conversation history |
 
 ### Chat (Main API)
 
 | Method | Path | Description |
 |--------|------|-------------|
-| `POST` | `/threads/{thread_id}/runs/stream` | **Main endpoint** - Streaming chat with SSE |
-| `POST` | `/threads/{thread_id}/runs` | Non-streaming chat (fallback) |
+| `POST` | `/threads/{thread_id}/runs/stream` | SSE streaming chat with real-time tool events |
+| `POST` | `/threads/{thread_id}/runs/wait` | Non-streaming chat (waits for completion) |
 
 ### Request Format
 

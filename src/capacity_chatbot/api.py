@@ -1,12 +1,11 @@
-"""FastAPI server for the capacity chatbot - replaces langgraph dev.
+"""FastAPI server for the capacity chatbot.
 
-This server provides LangGraph-compatible API endpoints with PostgreSQL persistence.
+This server provides LangGraph-compatible API endpoints for the UI client.
 """
 
 import json
 import logging
 import os
-import uuid
 from typing import Any, Dict, List, Optional
 
 from fastapi import FastAPI, HTTPException
@@ -75,14 +74,8 @@ else:
 
 
 # ============================================================================
-# Request/Response Models (LangGraph-compatible format)
+# Request/Response Models
 # ============================================================================
-
-class MessageContent(BaseModel):
-    """A message in the conversation."""
-    role: str  # "user" or "assistant"
-    content: str
-
 
 class RunInput(BaseModel):
     """Input for a run - matches LangGraph API format."""
@@ -100,14 +93,8 @@ class RunRequest(BaseModel):
     stream_mode: Optional[List[str]] = None
 
 
-class ThreadState(BaseModel):
-    """Current state of a thread."""
-    values: Dict[str, Any]
-    next: List[str] = []
-
-
 # ============================================================================
-# Health & Info Endpoints
+# Health Endpoints
 # ============================================================================
 
 @api_app.get("/health")
@@ -122,62 +109,14 @@ async def ok_check():
     return {"status": "ok"}
 
 
-@api_app.get("/info")
-async def info():
-    """Service information."""
-    return {
-        "service": "capacity-chatbot",
-        "version": "1.0.0",
-    }
-
-
 # ============================================================================
-# Thread Management Endpoints
-# ============================================================================
-
-@api_app.post("/threads")
-async def create_thread():
-    """Create a new thread and return its ID."""
-    thread_id = str(uuid.uuid4())
-    return {"thread_id": thread_id}
-
-
-@api_app.get("/threads/{thread_id}/state")
-async def get_thread_state(thread_id: str):
-    """Get the current state of a thread."""
-    try:
-        graph = get_graph()
-        config = {"configurable": {"thread_id": thread_id}}
-        state = graph.get_state(config)
-
-        # Convert messages to serializable format
-        messages = []
-        if state.values and "messages" in state.values:
-            for msg in state.values["messages"]:
-                if hasattr(msg, "type"):
-                    messages.append({
-                        "role": "user" if msg.type == "human" else "assistant",
-                        "content": msg.content,
-                    })
-
-        return {
-            "values": {"messages": messages},
-            "next": list(state.next) if state.next else [],
-        }
-    except Exception as e:
-        logger.error(f"Error getting thread state: {e}")
-        return {"values": {"messages": []}, "next": []}
-
-
-# ============================================================================
-# Run Endpoints (Main Chat API)
+# Helper Functions
 # ============================================================================
 
 def convert_to_langchain_messages(messages: List[Dict[str, Any]]) -> List:
     """Convert API message format to LangChain messages."""
     result = []
     for msg in messages:
-        # Handle different message formats
         if isinstance(msg, dict):
             role = msg.get("role", msg.get("type", "user"))
             content = msg.get("content", "")
@@ -199,6 +138,32 @@ def serialize_message(msg) -> Dict[str, Any]:
     return {"type": "unknown", "content": str(msg)}
 
 
+def build_graph_input(
+    state, messages: List, input_data: Dict[str, Any]
+) -> Dict[str, Any]:
+    """Build the graph input from state and new messages."""
+    if state.values and state.values.get("messages"):
+        # Append to existing conversation
+        existing_messages = state.values.get("messages", [])
+        return {
+            **state.values,
+            "messages": existing_messages + messages,
+        }
+    else:
+        # New conversation
+        return {
+            "messages": messages,
+            "department_uuid": input_data.get("department_uuid", ""),
+            "dealer_uuid": input_data.get("dealer_uuid", ""),
+            "mkid": input_data.get("mkid", ""),
+            "cached_data": input_data.get("cached_data"),
+        }
+
+
+# ============================================================================
+# Streaming Run Endpoint
+# ============================================================================
+
 async def run_graph_stream(
     thread_id: str, input_data: Dict[str, Any], stream_mode: List[str]
 ):
@@ -207,59 +172,29 @@ async def run_graph_stream(
     config = {"configurable": {"thread_id": thread_id}}
 
     try:
-        # Check existing state
         state = graph.get_state(config)
-
-        # Convert messages
         messages = convert_to_langchain_messages(input_data.get("messages", []))
-
-        # Build input
-        if state.values and state.values.get("messages"):
-            # Append to existing conversation
-            existing_messages = state.values.get("messages", [])
-            graph_input = {
-                **state.values,
-                "messages": existing_messages + messages,
-            }
-        else:
-            # New conversation
-            graph_input = {
-                "messages": messages,
-                "department_uuid": input_data.get("department_uuid", ""),
-                "dealer_uuid": input_data.get("dealer_uuid", ""),
-                "mkid": input_data.get("mkid", ""),
-                "cached_data": input_data.get("cached_data"),
-            }
+        graph_input = build_graph_input(state, messages, input_data)
 
         logger.info(f"Running graph for thread {thread_id} with astream_events")
 
-        # Use astream_events for real-time tool call visibility
         final_messages = []
 
         async for event in graph.astream_events(graph_input, config, version="v2"):
             event_type = event.get("event", "")
 
-            # Tool start events
             if event_type == "on_tool_start":
                 tool_name = event.get("name", "unknown")
-                event_data = {
-                    "event": "on_tool_start",
-                    "name": tool_name,
-                }
+                event_data = {"event": "on_tool_start", "name": tool_name}
                 yield f"event: on_tool_start\ndata: {json.dumps(event_data)}\n\n"
                 logger.debug(f"Tool started: {tool_name}")
 
-            # Tool end events
             elif event_type == "on_tool_end":
                 tool_name = event.get("name", "unknown")
-                event_data = {
-                    "event": "on_tool_end",
-                    "name": tool_name,
-                }
+                event_data = {"event": "on_tool_end", "name": tool_name}
                 yield f"event: on_tool_end\ndata: {json.dumps(event_data)}\n\n"
                 logger.debug(f"Tool ended: {tool_name}")
 
-            # Chat model stream (token by token)
             elif event_type == "on_chat_model_stream":
                 chunk = event.get("data", {}).get("chunk")
                 if chunk and hasattr(chunk, "content") and chunk.content:
@@ -267,10 +202,8 @@ async def run_graph_stream(
                         "event": "on_chat_model_stream",
                         "data": {"chunk": {"content": chunk.content}}
                     }
-                    sse_data = json.dumps(event_data)
-                    yield f"event: on_chat_model_stream\ndata: {sse_data}\n\n"
+                    yield f"event: on_chat_model_stream\ndata: {json.dumps(event_data)}\n\n"
 
-            # Capture final state from chain end
             elif event_type == "on_chain_end" and event.get("name") == "LangGraph":
                 output = event.get("data", {}).get("output", {})
                 if "messages" in output:
@@ -283,21 +216,19 @@ async def run_graph_stream(
             }
             yield f"event: values\ndata: {json.dumps(final_values)}\n\n"
 
-        # Always send done event
         yield f"event: end\ndata: {json.dumps({'status': 'done'})}\n\n"
 
     except Exception as e:
         logger.exception(f"Error running graph: {e}")
-        error_data = {"error": str(e)}
-        yield f"event: error\ndata: {json.dumps(error_data)}\n\n"
+        yield f"event: error\ndata: {json.dumps({'error': str(e)})}\n\n"
 
 
 @api_app.post("/threads/{thread_id}/runs/stream")
 async def create_run_stream(thread_id: str, request: RunRequest):
     """
-    Create a run and stream results - main chat endpoint.
-
-    This endpoint matches the LangGraph API format used by the UI client.
+    Stream a run with real-time SSE events.
+    
+    Used by the UI client for streaming responses with tool call visibility.
     """
     stream_mode = request.stream_mode or ["messages-tuple", "values"]
 
@@ -312,41 +243,33 @@ async def create_run_stream(thread_id: str, request: RunRequest):
     )
 
 
-@api_app.post("/threads/{thread_id}/runs")
-async def create_run(thread_id: str, request: RunRequest):
-    """Create a run and return result (non-streaming)."""
+# ============================================================================
+# Non-Streaming Run Endpoint (wait for completion)
+# ============================================================================
+
+@api_app.post("/threads/{thread_id}/runs/wait")
+async def create_run_wait(thread_id: str, request: RunRequest):
+    """
+    Run the graph and wait for completion (non-streaming).
+    
+    Used by the UI client as a fallback when SSE streaming is not available.
+    Returns the complete response once the graph finishes execution.
+    """
     graph = get_graph()
     config = {"configurable": {"thread_id": thread_id}}
 
     try:
-        # Check existing state
         state = graph.get_state(config)
-
-        # Convert messages
         messages = convert_to_langchain_messages(request.input.messages)
+        graph_input = build_graph_input(state, messages, request.input.model_dump())
 
-        # Build input
-        if state.values and state.values.get("messages"):
-            existing_messages = state.values.get("messages", [])
-            graph_input = {
-                **state.values,
-                "messages": existing_messages + messages,
-            }
-        else:
-            graph_input = {
-                "messages": messages,
-                "department_uuid": request.input.department_uuid or "",
-                "dealer_uuid": request.input.dealer_uuid or "",
-                "mkid": request.input.mkid or "",
-                "cached_data": request.input.cached_data,
-            }
+        logger.info(f"Running graph for thread {thread_id} (wait mode)")
 
-        # Run graph using async API
         result = await graph.ainvoke(graph_input, config)
 
-        # Return serialized result
         return {
             "thread_id": thread_id,
+            "messages": [serialize_message(m) for m in result.get("messages", [])],
             "values": {
                 "messages": [serialize_message(m) for m in result.get("messages", [])]
             },
@@ -358,40 +281,12 @@ async def create_run(thread_id: str, request: RunRequest):
 
 
 # ============================================================================
-# Assistants Endpoint (for UI compatibility)
-# ============================================================================
-
-@api_app.get("/assistants")
-async def get_assistants():
-    """Return available assistants (graphs)."""
-    return [
-        {
-            "assistant_id": "capacity_agent",
-            "graph_id": "capacity_agent",
-            "name": "Capacity Chatbot",
-        }
-    ]
-
-
-@api_app.get("/assistants/search")
-async def search_assistants():
-    """Search assistants (returns all for simplicity)."""
-    return [
-        {
-            "assistant_id": "capacity_agent",
-            "graph_id": "capacity_agent",
-            "name": "Capacity Chatbot",
-        }
-    ]
-
-
-# ============================================================================
-# Startup Event
+# Startup
 # ============================================================================
 
 @api_app.on_event("startup")
 async def startup_event():
-    """Initialize the graph on startup to establish DB connection early."""
+    """Initialize the graph on startup."""
     logger.info("Starting Capacity Chatbot API server...")
     try:
         get_graph()
