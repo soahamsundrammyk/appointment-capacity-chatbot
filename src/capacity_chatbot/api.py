@@ -3,7 +3,6 @@
 This server provides LangGraph-compatible API endpoints with PostgreSQL persistence.
 """
 
-import asyncio
 import json
 import logging
 import os
@@ -13,8 +12,8 @@ from typing import Any, Dict, List, Optional
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
+from langchain_core.messages import AIMessage, HumanMessage
 from pydantic import BaseModel
-from langchain_core.messages import HumanMessage, AIMessage
 
 from capacity_chatbot.graph import get_graph
 
@@ -63,11 +62,11 @@ if MOUNT_PREFIX:
     @app.get("/health")
     async def root_health_check():
         return {"status": "healthy"}
-    
+
     @app.get("/ok")
     async def root_ok_check():
         return {"status": "ok"}
-    
+
     app.mount(MOUNT_PREFIX, api_app)
     logger.info(f"API mounted under prefix: {MOUNT_PREFIX}")
 else:
@@ -150,7 +149,7 @@ async def get_thread_state(thread_id: str):
         graph = get_graph()
         config = {"configurable": {"thread_id": thread_id}}
         state = graph.get_state(config)
-        
+
         # Convert messages to serializable format
         messages = []
         if state.values and "messages" in state.values:
@@ -160,7 +159,7 @@ async def get_thread_state(thread_id: str):
                         "role": "user" if msg.type == "human" else "assistant",
                         "content": msg.content,
                     })
-        
+
         return {
             "values": {"messages": messages},
             "next": list(state.next) if state.next else [],
@@ -182,7 +181,7 @@ def convert_to_langchain_messages(messages: List[Dict[str, Any]]) -> List:
         if isinstance(msg, dict):
             role = msg.get("role", msg.get("type", "user"))
             content = msg.get("content", "")
-            
+
             if role in ("user", "human"):
                 result.append(HumanMessage(content=content))
             elif role in ("assistant", "ai"):
@@ -200,18 +199,20 @@ def serialize_message(msg) -> Dict[str, Any]:
     return {"type": "unknown", "content": str(msg)}
 
 
-async def run_graph_stream(thread_id: str, input_data: Dict[str, Any], stream_mode: List[str]):
+async def run_graph_stream(
+    thread_id: str, input_data: Dict[str, Any], stream_mode: List[str]
+):
     """Run the graph and stream results with real-time tool call events."""
     graph = get_graph()
     config = {"configurable": {"thread_id": thread_id}}
-    
+
     try:
         # Check existing state
         state = graph.get_state(config)
-        
+
         # Convert messages
         messages = convert_to_langchain_messages(input_data.get("messages", []))
-        
+
         # Build input
         if state.values and state.values.get("messages"):
             # Append to existing conversation
@@ -229,15 +230,15 @@ async def run_graph_stream(thread_id: str, input_data: Dict[str, Any], stream_mo
                 "mkid": input_data.get("mkid", ""),
                 "cached_data": input_data.get("cached_data"),
             }
-        
+
         logger.info(f"Running graph for thread {thread_id} with astream_events")
-        
+
         # Use astream_events for real-time tool call visibility
         final_messages = []
-        
+
         async for event in graph.astream_events(graph_input, config, version="v2"):
             event_type = event.get("event", "")
-            
+
             # Tool start events
             if event_type == "on_tool_start":
                 tool_name = event.get("name", "unknown")
@@ -247,17 +248,17 @@ async def run_graph_stream(thread_id: str, input_data: Dict[str, Any], stream_mo
                 }
                 yield f"event: on_tool_start\ndata: {json.dumps(event_data)}\n\n"
                 logger.debug(f"Tool started: {tool_name}")
-            
+
             # Tool end events
             elif event_type == "on_tool_end":
                 tool_name = event.get("name", "unknown")
                 event_data = {
-                    "event": "on_tool_end", 
+                    "event": "on_tool_end",
                     "name": tool_name,
                 }
                 yield f"event: on_tool_end\ndata: {json.dumps(event_data)}\n\n"
                 logger.debug(f"Tool ended: {tool_name}")
-            
+
             # Chat model stream (token by token)
             elif event_type == "on_chat_model_stream":
                 chunk = event.get("data", {}).get("chunk")
@@ -266,24 +267,25 @@ async def run_graph_stream(thread_id: str, input_data: Dict[str, Any], stream_mo
                         "event": "on_chat_model_stream",
                         "data": {"chunk": {"content": chunk.content}}
                     }
-                    yield f"event: on_chat_model_stream\ndata: {json.dumps(event_data)}\n\n"
-            
+                    sse_data = json.dumps(event_data)
+                    yield f"event: on_chat_model_stream\ndata: {sse_data}\n\n"
+
             # Capture final state from chain end
             elif event_type == "on_chain_end" and event.get("name") == "LangGraph":
                 output = event.get("data", {}).get("output", {})
                 if "messages" in output:
                     final_messages = output["messages"]
-        
+
         # Stream final values
         if "values" in stream_mode and final_messages:
             final_values = {
                 "messages": [serialize_message(m) for m in final_messages]
             }
             yield f"event: values\ndata: {json.dumps(final_values)}\n\n"
-        
+
         # Always send done event
         yield f"event: end\ndata: {json.dumps({'status': 'done'})}\n\n"
-        
+
     except Exception as e:
         logger.exception(f"Error running graph: {e}")
         error_data = {"error": str(e)}
@@ -294,11 +296,11 @@ async def run_graph_stream(thread_id: str, input_data: Dict[str, Any], stream_mo
 async def create_run_stream(thread_id: str, request: RunRequest):
     """
     Create a run and stream results - main chat endpoint.
-    
+
     This endpoint matches the LangGraph API format used by the UI client.
     """
     stream_mode = request.stream_mode or ["messages-tuple", "values"]
-    
+
     return StreamingResponse(
         run_graph_stream(thread_id, request.input.model_dump(), stream_mode),
         media_type="text/event-stream",
@@ -315,14 +317,14 @@ async def create_run(thread_id: str, request: RunRequest):
     """Create a run and return result (non-streaming)."""
     graph = get_graph()
     config = {"configurable": {"thread_id": thread_id}}
-    
+
     try:
         # Check existing state
         state = graph.get_state(config)
-        
+
         # Convert messages
         messages = convert_to_langchain_messages(request.input.messages)
-        
+
         # Build input
         if state.values and state.values.get("messages"):
             existing_messages = state.values.get("messages", [])
@@ -338,10 +340,10 @@ async def create_run(thread_id: str, request: RunRequest):
                 "mkid": request.input.mkid or "",
                 "cached_data": request.input.cached_data,
             }
-        
+
         # Run graph using async API
         result = await graph.ainvoke(graph_input, config)
-        
+
         # Return serialized result
         return {
             "thread_id": thread_id,
@@ -349,7 +351,7 @@ async def create_run(thread_id: str, request: RunRequest):
                 "messages": [serialize_message(m) for m in result.get("messages", [])]
             },
         }
-        
+
     except Exception as e:
         logger.exception(f"Error running graph: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -377,7 +379,7 @@ async def search_assistants():
     return [
         {
             "assistant_id": "capacity_agent",
-            "graph_id": "capacity_agent", 
+            "graph_id": "capacity_agent",
             "name": "Capacity Chatbot",
         }
     ]
@@ -392,7 +394,7 @@ async def startup_event():
     """Initialize the graph on startup to establish DB connection early."""
     logger.info("Starting Capacity Chatbot API server...")
     try:
-        graph = get_graph()
+        get_graph()
         logger.info("Graph initialized successfully")
     except Exception as e:
         logger.error(f"Failed to initialize graph: {e}")

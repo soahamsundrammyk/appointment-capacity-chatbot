@@ -24,7 +24,7 @@ class InputState:
 @dataclass
 class OutputState:
     """Output state returned to the client."""
-    
+
     messages: Annotated[Sequence[AnyMessage], add_messages] = field(default_factory=list)
 
 

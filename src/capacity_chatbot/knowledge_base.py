@@ -1,6 +1,6 @@
 """Knowledge base for capacity chatbot - stores common questions and documentation."""
 
-from typing import List, Dict, Any, Optional
+from typing import Dict, List
 
 # Common questions users can ask (knowledge-based, no API calls needed)
 # Last updated: 2026-01-06 from MyKaarma support documentation
@@ -42,7 +42,7 @@ COMMON_QUESTIONS: List[Dict[str, str]] = [
         "category": "troubleshooting",
         "keywords": ["zero", "0", "none", "no capacity", "blocked", "why", "can't book", "unavailable", "showing zero", "no available", "not allow", "error message", "no appointments"]
     },
-    
+
     # ========== CAPACITY RULES ==========
     {
         "question": "How do capacity rules work?",
@@ -80,7 +80,7 @@ COMMON_QUESTIONS: List[Dict[str, str]] = [
         "category": "rules",
         "keywords": ["operators", "on", "in", "between", "not in", "less than", "capacity rule"]
     },
-    
+
     # ========== ASSIGNMENT RULES ==========
     {
         "question": "What is an assignment rule?",
@@ -200,7 +200,7 @@ NOTE: Transport options only set daily limits. For slot-level variability within
         "category": "how-to",
         "keywords": ["enable", "disable", "toggle", "transport", "option", "on", "off", "hide"]
     },
-    
+
     # ========== DEALER SCHEDULE (DETAILED HOW-TO) ==========
     {
         "question": "How do I increase dealer schedule capacity?",
@@ -276,7 +276,7 @@ IMPORTANT NOTES:
         "category": "how-to",
         "keywords": ["multiple", "select", "slots", "shift", "control", "bulk", "schedule", "grid"]
     },
-    
+
     # ========== OPERATION/OPCODE CAPACITY ==========
     {
         "question": "How do I increase operation/opcode capacity limit?",
@@ -307,7 +307,7 @@ IMPORTANT NOTES:
         "category": "how-to",
         "keywords": ["service hours", "duration", "time", "hours", "limit", "capacity rule"]
     },
-    
+
     # ========== TROUBLESHOOTING ==========
     {
         "question": "Why can't customers book appointments?",
@@ -418,7 +418,7 @@ This manually closes the scheduler for that day. For recurring closures (like ev
         "category": "how-to",
         "keywords": ["price", "prices", "cost", "description", "online scheduler", "display", "show", "customer facing", "opcode"]
     },
-    
+
     # ========== NAVIGATION & UI ==========
     {
         "question": "Where do I find capacity rules settings?",
@@ -450,7 +450,7 @@ This manually closes the scheduler for that day. For recurring closures (like ev
         "category": "navigation",
         "keywords": ["where", "find", "assignment", "rules", "settings", "location", "navigate"]
     },
-    
+
     # ========== ADVANCED CONCEPTS ==========
     {
         "question": "What is the priority order of limits?",
@@ -482,7 +482,7 @@ This manually closes the scheduler for that day. For recurring closures (like ev
         "category": "concept",
         "keywords": ["inclusively", "exactly", "matches", "criteria", "matching", "rule"]
     },
-    
+
     # ========== COMMON SCENARIOS ==========
     {
         "question": "How do I block all appointments on a holiday?",
@@ -541,55 +541,55 @@ KNOWLEDGE_DOCUMENTATION: Dict[str, str] = {
 
 def get_knowledge_base_section(condensed: bool = True) -> str:
     """Generate the knowledge base section for the system prompt.
-    
+
     Args:
         condensed: If True, use short summary. If False, include full Q&A list.
                    Default True for better performance.
-    
+
     Returns:
         Formatted string containing knowledge base content
     """
     if condensed:
         # Use short summary for better latency
         return KNOWLEDGE_SUMMARY
-    
+
     # Full knowledge base (only use when needed)
     sections = []
-    
+
     # Add common questions
     sections.append("=== COMMON QUESTIONS & ANSWERS ===")
     sections.append("Users frequently ask these questions. Answer them directly using this knowledge (no API calls needed):")
     sections.append("")
-    
+
     for i, qa in enumerate(COMMON_QUESTIONS, 1):
         sections.append(f"Q{i}: {qa['question']}")
         sections.append(f"A{i}: {qa['answer']}")
         sections.append("")
-    
+
     # Add documentation sections (if available)
     if KNOWLEDGE_DOCUMENTATION:
         sections.append("=== ADDITIONAL KNOWLEDGE ===")
         for key, content in KNOWLEDGE_DOCUMENTATION.items():
             sections.append(content.strip())
             sections.append("")
-    
+
     return "\n".join(sections)
 
 
 def get_relevant_knowledge(user_query: str, max_items: int = 3) -> str:
     """Get only relevant knowledge base items based on user query.
-    
+
     Uses keyword matching with scoring to find the most relevant Q&As.
     Prioritizes:
     1. Exact phrase matches in question
     2. How-to matches when user asks how-to
     3. Number of keyword matches
     4. Synonym expansion for better matching
-    
+
     Args:
         user_query: User's query text
         max_items: Maximum number of Q&A items to include (default 3)
-    
+
     Returns:
         Formatted string with relevant knowledge only
     """
@@ -612,38 +612,38 @@ def get_relevant_knowledge(user_query: str, max_items: int = 3) -> str:
         "mainshop": ["main shop"],
         "rotate": ["rotation", "rotation shop"],
     }
-    
+
     query_lower = user_query.lower().strip()
-    
+
     # Expand query with synonyms
     expanded_query = query_lower
     for word, synonyms in SYNONYMS.items():
         if word in query_lower:
             # Add synonyms to the query for matching
             expanded_query += " " + " ".join(synonyms)
-    
+
     query_words = set(word for word in expanded_query.split() if len(word) > 2)
-    
+
     # Detect if user is asking a how-to question
     is_how_to_query = any(phrase in query_lower for phrase in [
-        "how do i", "how to", "how can i", "how should i", 
+        "how do i", "how to", "how can i", "how should i",
         "increase", "change", "modify", "enable", "disable", "add", "create"
     ])
-    
+
     scored_items = []
-    
+
     for qa in COMMON_QUESTIONS:
         question_lower = qa.get("question", "").lower()
-        answer_lower = qa.get("answer", "").lower()
+        qa.get("answer", "").lower()
         keywords = [k.lower() for k in qa.get("keywords", [])]
         category = qa.get("category", "")
-        
+
         score = 0
-        
+
         # Exact phrase match in question (highest priority)
         if query_lower in question_lower or question_lower in query_lower:
             score += 100
-        
+
         # Check for multi-word phrase matches (e.g., "transport option")
         for phrase_len in [3, 2]:
             query_split = query_lower.split()
@@ -651,50 +651,50 @@ def get_relevant_knowledge(user_query: str, max_items: int = 3) -> str:
                 phrase = " ".join(query_split[i:i+phrase_len])
                 if phrase in question_lower:
                     score += 20 * phrase_len
-        
+
         # Keyword matches - count how many keywords match
         keyword_matches = sum(1 for kw in keywords if kw in query_lower)
         score += keyword_matches * 10
-        
+
         # Word overlap with question
         question_words = set(word for word in question_lower.split() if len(word) > 2)
         word_overlap = len(query_words & question_words)
         score += word_overlap * 5
-        
+
         # Boost how-to category when user asks how-to
         if is_how_to_query and category == "how-to":
             score += 30
-        
+
         # Boost if "increase" appears in both query and question
         if "increase" in query_lower and "increase" in question_lower:
             score += 50
-        
+
         if score > 0:
             scored_items.append((score, qa))
-    
+
     # Sort by score descending
     scored_items.sort(key=lambda x: x[0], reverse=True)
-    
+
     # Take top items
     relevant_items = [qa for score, qa in scored_items[:max_items]]
-    
+
     if not relevant_items:
         # Fallback to summary if no matches
         return ""
-    
+
     # Format relevant items
     sections = ["=== RELEVANT KNOWLEDGE ==="]
     for i, qa in enumerate(relevant_items, 1):
         sections.append(f"Q{i}: {qa['question']}")
         sections.append(f"A{i}: {qa['answer']}")
         sections.append("")
-    
+
     return "\n".join(sections)
 
 
 def get_question_examples() -> str:
     """Get example questions users might ask.
-    
+
     Returns:
         Formatted string with example questions
     """
@@ -705,7 +705,7 @@ def get_question_examples() -> str:
 # You can extend this by loading from external files
 def load_knowledge_from_file(file_path: str) -> None:
     """Load additional knowledge from a file (e.g., markdown, JSON).
-    
+
     Args:
         file_path: Path to knowledge file
     """
