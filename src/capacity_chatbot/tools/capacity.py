@@ -59,9 +59,9 @@ async def get_capacity_tool(
     - Valid values: "Web" (online scheduler), "DealerApp", "DMS"
 
     COMBINED FILTERS (for breakdown/comparison):
-    - "Loaner capacity per advisor" → Get ALL advisors first, then:
-      transport_option_names=["Loaner"], advisor_names=["Vishal", "Art", "Donald", ...]
-    - Response shows capacity for each advisor+loaner combination
+    - "Loaner capacity per advisor" → transport_option_names=["Loaner"], advisor_names=["ALL"]
+    - "Capacity for all teams" → team_names=["ALL"]
+    - "ALL" auto-resolves to all available entities from cached data
     - Use this for "which X has most/least Y?" queries
 
     TIME SLOT FILTER:
@@ -74,9 +74,9 @@ async def get_capacity_tool(
         dates: List of dates in YYYY-MM-DD format OR natural language expressions.
                Supports: 'tomorrow', 'Thursday', 'this week', 'next week', 'next 7 days'.
                Defaults to tomorrow if not specified.
-        transport_option_names: List of transport option names (auto-mapped to UUIDs).
-        advisor_names: List of advisor names (auto-mapped to UUIDs).
-        team_names: List of team names (auto-mapped to UUIDs).
+        transport_option_names: List of transport option names, or ["ALL"] to include all.
+        advisor_names: List of advisor names, or ["ALL"] to include all.
+        team_names: List of team names, or ["ALL"] to include all.
         opcodes: List of opcode UUIDs from search_opcode tool.
         source: Booking source filter - "Web" (online scheduler), "DealerApp", or "DMS".
         start_time: Time slot filter in natural language (e.g., '9 AM', '14:00', 'morning').
@@ -105,6 +105,31 @@ async def get_capacity_tool(
         from capacity_chatbot.utils.test_data import ensure_cached_data
         ensure_cached_data(state)
         cached_data = state.cached_data or {}
+
+    # Resolve "ALL" keyword to actual entity names from cached data
+    if advisor_names and len(advisor_names) == 1 and advisor_names[0].upper() == "ALL":
+        advisors = cached_data.get("advisors", [])
+        advisor_names = []
+        for a in advisors:
+            name = f"{a.get('firstName', '')} {a.get('lastName', '')}".strip()
+            if not name:
+                name = a.get("associateName", "") or a.get("name", "")
+            if name:
+                advisor_names.append(name)
+        if not advisor_names:
+            return "No advisors found in cached data. Cannot resolve 'ALL'."
+
+    if team_names and len(team_names) == 1 and team_names[0].upper() == "ALL":
+        teams = cached_data.get("teams", [])
+        team_names = [t.get("name") for t in teams if t.get("name")]
+        if not team_names:
+            return "No teams found in cached data. Cannot resolve 'ALL'."
+
+    if transport_option_names and len(transport_option_names) == 1 and transport_option_names[0].upper() == "ALL":
+        options = cached_data.get("transport_options", [])
+        transport_option_names = [t.get("customName") or t.get("optionName") for t in options if t.get("customName") or t.get("optionName")]
+        if not transport_option_names:
+            return "No transport options found in cached data. Cannot resolve 'ALL'."
 
     # Track if user specified filters explicitly (for simple vs filtered query logic)
     has_entity_filters = bool(transport_option_names or advisor_names or team_names or opcodes)
@@ -286,7 +311,7 @@ def _format_capacity_response(
     requested_entities: Optional[Dict[str, List[str]]] = None,
     has_entity_filters: bool = False,
 ) -> str:
-    """Format capacity API response into conversational summary.
+    """Format capacity API response into conversational summary or table.
 
     Args:
         api_response: Raw API response
@@ -302,40 +327,38 @@ def _format_capacity_response(
     if not capacity_map:
         return "No capacity data available for the requested criteria."
 
-    formatted_parts = []
+    # Collect all capacity entries for potential table formatting
+    all_entries = []
+    limiting_factors = []
 
     for capacity_type, date_map in capacity_map.items():
 
         for date_key, entity_data in date_map.items():
             combo_capacity = entity_data.get("combinationWiseCapacity", {})
             if not combo_capacity:
-                formatted_parts.append(f"No capacity data for {date_key}.")
                 continue
-
-            # Filter based on query type
-            filtered = {}
 
             # Determine if user specified non-SOURCE entity filters
             user_entity_types = set(requested_entities.keys()) if requested_entities else set()
-            has_non_source_filters = bool(user_entity_types - {"SOURCE"})  # e.g., OPERATION_UUID, TRANSPORT_OPTION_UUID
+            has_non_source_filters = bool(user_entity_types - {"SOURCE"})
 
             for combo_key, cap_data in combo_capacity.items():
                 # Skip SOURCE=Total always (just an aggregate)
                 if combo_key == "SOURCE=Total":
                     if not has_entity_filters:
-                        filtered[combo_key] = cap_data
+                        all_entries.append((date_key, "", cap_data, combo_key))
                     continue
 
                 # Skip SOURCE=DealerApp/Web when user asked about specific entities
                 if combo_key.startswith("SOURCE=") and has_non_source_filters:
-                    continue  # Don't show SOURCE entries when user asked about operation/advisor/etc
+                    continue
 
                 # Check if this entry matches requested entities
                 include = not requested_entities
                 if requested_entities:
                     for etype, uuids in requested_entities.items():
                         if etype == "SOURCE" and has_non_source_filters:
-                            continue  # Skip SOURCE matching when user has specific entity filters
+                            continue
                         for uuid in (uuids or []):
                             if f"{etype}={uuid}" in combo_key:
                                 include = True
@@ -344,63 +367,141 @@ def _format_capacity_response(
                             break
 
                 if include:
-                    filtered[combo_key] = cap_data
+                    # Build entity display name
+                    entity_display = ""
+                    if uuid_mapper:
+                        for uuid, name in uuid_mapper.advisor_map.items():
+                            if f"DEALER_ASSOCIATE_UUID={uuid}" in combo_key:
+                                entity_display = name
+                                break
+                        for uuid, name in uuid_mapper.team_map.items():
+                            if f"TEAM_UUID={uuid}" in combo_key:
+                                entity_display = name if not entity_display else f"{entity_display} ({name})"
+                                break
+                        for uuid, name in uuid_mapper.transport_map.items():
+                            if f"TRANSPORT_OPTION_UUID={uuid}" in combo_key:
+                                entity_display = name if not entity_display else f"{entity_display} - {name}"
+                                break
 
-            # Fallback
-            if requested_entities and not filtered:
-                for k, v in combo_capacity.items():
-                    filtered[k] = v
-                    break
+                    all_entries.append((date_key, entity_display, cap_data, combo_key))
 
-            for combo_key, cap_data in filtered.items():
-                used = cap_data.get("usedCount", 0.0)
+                    # Collect limiting factor info
+                    limit_info = cap_data.get("limitInfo")
+                    if limit_info:
+                        limiting_factor = limit_info.get("limitingFactor", "")
+                        limit_value = limit_info.get("limitValue")
+                        limit_details = limit_info.get("details", "")
+                        if limit_value is not None and limit_value < 1e308:
+                            limiting_factors.append((entity_display or date_key, limiting_factor, limit_value, limit_details))
+
+    if not all_entries:
+        return "No capacity data available for the requested criteria."
+
+    # Decide format: table for multiple entries, conversational for single
+    if len(all_entries) >= 3:
+        # Use markdown table format
+        return _format_as_table(all_entries, limiting_factors)
+    else:
+        # Use conversational format for 1-2 entries
+        return _format_conversational(all_entries, limiting_factors)
+
+
+def _format_as_table(entries: List, limiting_factors: List) -> str:
+    """Format capacity entries as a markdown table."""
+    # Group by date
+    dates = sorted(set(e[0] for e in entries))
+    has_entities = any(e[1] for e in entries)
+
+    parts = []
+
+    for date_key in dates:
+        date_entries = [e for e in entries if e[0] == date_key]
+
+        if has_entities:
+            parts.append(f"**{date_key}**\n")
+            parts.append("| Entity | Booked | Available | Total |")
+            parts.append("|--------|--------|-----------|-------|")
+
+            for _, entity, cap_data, _ in date_entries:
+                used = int(cap_data.get("usedCount", 0))
                 total = cap_data.get("totalCount", float('inf'))
-                limit_info = cap_data.get("limitInfo")
-
-                # Build entity display name
-                entity_display = ""
-                if uuid_mapper:
-                    for uuid, name in uuid_mapper.advisor_map.items():
-                        if f"DEALER_ASSOCIATE_UUID={uuid}" in combo_key:
-                            entity_display = f"for advisor {name}"
-                            break
-                    for uuid, name in uuid_mapper.team_map.items():
-                        if f"TEAM_UUID={uuid}" in combo_key:
-                            entity_display = f"for team {name}" if not entity_display else f"{entity_display} in team {name}"
-                            break
-                    for uuid, name in uuid_mapper.transport_map.items():
-                        if f"TRANSPORT_OPTION_UUID={uuid}" in combo_key:
-                            entity_display = f"for {name}" if not entity_display else f"{entity_display} with {name}"
-                            break
-
-                # Build summary
                 if total >= 1e308:
-                    formatted_parts.append(f"For {date_key} {entity_display}: unlimited capacity, {used:.0f} booked.")
+                    total_str = "∞"
+                    avail_str = "∞"
                 else:
-                    avail = max(0, total - used)
-                    formatted_parts.append(f"For {date_key} {entity_display}:\n• Total: {total:.0f}\n• Booked: {used:.0f}\n• Available: {avail:.0f}")
+                    total_str = str(int(total))
+                    avail_str = str(max(0, int(total) - used))
 
-                # Add limiting factor info (using new LimitInfo structure)
-                if limit_info:
-                    # New structure: limitingFactor, limitValue, details, allLimits
-                    limiting_factor = limit_info.get("limitingFactor", "")
-                    limit_value = limit_info.get("limitValue")
-                    limit_details = limit_info.get("details", "")
+                entity_name = entity if entity else "Total"
+                parts.append(f"| {entity_name} | {used} | {avail_str} | {total_str} |")
+            parts.append("")
+        else:
+            # Single total entry
+            cap_data = date_entries[0][2]
+            used = int(cap_data.get("usedCount", 0))
+            total = cap_data.get("totalCount", float('inf'))
+            if total >= 1e308:
+                parts.append(f"**{date_key}**: Unlimited capacity, {used} booked.")
+            else:
+                avail = max(0, int(total) - used)
+                parts.append(f"**{date_key}**: {avail} available ({used}/{int(total)} booked)")
 
-                    if limit_value is not None and limit_value < 1e308:
-                        friendly = {
-                            "TRANSPORT_OPTION": "transport option limit",
-                            "CAPACITY_RULE": "capacity rule",
-                            "DEALER_SCHEDULE": "dealer schedule",
-                            "INDIVIDUAL_SCHEDULE": "advisor schedule",
-                            "OPCODE_DAILY_LIMIT": "opcode daily limit",
-                            "TEAM": "team limit",
-                        }.get(limiting_factor, limiting_factor.lower().replace("_", " "))
+    # Add limiting factors if any
+    if limiting_factors:
+        parts.append("\n**Limiting Factors:**")
+        friendly_names = {
+            "TRANSPORT_OPTION": "transport option limit",
+            "CAPACITY_RULE": "capacity rule",
+            "DEALER_SCHEDULE": "dealer schedule",
+            "INDIVIDUAL_SCHEDULE": "advisor schedule",
+            "OPCODE_DAILY_LIMIT": "opcode daily limit",
+            "TEAM": "team limit",
+        }
+        seen = set()
+        for entity, factor, value, details in limiting_factors:
+            friendly = friendly_names.get(factor, factor.lower().replace("_", " "))
+            key = (entity, factor, value)
+            if key not in seen:
+                seen.add(key)
+                detail_str = f" - {details}" if details else ""
+                parts.append(f"- {entity}: {friendly} ({int(value)}){detail_str}")
 
-                        limit_str = f"\nLimiting Factor: {friendly} ({limit_value:.0f})"
-                        if limit_details:
-                            limit_str += f" - {limit_details}"
-                        formatted_parts.append(limit_str)
-                        formatted_parts.append("\nWould you like me to explain how to increase this capacity?")
+        parts.append("\nWould you like me to explain how to increase any of these?")
 
-    return "\n".join(formatted_parts)
+    return "\n".join(parts)
+
+
+def _format_conversational(entries: List, limiting_factors: List) -> str:
+    """Format capacity entries in conversational style for 1-2 entries."""
+    parts = []
+
+    for date_key, entity, cap_data, _ in entries:
+        used = cap_data.get("usedCount", 0.0)
+        total = cap_data.get("totalCount", float('inf'))
+
+        entity_str = f" for {entity}" if entity else ""
+
+        if total >= 1e308:
+            parts.append(f"For {date_key}{entity_str}: unlimited capacity, {int(used)} booked.")
+        else:
+            avail = max(0, total - used)
+            parts.append(f"For {date_key}{entity_str}:\n• Total: {int(total)}\n• Booked: {int(used)}\n• Available: {int(avail)}")
+
+    # Add limiting factors
+    if limiting_factors:
+        friendly_names = {
+            "TRANSPORT_OPTION": "transport option limit",
+            "CAPACITY_RULE": "capacity rule",
+            "DEALER_SCHEDULE": "dealer schedule",
+            "INDIVIDUAL_SCHEDULE": "advisor schedule",
+            "OPCODE_DAILY_LIMIT": "opcode daily limit",
+            "TEAM": "team limit",
+        }
+        for entity, factor, value, details in limiting_factors:
+            friendly = friendly_names.get(factor, factor.lower().replace("_", " "))
+            detail_str = f" - {details}" if details else ""
+            parts.append(f"\nLimiting Factor: {friendly} ({int(value)}){detail_str}")
+        parts.append("\nWould you like me to explain how to increase this capacity?")
+
+    return "\n".join(parts)
+

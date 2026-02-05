@@ -70,15 +70,33 @@ COMMON_QUESTIONS: List[Dict[str, str]] = [
     },
     {
         "question": "What are the THEN options in capacity rules?",
-        "answer": "THEN options define what gets restricted: Total Appointment (limits count of appointments), Total Service Hours (limits cumulative service duration), Total Wait (limits waiting customers), Total Loaner (limits loaner vehicles). Combined with PER interval: Day (daily limit), Hour (hourly limit), Multi-Slot (across time slots), Advisor (per individual advisor).",
+        "answer": "THEN options define what gets restricted: Total Appointment (limits count of appointments), Total Service Hours (limits cumulative service duration), Total Wait (limits waiting customers), Total Loaner (limits loaner vehicles). Combined with PER interval: Day (daily limit), Hour (hourly limit), Multi-Slot (across time slots), Advisor (per individual advisor). IMPORTANT: 'Week' is NOT a supported interval - the system only supports Day, Hour, Multi-Slot, and Advisor as PER options.",
         "category": "rules",
         "keywords": ["then", "options", "capacity rule", "appointment", "service hours", "per", "day", "hour"]
+    },
+    {
+        "question": "Can I set weekly capacity limits?",
+        "answer": "No, the capacity rule system does NOT support 'Week' as a PER interval. You can only set limits PER Day, PER Hour, PER Multi-Slot, or PER Advisor. If you need to control weekly capacity, you have two workarounds: 1) Set daily limits that average to your weekly goal (e.g., if you want max 100 per week, set 20 per day for 5 working days), 2) Use the individual advisor schedule to block specific days entirely. The system calculates capacity on a day-by-day basis, not across weeks.",
+        "category": "rules",
+        "keywords": ["week", "weekly", "per week", "7 days", "capacity rule", "not supported", "limitation", "interval"]
     },
     {
         "question": "What operators can I use in capacity rules?",
         "answer": "Capacity rule operators: 'on' (matches specific day), 'in between' (range between two dates), 'on or after' (starting date and forward), 'in' (contains value), 'not in' (excludes value), 'in any' (matches any of selected values), '<=' (less than or equal - used for setting limits). These operators let you precisely define when rules apply.",
         "category": "rules",
         "keywords": ["operators", "on", "in", "between", "not in", "less than", "capacity rule"]
+    },
+    {
+        "question": "Why am I getting 'could not edit rule' error?",
+        "answer": "The 'could not edit rule' error means you don't have edit permission for capacity rules. Contact your manager or system administrator to request appropriate access, or ask them to make the changes on your behalf.",
+        "category": "troubleshooting",
+        "keywords": ["could not edit", "error", "cannot edit", "rule", "permission", "access", "edit rule", "deactivate", "modify"]
+    },
+    {
+        "question": "Can I delete a capacity rule or assignment rule?",
+        "answer": "No, rules CANNOT be deleted. You can only deactivate them. To deactivate a rule: Go to Settings → Capacity Rules (or Assignment Rules), click Edit on the rule, toggle the 'Active' switch to OFF, and save. The rule will remain in the system but won't apply.",
+        "category": "rules",
+        "keywords": ["delete", "remove", "rule", "capacity rule", "assignment rule", "deactivate", "disable", "turn off"]
     },
 
     # ========== ASSIGNMENT RULES ==========
@@ -178,9 +196,35 @@ Go to Settings → Assignment Rules, edit the conflicting rules, and test that s
 8. You can also add time blocks to temporarily restrict availability during certain hours
 9. Save your changes - they take effect immediately
 
-NOTE: Transport options only set daily limits. For slot-level variability within a day, use Capacity Rules instead.""",
+IMPORTANT LIMITATION: Transport option settings only set GLOBAL daily limits for the entire dealership. They do NOT support per-advisor, per-team limits. To limit a transport option (like Loaner or Rental) per advisor, you MUST create a Capacity Rule with:
+- IF Transport Option = [Loaner/Rental/etc] AND Advisor = [specific advisor]
+- THEN Total Appointments <= X PER Day""",
         "category": "how-to",
         "keywords": ["increase", "transport", "option", "capacity", "limit", "how to", "change", "modify", "loaner", "shuttle", "transportation", "loaner cars", "loaners", "waiters", "adjust"]
+    },
+    {
+        "question": "How do I limit transport option capacity per advisor?",
+        "answer": """Transport option settings (Settings → Transportation Option) do NOT support per-advisor limits. They only set global daily limits for the entire dealership.
+
+To configure transport option capacity per advisor, you MUST use Capacity Rules:
+
+1. Go to Settings → Appointments → Capacity Rules
+2. Click '+ Add Rule'
+3. Define IF conditions:
+   - Add: Transport Option = [Loaner/Rental/Shuttle/etc]
+   - Add: Advisor/Dealer Associate = [specific advisor name]
+4. Define THEN clause:
+   - Total Appointments <= [your limit]
+5. Set PER: Day (or Hour if you want hourly limits)
+6. Save the rule
+
+Example: To limit advisor "Donald" to max 3 Loaners per day:
+- IF Transport Option = Loaner AND Advisor = Donald
+- THEN Total Appointments <= 3 PER Day
+
+This is the ONLY way to set per-advisor limits for transport options.""",
+        "category": "how-to",
+        "keywords": ["transport", "option", "per advisor", "advisor", "capacity", "limit", "loaner", "rental", "shuttle", "per person", "individual", "specific advisor", "configure"]
     },
     {
         "question": "What is the difference between Total and Online Reserve limits?",

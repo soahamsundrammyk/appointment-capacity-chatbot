@@ -192,7 +192,12 @@ async def _get_first_available_slot_impl(
 
     try:
         result = await client.get_first_available_slot(department_uuid, request_payload)
-        request_context = {"transport_option_names": transport_option_names or [], "advisor_names": advisor_names or [], "opcodes": opcodes or []}
+        request_context = {
+            "transport_option_names": transport_option_names or [],
+            "advisor_names": advisor_names or [],
+            "team_names": team_names or [],
+            "opcodes": opcodes or [],
+        }
         formatted = _format_slot_response(result, uuid_mapper, request_context)
 
         return {"formatted_summary": formatted, "raw_data": result, "has_data": bool(result.get("dateTime"))}
@@ -208,7 +213,13 @@ async def _get_first_available_slot_impl(
 # =============================================================================
 
 def _format_slot_response(result: Dict[str, Any], uuid_mapper: Optional[UUIDMapper] = None, request_context: Optional[Dict[str, Any]] = None) -> str:
-    """Format first available slot response."""
+    """Format first available slot response with full context.
+    
+    Shows:
+    1. Search criteria used (what the user asked for)
+    2. The first available slot found
+    3. Whether "No Preference" was used for advisor selection
+    """
     error = result.get("error")
     if error:
         return f"Error: {error.get('errorDescription', 'Unknown error')}"
@@ -217,31 +228,106 @@ def _format_slot_response(result: Dict[str, Any], uuid_mapper: Optional[UUIDMapp
     if not date_time:
         return "No available slot found within the search criteria."
 
+    # Parse and format the datetime
     try:
         dt = datetime.fromisoformat(date_time.replace("Z", "+00:00"))
-        formatted_dt = dt.strftime("%B %d, %Y at %I:%M %p")
+        formatted_dt = dt.strftime("%A, %B %d, %Y at %I:%M %p")
     except:
         formatted_dt = date_time
 
-    formatted = f"First available slot: {formatted_dt}"
+    # Extract request context
+    requested_advisors = request_context.get("advisor_names", []) if request_context else []
+    requested_transport = request_context.get("transport_option_names", []) if request_context else []
+    requested_opcodes = request_context.get("opcodes", []) if request_context else []
+    requested_teams = request_context.get("team_names", []) if request_context else []
 
+    # Determine if "No Preference" was used (no specific advisor requested)
+    is_no_preference = len(requested_advisors) == 0
+
+    # Get result details
+    advisor_uuid = result.get("dealerAssociateUuid")
+    advisor_name = None
+    if advisor_uuid and uuid_mapper:
+        advisor_name = uuid_mapper.get_advisor_name(advisor_uuid)
+    if not advisor_name:
+        advisor_name = result.get("dealerAssociateName", "Available Advisor")
+
+    transport_uuid = result.get("transportOptionUuid")
+    transport_name = None
+    if transport_uuid and uuid_mapper:
+        transport_name = uuid_mapper.get_transport_name(transport_uuid)
+    if not transport_name:
+        transport_name = result.get("transportOptionName")
+
+    team_uuid = result.get("teamUuid")
+    team_name = None
+    if team_uuid and uuid_mapper:
+        team_name = uuid_mapper.get_team_name(team_uuid)
+
+    # Build response
+    parts = []
+
+    # 1. Show search criteria
+    search_criteria = []
+    if requested_transport:
+        search_criteria.append(f"Transport: {', '.join(requested_transport)}")
+    if requested_advisors:
+        search_criteria.append(f"Advisor: {', '.join(requested_advisors)}")
+    if requested_teams:
+        search_criteria.append(f"Team: {', '.join(requested_teams)}")
+    if requested_opcodes:
+        search_criteria.append(f"Service: {len(requested_opcodes)} opcode(s)")
+
+    if search_criteria:
+        parts.append(f"**Search Criteria:** {' | '.join(search_criteria)}")
+    else:
+        parts.append("**Search Criteria:** All available slots (no specific filters)")
+
+    parts.append("")
+
+    # 2. Show the result
+    parts.append(f"**First Available Slot:** {formatted_dt}")
+    parts.append("")
+
+    # 3. Show slot details in a clear format
+    parts.append("**Slot Details:**")
+
+    # Advisor with No Preference indicator
+    if is_no_preference:
+        parts.append(f"| Advisor | {advisor_name} _(auto-selected based on availability)_ |")
+    else:
+        parts.append(f"| Advisor | {advisor_name} |")
+
+    if team_name:
+        parts.append(f"| Team | {team_name} |")
+
+    if transport_name:
+        parts.append(f"| Transport | {transport_name} |")
+
+    # 4. Explain No Preference if used
+    if is_no_preference:
+        parts.append("")
+        parts.append("ℹ️ _No specific advisor was requested. The system selected the advisor with the earliest available slot._")
+
+    # Warnings
     warnings = result.get("warnings", [])
     if warnings:
         descs = [w.get("warningDescription", "") for w in warnings if w.get("warningDescription")]
         if descs:
-            formatted += f"\n\nNote: {', '.join(descs)}"
+            parts.append(f"\n⚠️ Note: {', '.join(descs)}")
 
-    # Add follow-up suggestions
-    if request_context:
-        has_transport = bool(request_context.get("transport_option_names"))
-        has_opcode = bool(request_context.get("opcodes"))
-        has_advisor = bool(request_context.get("advisor_names"))
+    # Follow-up suggestions
+    suggestions = []
+    if is_no_preference:
+        suggestions.append("a specific advisor")
+    if not requested_transport:
+        suggestions.append("a transport option")
+    if not requested_opcodes:
+        suggestions.append("a specific service")
 
-        if has_transport and not has_opcode and not has_advisor:
-            formatted += "\n\nWould you like me to narrow this down to a specific advisor or service?"
-        elif has_opcode and not has_transport and not has_advisor:
-            formatted += "\n\nWould you like me to narrow this down to a specific advisor or transport option?"
-        elif has_advisor and not has_transport and not has_opcode:
-            formatted += "\n\nWould you like me to narrow this down to a specific transport option or service?"
+    if suggestions:
+        parts.append(f"\nWould you like me to check availability for {', '.join(suggestions)}?")
 
-    return formatted
+    return "\n".join(parts)
+
+
