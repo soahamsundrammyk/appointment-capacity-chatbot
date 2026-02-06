@@ -41,3 +41,28 @@ def ensure_cached_data(state: Any) -> None:
         return
     
     logger.warning("No cached_data available. Entity tools may not work correctly.")
+
+
+def ensure_state_uuids(state: Any) -> None:
+    """Ensure dealer_uuid and department_uuid are populated from env vars for testing.
+
+    This is ONLY for local testing/LangSmith. In production, these should come from the UI client.
+    """
+    # Only use env vars if state values are empty (not provided by UI client)
+    if not state.dealer_uuid:
+        env_dealer_uuid = os.getenv("TEST_DEALER_UUID")
+        if env_dealer_uuid:
+            state.dealer_uuid = env_dealer_uuid
+            logger.info("Loaded dealer_uuid from TEST_DEALER_UUID env var (testing mode)")
+
+    if not state.department_uuid:
+        env_department_uuid = os.getenv("TEST_DEPARTMENT_UUID")
+        if env_department_uuid:
+            state.department_uuid = env_department_uuid
+            logger.info("Loaded department_uuid from TEST_DEPARTMENT_UUID env var (testing mode)")
+
+    if not state.mkid:
+        env_mkid = os.getenv("TEST_MKID")
+        if env_mkid:
+            state.mkid = env_mkid
+            logger.info("Loaded mkid from TEST_MKID env var (testing mode)")

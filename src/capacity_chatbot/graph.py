@@ -36,45 +36,40 @@ def get_checkpointer():
     """
     Get the appropriate checkpointer.
 
-    Currently using MemorySaver for development/testing.
-    PostgreSQL support can be enabled by uncommenting the code below
-    and setting POSTGRES_CONNECTION_STRING environment variable.
+    Uses PostgreSQL when POSTGRES_CONNECTION_STRING is set (production).
+    Falls back to MemorySaver for local development.
     """
-    # =========================================================================
-    # PostgreSQL Checkpointer (COMMENTED OUT FOR NOW)
-    # Uncomment this section when deploying to production with Postgres access
-    # =========================================================================
-    # postgres_conn_string = os.getenv("POSTGRES_CONNECTION_STRING")
-    # if postgres_conn_string:
-    #     try:
-    #         from langgraph.checkpoint.postgres import PostgresSaver
-    #         from psycopg_pool import ConnectionPool
-    #         import psycopg
-    #
-    #         # Add connection timeout
-    #         conn_params = postgres_conn_string
-    #         if "connect_timeout" not in conn_params:
-    #             separator = "&" if "?" in conn_params else "?"
-    #             conn_params = f"{conn_params}{separator}connect_timeout=10"
-    #
-    #         pool = ConnectionPool(
-    #             conninfo=conn_params,
-    #             min_size=1,
-    #             max_size=10,
-    #             timeout=30,
-    #         )
-    #
-    #         # Setup tables
-    #         setup_conn = psycopg.connect(conn_params, autocommit=True, connect_timeout=10)
-    #         setup_checkpointer = PostgresSaver(conn=setup_conn)
-    #         setup_checkpointer.setup()
-    #         setup_conn.close()
-    #
-    #         checkpointer = PostgresSaver(conn=pool)
-    #         logger.info("Using Postgres checkpointer for persistence")
-    #         return checkpointer
-    #     except Exception as e:
-    #         logger.warning(f"Postgres failed: {e}, falling back to MemorySaver")
+    postgres_conn_string = os.getenv("POSTGRES_CONNECTION_STRING")
+    if postgres_conn_string:
+        try:
+            from langgraph.checkpoint.postgres import PostgresSaver
+            from psycopg_pool import ConnectionPool
+            import psycopg
+
+            # Add connection timeout if not specified
+            conn_params = postgres_conn_string
+            if "connect_timeout" not in conn_params:
+                separator = "&" if "?" in conn_params else "?"
+                conn_params = f"{conn_params}{separator}connect_timeout=10"
+
+            pool = ConnectionPool(
+                conninfo=conn_params,
+                min_size=1,
+                max_size=10,
+                timeout=30,
+            )
+
+            # Setup tables (only on first connection)
+            setup_conn = psycopg.connect(conn_params, autocommit=True, connect_timeout=10)
+            setup_checkpointer = PostgresSaver(conn=setup_conn)
+            setup_checkpointer.setup()
+            setup_conn.close()
+
+            checkpointer = PostgresSaver(conn=pool)
+            logger.info("Using Postgres checkpointer for persistence")
+            return checkpointer
+        except Exception as e:
+            logger.warning(f"Postgres connection failed: {e}, falling back to MemorySaver")
 
     logger.info("Using in-memory checkpointer (data lost on restart)")
     return MemorySaver()
