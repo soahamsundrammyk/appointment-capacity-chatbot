@@ -141,12 +141,28 @@ def serialize_message(msg) -> Dict[str, Any]:
 def build_graph_input(
     state, messages: List, input_data: Dict[str, Any]
 ) -> Dict[str, Any]:
-    """Build the graph input from state and new messages."""
+    """Build the graph input from state and new messages.
+    
+    Always merges updated context fields (mkid, department_uuid, dealer_uuid, cached_data)
+    from input_data to handle session/auth refreshes mid-conversation.
+    """
+    # Always use latest context from input_data to handle session refreshes
+    updated_context = {}
+    if input_data.get("mkid"):
+        updated_context["mkid"] = input_data["mkid"]
+    if input_data.get("department_uuid"):
+        updated_context["department_uuid"] = input_data["department_uuid"]
+    if input_data.get("dealer_uuid"):
+        updated_context["dealer_uuid"] = input_data["dealer_uuid"]
+    if input_data.get("cached_data"):
+        updated_context["cached_data"] = input_data["cached_data"]
+
     if state.values and state.values.get("messages"):
-        # Append to existing conversation
+        # Append to existing conversation, but merge updated context
         existing_messages = state.values.get("messages", [])
         return {
             **state.values,
+            **updated_context,  # Override with fresh context from UI
             "messages": existing_messages + messages,
         }
     else:
