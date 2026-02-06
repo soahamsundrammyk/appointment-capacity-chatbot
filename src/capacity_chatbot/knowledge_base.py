@@ -424,7 +424,7 @@ When 'No Preference' is selected:
 - If no advisors are available, the slot won't show in Consumer Scheduler
 - Assignment won't occur if no advisor's availability includes the selected slot
 
-**CS 4.0 Default:** 'No Preference' is ENABLED by default in Consumer Scheduler 4.0. If disabled, the system picks the first advisor on the list, causing all appointments to go to one advisor - this is problematic for dealerships!
+**Consumer scheduler Default:** 'No Preference' is ENABLED by default in Consumer Scheduler 4.0. If disabled, the system picks the first advisor on the list, causing all appointments to go to one advisor - this is problematic for dealerships!
 
 **Enabling 'No Preference':**
 Contact myKaarma support to enable or configure the 'No Preference' feature for your dealership.
