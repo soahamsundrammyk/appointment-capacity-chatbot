@@ -38,12 +38,13 @@ def get_checkpointer():
 
     Uses PostgreSQL when POSTGRES_CONNECTION_STRING is set (production).
     Falls back to MemorySaver for local development.
+
     """
     postgres_conn_string = os.getenv("POSTGRES_CONNECTION_STRING")
     if postgres_conn_string:
         try:
-            from langgraph.checkpoint.postgres import PostgresSaver
-            from psycopg_pool import ConnectionPool
+            from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
+            from psycopg_pool import AsyncConnectionPool
             import psycopg
 
             # Add connection timeout if not specified
@@ -52,21 +53,24 @@ def get_checkpointer():
                 separator = "&" if "?" in conn_params else "?"
                 conn_params = f"{conn_params}{separator}connect_timeout=10"
 
-            pool = ConnectionPool(
+            # Setup tables using sync connection (one-time operation)
+            setup_conn = psycopg.connect(conn_params, autocommit=True, connect_timeout=10)
+            with setup_conn:
+                from langgraph.checkpoint.postgres import PostgresSaver
+                sync_checkpointer = PostgresSaver(conn=setup_conn)
+                sync_checkpointer.setup()
+            setup_conn.close()
+
+            # Create async connection pool for ongoing checkpoint operations
+            pool = AsyncConnectionPool(
                 conninfo=conn_params,
                 min_size=1,
                 max_size=10,
                 timeout=30,
             )
 
-            # Setup tables (only on first connection)
-            setup_conn = psycopg.connect(conn_params, autocommit=True, connect_timeout=10)
-            setup_checkpointer = PostgresSaver(conn=setup_conn)
-            setup_checkpointer.setup()
-            setup_conn.close()
-
-            checkpointer = PostgresSaver(conn=pool)
-            logger.info("Using Postgres checkpointer for persistence")
+            checkpointer = AsyncPostgresSaver(conn=pool)
+            logger.info("Using AsyncPostgresSaver with async pool for persistence")
             return checkpointer
         except Exception as e:
             logger.warning(f"Postgres connection failed: {e}, falling back to MemorySaver")

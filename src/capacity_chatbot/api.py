@@ -182,7 +182,7 @@ async def run_graph_stream(
     config = {"configurable": {"thread_id": thread_id}}
 
     try:
-        state = graph.get_state(config)
+        state = await graph.aget_state(config)
         messages = convert_to_langchain_messages(input_data.get("messages", []))
         graph_input = build_graph_input(state, messages, input_data, session_info)
 
@@ -276,7 +276,7 @@ async def create_run_wait(
     config = {"configurable": {"thread_id": thread_id}}
 
     try:
-        state = graph.get_state(config)
+        state = await graph.aget_state(config)
         messages = convert_to_langchain_messages(request.input.messages)
         graph_input = build_graph_input(state, messages, request.input.model_dump(), session)
 
