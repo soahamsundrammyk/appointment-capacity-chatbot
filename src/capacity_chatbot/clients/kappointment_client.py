@@ -119,16 +119,11 @@ class KAppointmentAPIClient:
             headers = {"accept": "application/json"}
             cookies = {"mkid": mkid}
             
-            logger.info(f"GET {url} (with mkid cookie)")
-            
             # Webservice endpoint only accepts mkid cookie, NOT basic auth
             response = await self._client.get(url, headers=headers, cookies=cookies)
             response.raise_for_status()
             return response.json()
         except httpx.HTTPStatusError as e:
-            logger.error(f"HTTP error calling fetch_operations_with_limits: {e}")
-            if e.response is not None:
-                logger.error(f"Response body: {e.response.text}")
             raise
 
     async def search_operations(self, department_uuid: str, search_token: str, result_size: int = 20) -> Dict[str, Any]:
