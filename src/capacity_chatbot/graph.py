@@ -74,6 +74,14 @@ async def get_checkpointer():
             # Setup tables using async method
             await checkpointer.setup()
 
+            # Verify connection works by checking tables exist
+            async with pool.connection() as conn:
+                cur = await conn.execute(
+                    "SELECT tablename FROM pg_tables WHERE schemaname = 'public'"
+                )
+                tables = await cur.fetchall()
+                logger.info(f"PostgreSQL tables found: {[t['tablename'] for t in tables]}")
+
             logger.info("Using AsyncPostgresSaver with async pool for persistence")
             return checkpointer
         except Exception as e:
