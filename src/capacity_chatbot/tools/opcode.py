@@ -44,7 +44,9 @@ async def search_opcode_tool(
 
     try:
         if list_all_with_limits:
-            result = await _fetch_operations_with_limits(state.department_uuid)
+            if not state.mkid:
+                return "Error: Authentication required. Please ensure you're logged in with a valid session."
+            result = await _fetch_operations_with_limits(state.department_uuid, state.mkid)
         else:
             result = await _search_opcode(concern_text, state.department_uuid)
         return result.get("formatted_summary", str(result))
@@ -98,12 +100,18 @@ async def _search_opcode(
 
 async def _fetch_operations_with_limits(
     department_uuid: str,
+    mkid: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """Fetch all opcodes with daily limits configured."""
+    """Fetch all opcodes with daily limits configured.
+    
+    Args:
+        department_uuid: Department UUID
+        mkid: Optional mkid cookie for authentication (required for webservice endpoint)
+    """
     client = KAppointmentAPIClient(config=KAppointmentAPIConfig())
 
     try:
-        result = await client.fetch_operations_with_limits(department_uuid)
+        result = await client.fetch_operations_with_limits(department_uuid, mkid=mkid)
         formatted = _format_operations_with_limits(result.get("operationList", []))
         return {"formatted_summary": formatted, "raw_data": result}
     finally:

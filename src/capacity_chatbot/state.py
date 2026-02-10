@@ -30,4 +30,4 @@ class OutputState:
 @dataclass
 class CapacityChatbotState(InputState):
     """Complete state of the capacity chatbot agent."""
-    pass
+    mkid: str = ""  # Authentication cookie for endpoints requiring mkid

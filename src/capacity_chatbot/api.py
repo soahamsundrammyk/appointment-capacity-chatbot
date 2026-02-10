@@ -83,6 +83,7 @@ class RunInput(BaseModel):
     messages: List[Dict[str, Any]]
     department_uuid: Optional[str] = ""
     dealer_uuid: Optional[str] = ""
+    mkid: Optional[str] = ""
     cached_data: Optional[Dict[str, Any]] = None
 
 
@@ -147,7 +148,11 @@ def build_graph_input(
     """
     # Priority: session_info (from auth) > input_data (request body)
     session = session_info or {}
+    mkid_value = session.get("mkid") or input_data.get("mkid", "")
+    if not mkid_value and session_info:
+        logger.warning(f"mkid not found in session_info: {list(session_info.keys())}")
     updated_context = {
+        "mkid": mkid_value,
         "department_uuid": input_data.get("department_uuid") or session.get("departmentUuid", ""),
         "dealer_uuid": input_data.get("dealer_uuid") or session.get("dealerUuid", ""),
     }
@@ -157,11 +162,16 @@ def build_graph_input(
     if state.values and state.values.get("messages"):
         # Append to existing conversation
         existing_messages = state.values.get("messages", [])
-        return {
+        # Merge state with updated context, ensuring mkid is always included from session
+        merged_state = {
             **state.values,
             **updated_context,
             "messages": existing_messages + messages,
         }
+        # Always use mkid from session if available (don't let empty state overwrite it)
+        if updated_context.get("mkid"):
+            merged_state["mkid"] = updated_context["mkid"]
+        return merged_state
     else:
         # New conversation
         return {
@@ -178,15 +188,17 @@ async def run_graph_stream(
     thread_id: str, input_data: Dict[str, Any], stream_mode: List[str], session_info: Dict[str, Any]
 ):
     """Run the graph and stream results with real-time tool call events."""
-    graph = await get_graph()
+    logger.debug(f"run_graph_stream: Starting for thread {thread_id}")
+    graph = get_graph()
     config = {"configurable": {"thread_id": thread_id}}
 
     try:
-        state = await graph.aget_state(config)
+        state = graph.get_state(config)
         messages = convert_to_langchain_messages(input_data.get("messages", []))
         graph_input = build_graph_input(state, messages, input_data, session_info)
 
         logger.info(f"Running graph for thread {thread_id} (user: {session_info.get('userUuid', 'unknown')[:8]}...)")
+        logger.debug(f"Graph input: {len(messages)} messages, dealer_uuid={graph_input.get('dealer_uuid', 'None')[:8] if graph_input.get('dealer_uuid') else 'None'}...")
 
         final_messages = []
 
@@ -212,6 +224,7 @@ async def run_graph_stream(
                         "event": "on_chat_model_stream",
                         "data": {"chunk": {"content": chunk.content}}
                     }
+                    logger.debug(f"Streaming token chunk: {chunk.content[:50] if len(chunk.content) > 50 else chunk.content}...")
                     yield f"event: on_chat_model_stream\ndata: {json.dumps(event_data)}\n\n"
 
             elif event_type == "on_chain_end" and event.get("name") == "LangGraph":
@@ -224,12 +237,16 @@ async def run_graph_stream(
             final_values = {
                 "messages": [serialize_message(m) for m in final_messages]
             }
+            logger.debug(f"Streaming final values event with {len(final_messages)} messages")
             yield f"event: values\ndata: {json.dumps(final_values)}\n\n"
+        else:
+            logger.debug(f"Skipping values event: stream_mode={stream_mode}, final_messages={len(final_messages) if final_messages else 0}")
 
+        logger.debug(f"Streaming end event for thread {thread_id}")
         yield f"event: end\ndata: {json.dumps({'status': 'done'})}\n\n"
 
     except Exception as e:
-        logger.exception(f"Error running graph: {e}")
+        logger.exception(f"Error running graph for thread {thread_id}: {e}")
         yield f"event: error\ndata: {json.dumps({'error': str(e)})}\n\n"
 
 
@@ -244,7 +261,14 @@ async def create_run_stream(
     
     Requires valid mkid in Authorization header (Bearer token).
     """
+    logger.info(
+        f"Stream request: thread_id={thread_id}, "
+        f"user={session.get('userUuid', 'unknown')[:8] if session.get('userUuid') else 'unknown'}..., "
+        f"dealer={session.get('dealerUuid', 'unknown')[:8] if session.get('dealerUuid') else 'unknown'}..., "
+        f"messages={len(request.input.messages) if request.input.messages else 0}"
+    )
     stream_mode = request.stream_mode or ["messages-tuple", "values"]
+    logger.debug(f"Stream mode: {stream_mode}")
 
     return StreamingResponse(
         run_graph_stream(thread_id, request.input.model_dump(), stream_mode, session),
@@ -272,11 +296,11 @@ async def create_run_wait(
     
     Requires valid mkid in Authorization header (Bearer token).
     """
-    graph = await get_graph()
+    graph = get_graph()
     config = {"configurable": {"thread_id": thread_id}}
 
     try:
-        state = await graph.aget_state(config)
+        state = graph.get_state(config)
         messages = convert_to_langchain_messages(request.input.messages)
         graph_input = build_graph_input(state, messages, request.input.model_dump(), session)
 
@@ -306,7 +330,7 @@ async def startup_event():
     """Initialize the graph on startup."""
     logger.info("Starting Capacity Chatbot API server...")
     try:
-        await get_graph()
+        get_graph()
         logger.info("Graph initialized successfully")
     except Exception as e:
         logger.error(f"Failed to initialize graph: {e}")

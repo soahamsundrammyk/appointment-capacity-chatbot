@@ -44,6 +44,7 @@ async def get_checkpointer():
         try:
             from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
             from psycopg_pool import AsyncConnectionPool
+            from psycopg.rows import dict_row
 
             # Add connection timeout if not specified
             conn_params = postgres_conn_string
@@ -52,12 +53,19 @@ async def get_checkpointer():
                 conn_params = f"{conn_params}{separator}connect_timeout=10"
 
             # Create async pool with open=False to avoid deprecated auto-open
+            # autocommit=True and row_factory=dict_row are REQUIRED by AsyncPostgresSaver:
+            #   - autocommit ensures checkpoint writes are committed immediately
+            #   - dict_row ensures query results are accessible as dictionaries
             pool = AsyncConnectionPool(
                 conninfo=conn_params,
                 min_size=1,
                 max_size=10,
                 timeout=30,
                 open=False,
+                kwargs={
+                    "autocommit": True,
+                    "row_factory": dict_row,
+                },
             )
             # Properly open the pool in async context
             await pool.open()

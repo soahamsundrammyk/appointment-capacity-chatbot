@@ -97,22 +97,38 @@ class KAppointmentAPIClient:
             logger.error(f"HTTP error calling get_first_available_slot: {e}")
             raise
 
-    async def fetch_operations_with_limits(self, department_uuid: str) -> Dict[str, Any]:
+    async def fetch_operations_with_limits(self, department_uuid: str, mkid: Optional[str] = None) -> Dict[str, Any]:
         """Call operations-with-limits endpoint to get opcodes with daily limits.
+
+        This endpoint requires mkid cookie authentication (webservice endpoint).
+        Does NOT accept basic auth - only mkid cookie.
+
+        Args:
+            department_uuid: Department UUID
+            mkid: Required mkid cookie for authentication (webservice endpoint only accepts cookie)
 
         Returns only opcodes that have daily limits configured (dayLimit != MAX_INT).
         Also includes opcodes mentioned in capacity rules.
         """
-        url = f"{self.config.base_url}/appointment/v2/departments/{department_uuid}/operations-with-limits"
+        url = f"{self.config.base_url}/appointment/v2/webservice/departments/{department_uuid}/operations-with-limits"
+
+        if not mkid or not mkid.strip():
+            raise ValueError("mkid is required for operations-with-limits endpoint (webservice endpoint only accepts cookie auth). Please ensure you're logged in with a valid session.")
 
         try:
-            auth = self.config.get_auth()
-            logger.info(f"GET {url}")
-            response = await self._client.get(url, auth=auth)
+            headers = {"accept": "application/json"}
+            cookies = {"mkid": mkid}
+            
+            logger.info(f"GET {url} (with mkid cookie)")
+            
+            # Webservice endpoint only accepts mkid cookie, NOT basic auth
+            response = await self._client.get(url, headers=headers, cookies=cookies)
             response.raise_for_status()
             return response.json()
         except httpx.HTTPStatusError as e:
             logger.error(f"HTTP error calling fetch_operations_with_limits: {e}")
+            if e.response is not None:
+                logger.error(f"Response body: {e.response.text}")
             raise
 
     async def search_operations(self, department_uuid: str, search_token: str, result_size: int = 20) -> Dict[str, Any]:

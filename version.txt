@@ -1,1 +1,1 @@
-appointment_capacity_chatbot_version=0.1.6
+appointment_capacity_chatbot_version=0.1.7
