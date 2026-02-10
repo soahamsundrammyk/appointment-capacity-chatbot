@@ -110,8 +110,6 @@ docker-compose up
 | `APPOINTMENT_CAPACITY_CHATBOT_USERNAME` | ✅ Yes | Basic auth username for kappointment-api calls |
 | `APPOINTMENT_CAPACITY_CHATBOT_PASSWORD` | ✅ Yes | Basic auth password for kappointment-api calls |
 | `KMANAGE_API_URL` | Auth | Kmanage API URL for mkid validation (default: `https://api.mykaarma.com/manage/v2`) |
-| `APPOINTMENT_CAPACITY_CHATBOT_SERVICE_SUBSCRIBER_USER` | Auth | Service subscriber username for kmanage auth |
-| `APPOINTMENT_CAPACITY_CHATBOT_SERVICE_SUBSCRIBER_PASSWORD` | Auth | Service subscriber password for kmanage auth |
 | `ENABLE_MKID_AUTH` | No | Enable mkid authentication (default: `true`). Set to `false` for local dev |
 | `MODEL` | No | Claude model name (default: `claude-sonnet-4-5-20250929`) |
 | `LOG_LEVEL` | No | Logging level (default: `INFO`) |

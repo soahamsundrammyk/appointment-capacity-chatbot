@@ -28,10 +28,10 @@ class AuthConfig:
         
         # Service subscriber credentials for kmanage API auth
         self.service_username = os.getenv(
-            "APPOINTMENT_CAPACITY_CHATBOT_SERVICE_SUBSCRIBER_USER"
+            "APPOINTMENT_CAPACITY_CHATBOT_USERNAME"
         )
         self.service_password = os.getenv(
-            "APPOINTMENT_CAPACITY_CHATBOT_SERVICE_SUBSCRIBER_PASSWORD"
+            "APPOINTMENT_CAPACITY_CHATBOT_PASSWORD"
         )
         
         # Feature flag to disable auth (for local development)
