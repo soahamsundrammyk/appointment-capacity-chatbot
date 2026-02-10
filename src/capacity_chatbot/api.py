@@ -8,12 +8,13 @@ import logging
 import os
 from typing import Any, Dict, List, Optional
 
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from langchain_core.messages import AIMessage, HumanMessage
 from pydantic import BaseModel
 
+from capacity_chatbot.auth import get_authenticated_session
 from capacity_chatbot.graph import get_graph
 
 # Logging configuration
@@ -82,7 +83,6 @@ class RunInput(BaseModel):
     messages: List[Dict[str, Any]]
     department_uuid: Optional[str] = ""
     dealer_uuid: Optional[str] = ""
-    mkid: Optional[str] = ""
     cached_data: Optional[Dict[str, Any]] = None
 
 
@@ -139,40 +139,34 @@ def serialize_message(msg) -> Dict[str, Any]:
 
 
 def build_graph_input(
-    state, messages: List, input_data: Dict[str, Any]
+    state, messages: List, input_data: Dict[str, Any], session_info: Optional[Dict[str, Any]] = None
 ) -> Dict[str, Any]:
     """Build the graph input from state and new messages.
     
-    Always merges updated context fields (mkid, department_uuid, dealer_uuid, cached_data)
-    from input_data to handle session/auth refreshes mid-conversation.
+    Uses session info from mkid auth (preferred) or falls back to request body.
     """
-    # Always use latest context from input_data to handle session refreshes
-    updated_context = {}
-    if input_data.get("mkid"):
-        updated_context["mkid"] = input_data["mkid"]
-    if input_data.get("department_uuid"):
-        updated_context["department_uuid"] = input_data["department_uuid"]
-    if input_data.get("dealer_uuid"):
-        updated_context["dealer_uuid"] = input_data["dealer_uuid"]
+    # Priority: session_info (from auth) > input_data (request body)
+    session = session_info or {}
+    updated_context = {
+        "department_uuid": input_data.get("department_uuid") or session.get("departmentUuid", ""),
+        "dealer_uuid": input_data.get("dealer_uuid") or session.get("dealerUuid", ""),
+    }
     if input_data.get("cached_data"):
         updated_context["cached_data"] = input_data["cached_data"]
 
     if state.values and state.values.get("messages"):
-        # Append to existing conversation, but merge updated context
+        # Append to existing conversation
         existing_messages = state.values.get("messages", [])
         return {
             **state.values,
-            **updated_context,  # Override with fresh context from UI
+            **updated_context,
             "messages": existing_messages + messages,
         }
     else:
         # New conversation
         return {
             "messages": messages,
-            "department_uuid": input_data.get("department_uuid", ""),
-            "dealer_uuid": input_data.get("dealer_uuid", ""),
-            "mkid": input_data.get("mkid", ""),
-            "cached_data": input_data.get("cached_data"),
+            **updated_context,
         }
 
 
@@ -181,7 +175,7 @@ def build_graph_input(
 # ============================================================================
 
 async def run_graph_stream(
-    thread_id: str, input_data: Dict[str, Any], stream_mode: List[str]
+    thread_id: str, input_data: Dict[str, Any], stream_mode: List[str], session_info: Dict[str, Any]
 ):
     """Run the graph and stream results with real-time tool call events."""
     graph = get_graph()
@@ -190,9 +184,9 @@ async def run_graph_stream(
     try:
         state = graph.get_state(config)
         messages = convert_to_langchain_messages(input_data.get("messages", []))
-        graph_input = build_graph_input(state, messages, input_data)
+        graph_input = build_graph_input(state, messages, input_data, session_info)
 
-        logger.info(f"Running graph for thread {thread_id} with astream_events")
+        logger.info(f"Running graph for thread {thread_id} (user: {session_info.get('userUuid', 'unknown')[:8]}...)")
 
         final_messages = []
 
@@ -240,16 +234,20 @@ async def run_graph_stream(
 
 
 @api_app.post("/threads/{thread_id}/runs/stream")
-async def create_run_stream(thread_id: str, request: RunRequest):
+async def create_run_stream(
+    thread_id: str,
+    request: RunRequest,
+    session: Dict[str, Any] = Depends(get_authenticated_session),
+):
     """
     Stream a run with real-time SSE events.
     
-    Used by the UI client for streaming responses with tool call visibility.
+    Requires valid mkid in Authorization header (Bearer token).
     """
     stream_mode = request.stream_mode or ["messages-tuple", "values"]
 
     return StreamingResponse(
-        run_graph_stream(thread_id, request.input.model_dump(), stream_mode),
+        run_graph_stream(thread_id, request.input.model_dump(), stream_mode, session),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",
@@ -264,12 +262,15 @@ async def create_run_stream(thread_id: str, request: RunRequest):
 # ============================================================================
 
 @api_app.post("/threads/{thread_id}/runs/wait")
-async def create_run_wait(thread_id: str, request: RunRequest):
+async def create_run_wait(
+    thread_id: str,
+    request: RunRequest,
+    session: Dict[str, Any] = Depends(get_authenticated_session),
+):
     """
     Run the graph and wait for completion (non-streaming).
     
-    Used by the UI client as a fallback when SSE streaming is not available.
-    Returns the complete response once the graph finishes execution.
+    Requires valid mkid in Authorization header (Bearer token).
     """
     graph = get_graph()
     config = {"configurable": {"thread_id": thread_id}}
@@ -277,9 +278,9 @@ async def create_run_wait(thread_id: str, request: RunRequest):
     try:
         state = graph.get_state(config)
         messages = convert_to_langchain_messages(request.input.messages)
-        graph_input = build_graph_input(state, messages, request.input.model_dump())
+        graph_input = build_graph_input(state, messages, request.input.model_dump(), session)
 
-        logger.info(f"Running graph for thread {thread_id} (wait mode)")
+        logger.info(f"Running graph for thread {thread_id} (wait, user: {session.get('userUuid', 'unknown')[:8]}...)")
 
         result = await graph.ainvoke(graph_input, config)
 

@@ -17,7 +17,6 @@ class InputState:
     messages: Annotated[Sequence[AnyMessage], add_messages] = field(default_factory=list)
     department_uuid: str = ""
     dealer_uuid: str = ""
-    mkid: str = ""
     cached_data: Optional[Dict[str, Any]] = None
 
 

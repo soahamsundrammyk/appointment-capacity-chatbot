@@ -12,27 +12,27 @@ logger = logging.getLogger(__name__)
 
 
 class KAppointmentAPIClient:
-    """Client for calling kappointment-api endpoints."""
+    """Client for calling kappointment-api endpoints.
+    
+    All endpoints use basic auth authentication.
+    """
 
     def __init__(self, config: Optional[KAppointmentAPIConfig] = None):
         """Initialize the API client."""
         self.config = config or KAppointmentAPIConfig()
         self._client = httpx.AsyncClient(timeout=self.config.timeout)
 
-    def _get_cookies(self) -> Dict[str, str]:
-        """Get cookies for API requests."""
-        return self.config.get_cookies()
-
     async def get_capacity(self, department_uuid: str, request: Dict[str, Any]) -> Dict[str, Any]:
         """Call getCapacity endpoint."""
-        url = f"{self.config.base_url}/appointment/v2/webservice/department/{department_uuid}/capacity"
+        url = f"{self.config.base_url}/appointment/v2/department/{department_uuid}/capacity"
 
         try:
-            cookies = self._get_cookies()
+            auth = self.config.get_auth()
+            headers = {"accept": "application/json", "content-type": "application/json"}
             logger.info(f"POST {url}")
             logger.info(f"Request: {json.dumps(request, indent=2, default=str)}")
 
-            response = await self._client.post(url, json=request, cookies=cookies)
+            response = await self._client.post(url, json=request, headers=headers, auth=auth)
             logger.info(f"Response Status: {response.status_code}")
             response.raise_for_status()
 
@@ -46,8 +46,9 @@ class KAppointmentAPIClient:
         url = f"{self.config.base_url}/appointment/v2/department/{department_uuid}/availability"
 
         try:
-            cookies = self._get_cookies()
-            response = await self._client.post(url, json=request, cookies=cookies)
+            auth = self.config.get_auth()
+            headers = {"accept": "application/json", "content-type": "application/json"}
+            response = await self._client.post(url, json=request, headers=headers, auth=auth)
             response.raise_for_status()
             return response.json()
         except httpx.HTTPStatusError as e:
@@ -59,8 +60,9 @@ class KAppointmentAPIClient:
         url = f"{self.config.base_url}/appointment/v2/department/{department_uuid}/rules"
 
         try:
-            cookies = self._get_cookies()
-            response = await self._client.post(url, json=request, cookies=cookies)
+            auth = self.config.get_auth()
+            headers = {"accept": "application/json", "content-type": "application/json"}
+            response = await self._client.post(url, json=request, headers=headers, auth=auth)
             response.raise_for_status()
             return response.json()
         except httpx.HTTPStatusError as e:
@@ -69,12 +71,12 @@ class KAppointmentAPIClient:
 
     async def get_rule_list(self, department_uuid: str, request: Dict[str, Any]) -> Dict[str, Any]:
         """Call rule/list endpoint to get list of rules."""
-        url = f"{self.config.base_url}/appointment/v2/webservice/department/{department_uuid}/rule/list"
+        url = f"{self.config.base_url}/appointment/v2/department/{department_uuid}/rule/list"
 
         try:
+            auth = self.config.get_auth()
             headers = {"accept": "application/json", "content-type": "application/json"}
-            cookies = self._get_cookies()
-            response = await self._client.post(url, json=request, headers=headers, cookies=cookies)
+            response = await self._client.post(url, json=request, headers=headers, auth=auth)
             response.raise_for_status()
             return response.json()
         except httpx.HTTPStatusError as e:
@@ -82,15 +84,13 @@ class KAppointmentAPIClient:
             raise
 
     async def get_first_available_slot(self, department_uuid: str, request: Dict[str, Any]) -> Dict[str, Any]:
-        """Call getFirstAvailableSlot endpoint (requires Basic Auth)."""
+        """Call getFirstAvailableSlot endpoint."""
         url = f"{self.config.base_url}/appointment/v2/department/{department_uuid}/first-available-slot"
 
         try:
-            headers = {"accept": "application/json", "content-type": "application/json"}
             auth = self.config.get_auth()
-            cookies = self._get_cookies()
-
-            response = await self._client.post(url, json=request, headers=headers, auth=auth, cookies=cookies)
+            headers = {"accept": "application/json", "content-type": "application/json"}
+            response = await self._client.post(url, json=request, headers=headers, auth=auth)
             response.raise_for_status()
             return response.json()
         except httpx.HTTPStatusError as e:
@@ -103,13 +103,12 @@ class KAppointmentAPIClient:
         Returns only opcodes that have daily limits configured (dayLimit != MAX_INT).
         Also includes opcodes mentioned in capacity rules.
         """
-        url = f"{self.config.base_url}/appointment/v2/webservice/departments/{department_uuid}/operations-with-limits"
+        url = f"{self.config.base_url}/appointment/v2/departments/{department_uuid}/operations-with-limits"
 
         try:
-            cookies = self._get_cookies()
+            auth = self.config.get_auth()
             logger.info(f"GET {url}")
-
-            response = await self._client.get(url, cookies=cookies)
+            response = await self._client.get(url, auth=auth)
             response.raise_for_status()
             return response.json()
         except httpx.HTTPStatusError as e:
@@ -119,9 +118,6 @@ class KAppointmentAPIClient:
     async def search_operations(self, department_uuid: str, search_token: str, result_size: int = 20) -> Dict[str, Any]:
         """Search for opcodes using the operations endpoint.
 
-        Endpoint: POST /v2/consumer/webservice/department/{dealerDepartmentUuid}/operations
-        Uses searchToken field to search for opcodes by name/description.
-
         Args:
             department_uuid: Department UUID
             search_token: Search term for finding opcodes
@@ -130,7 +126,7 @@ class KAppointmentAPIClient:
         Returns:
             Response with operationList array containing matching operations
         """
-        url = f"{self.config.base_url}/appointment/v2/consumer/webservice/department/{department_uuid}/operations"
+        url = f"{self.config.base_url}/appointment/v2/department/{department_uuid}/operations"
 
         request_body = {
             "searchToken": search_token,
@@ -140,11 +136,12 @@ class KAppointmentAPIClient:
         }
 
         try:
-            cookies = self._get_cookies()
+            auth = self.config.get_auth()
+            headers = {"accept": "application/json", "content-type": "application/json"}
             logger.info(f"POST {url}")
             logger.info(f"Request: {json.dumps(request_body, indent=2)}")
 
-            response = await self._client.post(url, json=request_body, cookies=cookies)
+            response = await self._client.post(url, json=request_body, headers=headers, auth=auth)
             response.raise_for_status()
             return response.json()
         except httpx.HTTPStatusError as e:

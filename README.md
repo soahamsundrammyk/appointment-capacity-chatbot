@@ -107,12 +107,17 @@ docker-compose up
 | `ANTHROPIC_API_KEY` | ✅ Yes | Claude API key from Anthropic |
 | `LANGSMITH_API_KEY` | ✅ Yes | LangSmith API key for tracing |
 | `KAPPOINTMENT_API_BASE_URL` | ✅ Yes | Base URL for kappointment-api (e.g., `https://api.example.com`) |
-| `APPOINTMENT_CAPACITY_CHATBOT_USERNAME` | ✅ Yes | Basic auth username for first-available-slot endpoint |
-| `APPOINTMENT_CAPACITY_CHATBOT_PASSWORD` | ✅ Yes | Basic auth password for first-available-slot endpoint |
+| `APPOINTMENT_CAPACITY_CHATBOT_USERNAME` | ✅ Yes | Basic auth username for kappointment-api calls |
+| `APPOINTMENT_CAPACITY_CHATBOT_PASSWORD` | ✅ Yes | Basic auth password for kappointment-api calls |
+| `KMANAGE_API_URL` | Auth | Kmanage API URL for mkid validation (default: `https://api.mykaarma.com/manage/v2`) |
+| `APPOINTMENT_CAPACITY_CHATBOT_SERVICE_SUBSCRIBER_USER` | Auth | Service subscriber username for kmanage auth |
+| `APPOINTMENT_CAPACITY_CHATBOT_SERVICE_SUBSCRIBER_PASSWORD` | Auth | Service subscriber password for kmanage auth |
+| `ENABLE_MKID_AUTH` | No | Enable mkid authentication (default: `true`). Set to `false` for local dev |
 | `MODEL` | No | Claude model name (default: `claude-sonnet-4-5-20250929`) |
 | `LOG_LEVEL` | No | Logging level (default: `INFO`) |
 | `MOUNT_PREFIX` | No | URL prefix for HAProxy routing (default: `/capacity-chatbot`) |
 | `PORT` | No | Server port (default: `3334`) |
+| `POSTGRES_CONNECTION_STRING` | No | PostgreSQL connection string for conversation persistence (format: `postgresql://user:pass@host:port/db`) |
 
 ### Optional: Testing Without UI Client
 
@@ -120,9 +125,9 @@ For local testing without the UI client, set these to use test data:
 
 | Variable | Description |
 |----------|-------------|
-| `DEPARTMENT_UUID` | Test department UUID |
-| `DEALER_UUID` | Test dealer UUID |
-| `MYKAARMA_MKID` | Test mkid |
+| `TEST_DEPARTMENT_UUID` | Test department UUID |
+| `TEST_DEALER_UUID` | Test dealer UUID |
+| `TEST_DATA_PATH` | Path to test data JSON file |
 | `ENABLE_TEST_DATA` | Set to `true` to load `test_data.json` |
 
 ---
@@ -132,11 +137,12 @@ For local testing without the UI client, set these to use test data:
 ```
 src/capacity_chatbot/
 ├── api.py                    # FastAPI server with LangGraph-compatible endpoints
+├── auth.py                   # MKID authentication via kmanage API
 ├── graph.py                  # LangGraph state machine definition
 ├── state.py                  # Pydantic state models (Input/Output/Full state)
 ├── prompts.py                # System prompts for Claude
 ├── config.py                 # API client configuration
-├── knowledge_base.py         # RAG knowledge base (concepts, how-to guides)
+├── knowledge_base.py         # Keyword-based knowledge retrieval (50+ Q&As)
 │
 ├── nodes/
 │   └── capacity_agent.py     # ReAct agent node using Claude
@@ -157,7 +163,7 @@ src/capacity_chatbot/
 └── utils/
     ├── date_parser.py        # Natural language date parsing
     ├── uuid_mapper.py        # UUID ↔ human-readable name mapping
-    ├── enums.py              # Enum definitions (CapacityType, etc.)
+    ├── enums.py              # Centralized enums (DayName, FilterField, FieldDisplayName, etc.)
     └── test_data.py          # Test data loading utilities
 ```
 
@@ -183,13 +189,20 @@ All endpoints are mounted under `MOUNT_PREFIX` (default: `/capacity-chatbot`).
 
 ### Request Format
 
+Requests require `Authorization: Bearer <mkid>` header:
+
+```http
+POST /capacity-chatbot/threads/{thread_id}/runs/stream
+Authorization: Bearer <mkid>
+Content-Type: application/json
+```
+
 ```json
 {
   "input": {
     "messages": [{"role": "user", "content": "What is capacity for tomorrow?"}],
     "department_uuid": "uuid-here",
     "dealer_uuid": "uuid-here",
-    "mkid": "cookie-value",
     "cached_data": {
       "transport_options": [...],
       "advisors": [...],
