@@ -178,7 +178,7 @@ async def run_graph_stream(
     thread_id: str, input_data: Dict[str, Any], stream_mode: List[str], session_info: Dict[str, Any]
 ):
     """Run the graph and stream results with real-time tool call events."""
-    graph = get_graph()
+    graph = await get_graph()
     config = {"configurable": {"thread_id": thread_id}}
 
     try:
@@ -272,7 +272,7 @@ async def create_run_wait(
     
     Requires valid mkid in Authorization header (Bearer token).
     """
-    graph = get_graph()
+    graph = await get_graph()
     config = {"configurable": {"thread_id": thread_id}}
 
     try:
@@ -306,7 +306,7 @@ async def startup_event():
     """Initialize the graph on startup."""
     logger.info("Starting Capacity Chatbot API server...")
     try:
-        get_graph()
+        await get_graph()
         logger.info("Graph initialized successfully")
     except Exception as e:
         logger.error(f"Failed to initialize graph: {e}")

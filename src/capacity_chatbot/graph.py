@@ -32,20 +32,18 @@ def build_graph() -> StateGraph:
     return builder
 
 
-def get_checkpointer():
+async def get_checkpointer():
     """
-    Get the appropriate checkpointer.
+    Get the appropriate checkpointer (async).
 
     Uses PostgreSQL when POSTGRES_CONNECTION_STRING is set (production).
     Falls back to MemorySaver for local development.
-
     """
     postgres_conn_string = os.getenv("POSTGRES_CONNECTION_STRING")
     if postgres_conn_string:
         try:
             from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
             from psycopg_pool import AsyncConnectionPool
-            import psycopg
 
             # Add connection timeout if not specified
             conn_params = postgres_conn_string
@@ -53,23 +51,21 @@ def get_checkpointer():
                 separator = "&" if "?" in conn_params else "?"
                 conn_params = f"{conn_params}{separator}connect_timeout=10"
 
-            # Setup tables using sync connection (one-time operation)
-            setup_conn = psycopg.connect(conn_params, autocommit=True, connect_timeout=10)
-            with setup_conn:
-                from langgraph.checkpoint.postgres import PostgresSaver
-                sync_checkpointer = PostgresSaver(conn=setup_conn)
-                sync_checkpointer.setup()
-            setup_conn.close()
-
-            # Create async connection pool for ongoing checkpoint operations
+            # Create async pool with open=False to avoid deprecated auto-open
             pool = AsyncConnectionPool(
                 conninfo=conn_params,
                 min_size=1,
                 max_size=10,
                 timeout=30,
+                open=False,
             )
+            # Properly open the pool in async context
+            await pool.open()
 
             checkpointer = AsyncPostgresSaver(conn=pool)
+            # Setup tables using async method
+            await checkpointer.setup()
+
             logger.info("Using AsyncPostgresSaver with async pool for persistence")
             return checkpointer
         except Exception as e:
@@ -83,14 +79,15 @@ def get_checkpointer():
 _cached_graph = None
 
 
-def get_graph():
+async def get_graph():
     """
     Get the compiled graph with checkpointer.
+    Must be called from an async context (e.g., FastAPI startup).
     """
     global _cached_graph
     if _cached_graph is None:
         builder = build_graph()
-        checkpointer = get_checkpointer()
+        checkpointer = await get_checkpointer()
         _cached_graph = builder.compile(checkpointer=checkpointer)
         logger.info("Graph compiled with checkpointer")
     return _cached_graph
