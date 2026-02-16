@@ -14,7 +14,7 @@ from fastapi.responses import StreamingResponse
 from langchain_core.messages import AIMessage, HumanMessage
 from pydantic import BaseModel
 
-from capacity_chatbot.auth import get_authenticated_session
+from capacity_chatbot.api.middleware.auth import get_authenticated_session
 from capacity_chatbot.graph import get_graph
 
 # Logging configuration

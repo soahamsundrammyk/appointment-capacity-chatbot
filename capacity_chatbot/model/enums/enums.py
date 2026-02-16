@@ -1,4 +1,4 @@
-"""Enums for capacity chatbot tools - matching Java API enums."""
+"""Enums for capacity chatbot - matching Java API enums."""
 
 from enum import Enum
 from typing import List
@@ -203,4 +203,3 @@ class FilterField(str, Enum):
             "opcode": cls.OPCODE,
         }
         return mappings.get(entity_type.lower())
-

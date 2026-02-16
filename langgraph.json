@@ -4,7 +4,7 @@
     "."
   ],
   "graphs": {
-    "capacity_agent": "./src/capacity_chatbot/graph.py:graph"
+    "capacity_agent": "./capacity_chatbot/graph.py:graph"
   },
   "env": ".env",
   "python_version": "3.11"

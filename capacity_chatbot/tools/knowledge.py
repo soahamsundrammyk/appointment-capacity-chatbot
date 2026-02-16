@@ -5,7 +5,7 @@ import logging
 from langchain_core.runnables import RunnableConfig
 from langchain_core.tools import tool
 
-from capacity_chatbot.knowledge_base import get_relevant_knowledge
+from capacity_chatbot.knowledge.knowledge_store import get_relevant_knowledge
 
 logger = logging.getLogger(__name__)
 

@@ -8,7 +8,7 @@ from langchain_core.runnables import RunnableConfig
 from langchain_core.tools import tool
 
 from capacity_chatbot.clients.kappointment_client import KAppointmentAPIClient
-from capacity_chatbot.config import KAppointmentAPIConfig
+from capacity_chatbot.config.api_config import KAppointmentAPIConfig
 from capacity_chatbot.state import CapacityChatbotState
 from capacity_chatbot.tools.validation import (
     validate_advisor_names,
@@ -16,7 +16,7 @@ from capacity_chatbot.tools.validation import (
     validate_transport_option_names,
 )
 from capacity_chatbot.utils.date_parser import parse_date_query, parse_time_query
-from capacity_chatbot.utils.enums import (
+from capacity_chatbot.model.enums import (
     ApplicabilityRuleField,
     CapacityType,
     LimitingFactor,

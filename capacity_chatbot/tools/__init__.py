@@ -6,7 +6,7 @@ from capacity_chatbot.tools.first_available_slot import get_first_available_slot
 from capacity_chatbot.tools.knowledge import KNOWLEDGE_TOOLS
 from capacity_chatbot.tools.opcode import search_opcode_tool
 from capacity_chatbot.tools.rules import get_rules_tool
-from capacity_chatbot.utils.enums import (
+from capacity_chatbot.model.enums import (
     ApplicabilityRuleField,
     CapacityType,
     RuleField,

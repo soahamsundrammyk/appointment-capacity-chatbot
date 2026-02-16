@@ -6,7 +6,7 @@ from typing import Any, Dict, Optional
 
 import httpx
 
-from capacity_chatbot.config import KAppointmentAPIConfig
+from capacity_chatbot.config.api_config import KAppointmentAPIConfig
 
 logger = logging.getLogger(__name__)
 
