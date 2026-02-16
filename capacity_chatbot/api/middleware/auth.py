@@ -19,12 +19,8 @@ async def get_authenticated_session(
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
 ) -> Dict[str, Any]:
     """
-    FastAPI dependency to extract and validate mkid from Authorization header.
+    To extract and validate mkid from Authorization header.
 
-    Usage:
-        @app.post("/endpoint")
-        async def endpoint(session: Dict = Depends(get_authenticated_session)):
-            user_uuid = session["userUuid"]
 
     Returns:
         Session info dict with userUuid, dealerUuid, departmentUuid, mkid
@@ -52,11 +48,8 @@ async def get_authenticated_session(
     mkid = credentials.credentials
 
     # Validate mkid with kmanage
-    client = KManageAPIClient(config=config)
-    try:
+    async with KManageAPIClient(config=config) as client:
         session_info = await client.get_session_info(mkid)
-    finally:
-        await client.close()
 
     if not session_info:
         raise HTTPException(
@@ -64,5 +57,6 @@ async def get_authenticated_session(
             detail="Invalid or expired mkid. Please refresh your session.",
         )
 
-    logger.info(f"Authenticated user: {session_info.get('userUuid', 'unknown')[:8]}...")
+    user_uuid = session_info.get('userUuid', 'unknown')
+    logger.info("Authenticated user: %s", user_uuid)
     return session_info

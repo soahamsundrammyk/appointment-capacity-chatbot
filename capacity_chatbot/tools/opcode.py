@@ -88,14 +88,10 @@ async def _search_opcode(
     if not search_token:
         return {"formatted_summary": "Error: Search term is required", "has_data": False}
 
-    client = KAppointmentAPIClient(config=KAppointmentAPIConfig())
-
-    try:
+    async with KAppointmentAPIClient(config=KAppointmentAPIConfig()) as client:
         result = await client.search_operations(department_uuid, search_token)
         formatted = _format_opcode_response(result)
         return {"formatted_summary": formatted, "raw_data": result}
-    finally:
-        await client.close()
 
 
 async def _fetch_operations_with_limits(
@@ -108,14 +104,10 @@ async def _fetch_operations_with_limits(
         department_uuid: Department UUID
         mkid: Optional mkid cookie for authentication (required for webservice endpoint)
     """
-    client = KAppointmentAPIClient(config=KAppointmentAPIConfig())
-
-    try:
+    async with KAppointmentAPIClient(config=KAppointmentAPIConfig()) as client:
         result = await client.fetch_operations_with_limits(department_uuid, mkid=mkid)
         formatted = _format_operations_with_limits(result.get("operationList", []))
         return {"formatted_summary": formatted, "raw_data": result}
-    finally:
-        await client.close()
 
 
 # =============================================================================

@@ -178,9 +178,7 @@ async def _fetch_first_available_slot(
         basic_auth_username=basic_auth_username,
         basic_auth_password=basic_auth_password,
     )
-    client = KAppointmentAPIClient(config=config)
-
-    try:
+    async with KAppointmentAPIClient(config=config) as client:
         result = await client.get_first_available_slot(department_uuid, request_payload)
         request_context = {
             "transport_option_names": transport_option_names or [],
@@ -190,8 +188,6 @@ async def _fetch_first_available_slot(
         }
         formatted = _format_slot_response(result, uuid_mapper, request_context)
         return {"formatted_summary": formatted, "raw_data": result}
-    finally:
-        await client.close()
 
 
 def _build_slot_request(

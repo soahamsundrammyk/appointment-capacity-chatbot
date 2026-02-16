@@ -355,15 +355,11 @@ async def _fetch_capacity(
     if start_time:
         request_payload["startTime"] = start_time
 
-    client = KAppointmentAPIClient(config=KAppointmentAPIConfig())
-
-    try:
+    async with KAppointmentAPIClient(config=KAppointmentAPIConfig()) as client:
         result = await client.get_capacity(department_uuid, request_payload)
         uuid_mapper = UUIDMapper(cached_data) if cached_data else None
         formatted = _format_capacity_response(result, uuid_mapper, entity_map, has_entity_filters)
         return {"formatted_summary": formatted, "raw_data": result}
-    finally:
-        await client.close()
 
 
 # =============================================================================

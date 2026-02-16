@@ -158,15 +158,11 @@ async def _fetch_rules(
         "ruleTypeList": rule_type_list,
     }
 
-    client = KAppointmentAPIClient(config=KAppointmentAPIConfig())
-
-    try:
+    async with KAppointmentAPIClient(config=KAppointmentAPIConfig()) as client:
         result = await client.get_rule_list(department_uuid, request)
         uuid_mapper = UUIDMapper(cached_data) if cached_data else None
         formatted = _format_rules_response(result, uuid_mapper, filters)
         return {"formatted_summary": formatted, "raw_data": result}
-    finally:
-        await client.close()
 
 
 # =============================================================================

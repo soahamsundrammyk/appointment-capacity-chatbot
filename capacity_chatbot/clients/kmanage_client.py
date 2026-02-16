@@ -101,7 +101,7 @@ class KManageAPIClient:
                     "mkid": mkid,
                 }
             elif response.status_code in (401, 404):
-                logger.warning(f"Invalid/expired mkid: {mkid[:10]}... ({response.status_code})")
+                logger.warning("Invalid/expired mkid (status: %s)", response.status_code)
                 return None
             else:
                 logger.error(f"Kmanage API error: {response.status_code}")
