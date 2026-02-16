@@ -24,7 +24,7 @@ class KAppointmentAPIClient:
 
     async def get_capacity(self, department_uuid: str, request: Dict[str, Any]) -> Dict[str, Any]:
         """Call getCapacity endpoint."""
-        url = f"{self.config.base_url}/appointment/v2/department/{department_uuid}/capacity"
+        url = f"{self.config.base_url}/department/{department_uuid}/capacity"
 
         try:
             auth = self.config.get_auth()
@@ -39,39 +39,10 @@ class KAppointmentAPIClient:
             return response.json()
         except httpx.HTTPStatusError as e:
             logger.error(f"HTTP error calling getCapacity: {e}")
-            raise
-
-    async def get_resource_availability(self, department_uuid: str, request: Dict[str, Any]) -> Dict[str, Any]:
-        """Call getResourceAvailability endpoint."""
-        url = f"{self.config.base_url}/appointment/v2/department/{department_uuid}/availability"
-
-        try:
-            auth = self.config.get_auth()
-            headers = {"accept": "application/json", "content-type": "application/json"}
-            response = await self._client.post(url, json=request, headers=headers, auth=auth)
-            response.raise_for_status()
-            return response.json()
-        except httpx.HTTPStatusError as e:
-            logger.error(f"HTTP error calling getResourceAvailability: {e}")
-            raise
-
-    async def get_rules(self, department_uuid: str, request: Dict[str, Any]) -> Dict[str, Any]:
-        """Call getRules endpoint."""
-        url = f"{self.config.base_url}/appointment/v2/department/{department_uuid}/rules"
-
-        try:
-            auth = self.config.get_auth()
-            headers = {"accept": "application/json", "content-type": "application/json"}
-            response = await self._client.post(url, json=request, headers=headers, auth=auth)
-            response.raise_for_status()
-            return response.json()
-        except httpx.HTTPStatusError as e:
-            logger.error(f"HTTP error calling getRules: {e}")
-            raise
 
     async def get_rule_list(self, department_uuid: str, request: Dict[str, Any]) -> Dict[str, Any]:
         """Call rule/list endpoint to get list of rules."""
-        url = f"{self.config.base_url}/appointment/v2/department/{department_uuid}/rule/list"
+        url = f"{self.config.base_url}/department/{department_uuid}/rule/list"
 
         try:
             auth = self.config.get_auth()
@@ -85,7 +56,7 @@ class KAppointmentAPIClient:
 
     async def get_first_available_slot(self, department_uuid: str, request: Dict[str, Any]) -> Dict[str, Any]:
         """Call getFirstAvailableSlot endpoint."""
-        url = f"{self.config.base_url}/appointment/v2/department/{department_uuid}/first-available-slot"
+        url = f"{self.config.base_url}/department/{department_uuid}/first-available-slot"
 
         try:
             auth = self.config.get_auth()
@@ -110,7 +81,7 @@ class KAppointmentAPIClient:
         Returns only opcodes that have daily limits configured (dayLimit != MAX_INT).
         Also includes opcodes mentioned in capacity rules.
         """
-        url = f"{self.config.base_url}/appointment/v2/webservice/departments/{department_uuid}/operations-with-limits"
+        url = f"{self.config.base_url}/webservice/departments/{department_uuid}/operations-with-limits"
 
         if not mkid or not mkid.strip():
             raise ValueError("mkid is required for operations-with-limits endpoint (webservice endpoint only accepts cookie auth). Please ensure you're logged in with a valid session.")
@@ -137,7 +108,7 @@ class KAppointmentAPIClient:
         Returns:
             Response with operationList array containing matching operations
         """
-        url = f"{self.config.base_url}/appointment/v2/department/{department_uuid}/operations"
+        url = f"{self.config.base_url}/department/{department_uuid}/operations"
 
         request_body = {
             "searchToken": search_token,

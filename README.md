@@ -92,12 +92,16 @@ capacity_chatbot/
 
 ## Environment Variables
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `ANTHROPIC_API_KEY` | Yes | Claude API key |
-| `LANGSMITH_API_KEY` | Yes | For persistence |
-| `KAPPOINTMENT_API_BASE_URL` | Yes | API server URL |
-| `LOG_LEVEL` | No | Default: INFO |
+| Variable | Required | Description | Default |
+|----------|----------|-------------|---------|
+| `ANTHROPIC_API_KEY` | Yes | Claude API key | - |
+| `LANGSMITH_API_KEY` | Yes | For persistence | - |
+| `KAPPOINTMENT_API_BASE_URL` | No | KAppointment API base URL (includes `/appointment/v2` path) | `https://srishti244.mykaarma.dev/appointment/v2` |
+| `KMANAGE_API_URL` | No | KManage API URL for authentication | `https://srishti244.mykaarma.dev/manage/v2` |
+| `APPOINTMENT_CAPACITY_CHATBOT_USERNAME` | Yes | Service subscriber username for API auth | - |
+| `APPOINTMENT_CAPACITY_CHATBOT_PASSWORD` | Yes | Service subscriber password for API auth | - |
+
+**Note**: In production/QA/GVM, these environment variables are set via Kubernetes ConfigMaps and Secrets, not in `.env` files. 
 
 ### Testing Configuration (Local/LangSmith Only)
 

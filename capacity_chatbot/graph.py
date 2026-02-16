@@ -9,9 +9,8 @@ from langgraph.graph import END, StateGraph
 from capacity_chatbot.nodes.capacity_agent import capacity_agent
 from capacity_chatbot.state import CapacityChatbotState, InputState, OutputState
 
-LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
 logging.basicConfig(
-    level=getattr(logging, LOG_LEVEL, logging.INFO),
+    level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
 logger = logging.getLogger(__name__)

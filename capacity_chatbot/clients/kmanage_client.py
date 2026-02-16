@@ -12,9 +12,8 @@ class KManageAPIConfig:
     """Configuration for KManage API client."""
     
     def __init__(self):
-        # Kmanage API URL (same pattern as kappointment-api)
         self.kmanage_api_url = os.getenv(
-            "KMANAGE_API_URL", "https://api.mykaarma.com/manage/v2"
+            "KMANAGE_API_URL", "https://srishti244.mykaarma.dev/manage/v2"
         ).rstrip("/")
         
         # Service subscriber credentials for kmanage API auth

@@ -18,9 +18,8 @@ from capacity_chatbot.api.middleware.auth import get_authenticated_session
 from capacity_chatbot.graph import get_graph
 
 # Logging configuration
-LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
 logging.basicConfig(
-    level=getattr(logging, LOG_LEVEL, logging.INFO),
+    level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
 logger = logging.getLogger(__name__)

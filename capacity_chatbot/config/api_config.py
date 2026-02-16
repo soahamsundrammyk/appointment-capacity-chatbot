@@ -17,7 +17,7 @@ class KAppointmentAPIConfig:
     
     def __post_init__(self):
         if self.base_url is None:
-            self.base_url = os.environ.get("KAPPOINTMENT_API_BASE_URL", "http://localhost:8080").rstrip('/')
+            self.base_url = os.environ.get("KAPPOINTMENT_API_BASE_URL", "https://srishti244.mykaarma.dev/appointment/v2").rstrip('/')
         
         if self.timeout is None:
             self.timeout = int(os.environ.get("KAPPOINTMENT_API_TIMEOUT", "30"))
