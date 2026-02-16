@@ -158,16 +158,12 @@ def build_graph_input(
     if state.values and state.values.get("messages"):
         # Append to existing conversation
         existing_messages = state.values.get("messages", [])
-        # Merge state with updated context, ensuring mkid is always included from session
-        merged_state = {
+        # Merge state with updated context (mkid already set in updated_context from session)
+        return {
             **state.values,
             **updated_context,
             "messages": existing_messages + messages,
         }
-        # Always use mkid from session if available (don't let empty state overwrite it)
-        if updated_context.get("mkid"):
-            merged_state["mkid"] = updated_context["mkid"]
-        return merged_state
     else:
         # New conversation
         return {
@@ -256,46 +252,6 @@ async def create_run_stream(
             "X-Accel-Buffering": "no",
         },
     )
-
-
-# ============================================================================
-# Non-Streaming Run Endpoint (wait for completion)
-# ============================================================================
-
-@api_app.post("/threads/{thread_id}/runs/wait")
-async def create_run_wait(
-    thread_id: str,
-    request: RunRequest,
-    session: Dict[str, Any] = Depends(get_authenticated_session),
-):
-    """
-    Run the graph and wait for completion (non-streaming).
-    
-    Requires valid mkid in Authorization header (Bearer token).
-    """
-    graph = await get_graph()
-    config = {"configurable": {"thread_id": thread_id}}
-
-    try:
-        state = await graph.aget_state(config)
-        messages = convert_to_langchain_messages(request.input.messages)
-        graph_input = build_graph_input(state, messages, request.input.model_dump(), session)
-
-        logger.info(f"Running graph for thread {thread_id} (wait, user: {session.get('userUuid', 'unknown')[:8]}...)")
-
-        result = await graph.ainvoke(graph_input, config)
-
-        return {
-            "thread_id": thread_id,
-            "messages": [serialize_message(m) for m in result.get("messages", [])],
-            "values": {
-                "messages": [serialize_message(m) for m in result.get("messages", [])]
-            },
-        }
-
-    except Exception as e:
-        logger.exception(f"Error running graph: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
 
 
 # ============================================================================

@@ -2,7 +2,7 @@
 
 import json
 import logging
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Tuple
 
 import httpx
 
@@ -15,43 +15,80 @@ class KAppointmentAPIClient:
     """Client for calling kappointment-api endpoints.
     
     All endpoints use basic auth authentication.
+    
+    Usage:
+        # Manual close
+        client = KAppointmentAPIClient()
+        try:
+            result = await client.get_capacity(...)
+        finally:
+            await client.close()
+        
+        # Context manager (recommended)
+        async with KAppointmentAPIClient() as client:
+            result = await client.get_capacity(...)
     """
 
     def __init__(self, config: Optional[KAppointmentAPIConfig] = None):
         """Initialize the API client."""
         self.config = config or KAppointmentAPIConfig()
-        self._client = httpx.AsyncClient(timeout=self.config.timeout)
+        self._client: httpx.AsyncClient = httpx.AsyncClient(timeout=float(self.config.timeout))
+
+    async def __aenter__(self):
+        """Async context manager entry."""
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        """Async context manager exit."""
+        await self.close()
+
+    def _get_auth(self) -> Tuple[str, str]:
+        """Get basic auth credentials."""
+        return self.config.get_auth()
+
+    def _get_headers(self, include_content_type: bool = True) -> Dict[str, str]:
+        """Get standard request headers."""
+        headers = {"accept": "application/json"}
+        if include_content_type:
+            headers["content-type"] = "application/json"
+        return headers
 
     async def get_capacity(self, department_uuid: str, request: Dict[str, Any]) -> Dict[str, Any]:
         """Call getCapacity endpoint."""
         url = f"{self.config.base_url}/department/{department_uuid}/capacity"
 
         try:
-            auth = self.config.get_auth()
-            headers = {"accept": "application/json", "content-type": "application/json"}
-            logger.info(f"POST {url}")
-            logger.info(f"Request: {json.dumps(request, indent=2, default=str)}")
+            auth = self._get_auth()
+            headers = self._get_headers()
+            logger.debug("Request: %s", json.dumps(request, indent=2, default=str))
 
             response = await self._client.post(url, json=request, headers=headers, auth=auth)
-            logger.info(f"Response Status: {response.status_code}")
             response.raise_for_status()
+            response_data = response.json()
+            logger.debug("Response: %s", json.dumps(response_data, indent=2, default=str))
 
-            return response.json()
+            return response_data
         except httpx.HTTPStatusError as e:
-            logger.error(f"HTTP error calling getCapacity: {e}")
+            logger.error("HTTP error calling getCapacity: %s", e)
+            raise
 
     async def get_rule_list(self, department_uuid: str, request: Dict[str, Any]) -> Dict[str, Any]:
         """Call rule/list endpoint to get list of rules."""
         url = f"{self.config.base_url}/department/{department_uuid}/rule/list"
 
         try:
-            auth = self.config.get_auth()
-            headers = {"accept": "application/json", "content-type": "application/json"}
+            auth = self._get_auth()
+            headers = self._get_headers()
+            logger.debug("Request: %s", json.dumps(request, indent=2, default=str))
+
             response = await self._client.post(url, json=request, headers=headers, auth=auth)
             response.raise_for_status()
-            return response.json()
+            response_data = response.json()
+            logger.debug("Response: %s", json.dumps(response_data, indent=2, default=str))
+
+            return response_data
         except httpx.HTTPStatusError as e:
-            logger.error(f"HTTP error calling get_rule_list: {e}")
+            logger.error("HTTP error calling get_rule_list: %s", e)
             raise
 
     async def get_first_available_slot(self, department_uuid: str, request: Dict[str, Any]) -> Dict[str, Any]:
@@ -59,13 +96,18 @@ class KAppointmentAPIClient:
         url = f"{self.config.base_url}/department/{department_uuid}/first-available-slot"
 
         try:
-            auth = self.config.get_auth()
-            headers = {"accept": "application/json", "content-type": "application/json"}
+            auth = self._get_auth()
+            headers = self._get_headers()
+            logger.debug("Request: %s", json.dumps(request, indent=2, default=str))
+
             response = await self._client.post(url, json=request, headers=headers, auth=auth)
             response.raise_for_status()
-            return response.json()
+            response_data = response.json()
+            logger.debug("Response: %s", json.dumps(response_data, indent=2, default=str))
+
+            return response_data
         except httpx.HTTPStatusError as e:
-            logger.error(f"HTTP error calling get_first_available_slot: {e}")
+            logger.error("HTTP error calling get_first_available_slot: %s", e)
             raise
 
     async def fetch_operations_with_limits(self, department_uuid: str, mkid: Optional[str] = None) -> Dict[str, Any]:
@@ -76,25 +118,38 @@ class KAppointmentAPIClient:
 
         Args:
             department_uuid: Department UUID
-            mkid: Required mkid cookie for authentication (webservice endpoint only accepts cookie)
+            mkid: Optional mkid cookie. If not provided, falls back to config.mkid
 
         Returns only opcodes that have daily limits configured (dayLimit != MAX_INT).
         Also includes opcodes mentioned in capacity rules.
         """
         url = f"{self.config.base_url}/webservice/departments/{department_uuid}/operations-with-limits"
 
+        # Fallback to config's mkid if not provided
+        if not mkid:
+            cookies = self.config.get_cookies()
+            mkid = cookies.get("mkid") if cookies else None
+
         if not mkid or not mkid.strip():
-            raise ValueError("mkid is required for operations-with-limits endpoint (webservice endpoint only accepts cookie auth). Please ensure you're logged in with a valid session.")
+            raise ValueError(
+                "mkid is required for operations-with-limits endpoint "
+                "(webservice endpoint only accepts cookie auth). "
+                "Please ensure you're logged in with a valid session or set MYKAARMA_MKID in config."
+            )
 
         try:
-            headers = {"accept": "application/json"}
+            headers = self._get_headers(include_content_type=False)
             cookies = {"mkid": mkid}
-            
+
             # Webservice endpoint only accepts mkid cookie, NOT basic auth
             response = await self._client.get(url, headers=headers, cookies=cookies)
             response.raise_for_status()
-            return response.json()
+            response_data = response.json()
+            logger.debug("Response: %s", json.dumps(response_data, indent=2, default=str))
+
+            return response_data
         except httpx.HTTPStatusError as e:
+            logger.error("HTTP error calling fetch_operations_with_limits: %s", e)
             raise
 
     async def search_operations(self, department_uuid: str, search_token: str, result_size: int = 20) -> Dict[str, Any]:
@@ -118,16 +173,18 @@ class KAppointmentAPIClient:
         }
 
         try:
-            auth = self.config.get_auth()
-            headers = {"accept": "application/json", "content-type": "application/json"}
-            logger.info(f"POST {url}")
-            logger.info(f"Request: {json.dumps(request_body, indent=2)}")
+            auth = self._get_auth()
+            headers = self._get_headers()
+            logger.debug("Request: %s", json.dumps(request_body, indent=2))
 
             response = await self._client.post(url, json=request_body, headers=headers, auth=auth)
             response.raise_for_status()
-            return response.json()
+            response_data = response.json()
+            logger.debug("Response: %s", json.dumps(response_data, indent=2, default=str))
+
+            return response_data
         except httpx.HTTPStatusError as e:
-            logger.error(f"HTTP error calling search_operations: {e}")
+            logger.error("HTTP error calling search_operations: %s", e)
             raise
 
     async def close(self):

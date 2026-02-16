@@ -1,7 +1,7 @@
 """Configuration for KAppointment API client."""
 
 import os
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Optional
 
 
@@ -32,7 +32,10 @@ class KAppointmentAPIConfig:
             self.basic_auth_password = os.environ.get("APPOINTMENT_CAPACITY_CHATBOT_PASSWORD", "1")
     
     def get_cookies(self) -> dict:
-        return {"mkid": self.mkid}
+        """Get cookies dict with mkid if available."""
+        if self.mkid:
+            return {"mkid": self.mkid}
+        return {}
     
     def get_auth(self) -> tuple:
         return (self.basic_auth_username, self.basic_auth_password)
