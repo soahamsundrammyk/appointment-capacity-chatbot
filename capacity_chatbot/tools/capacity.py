@@ -10,6 +10,9 @@ from langchain_core.tools import tool
 from capacity_chatbot.clients.kappointment_client import KAppointmentAPIClient
 from capacity_chatbot.config.api_config import KAppointmentAPIConfig
 from capacity_chatbot.tools.validation import (
+    _extract_advisor_name,
+    _extract_team_name,
+    _extract_transport_name,
     validate_advisor_names,
     validate_team_names,
     validate_transport_option_names,
@@ -26,6 +29,9 @@ from capacity_chatbot.enums import (
 from capacity_chatbot.utils.uuid_mapper import UUIDMapper
 
 logger = logging.getLogger(__name__)
+
+# Constants
+UNLIMITED_CAPACITY = 1e308  # Represents unlimited capacity in API responses
 
 
 # =============================================================================
@@ -135,7 +141,7 @@ async def get_capacity_tool(
     if start_time:
         parsed_time = parse_time_query(start_time)
         if not parsed_time:
-            return f"Error: Could not parse time '{start_time}'. Use '9 AM', '14:00', or 'morning'."
+            return "Error: Could not parse time '%s'. Use '9 AM', '14:00', or 'morning'." % start_time
 
     try:
         result = await _fetch_capacity(
@@ -149,8 +155,8 @@ async def get_capacity_tool(
         )
         return result.get("formatted_summary", str(result))
     except Exception as e:
-        logger.error(f"Error in get_capacity_tool: {e}", exc_info=True)
-        return f"Error fetching capacity: {str(e)}"
+        logger.error("Error in get_capacity_tool: %s", e, exc_info=True)
+        return "Error fetching capacity: %s" % str(e)
 
 
 # =============================================================================
@@ -170,10 +176,8 @@ def _resolve_all_keyword(
     if entity_key == "advisors":
         advisors = cached_data.get("advisors", [])
         resolved = []
-        for a in advisors:
-            name = f"{a.get('firstName', '')} {a.get('lastName', '')}".strip()
-            if not name:
-                name = a.get("associateName", "") or a.get("name", "")
+        for advisor in advisors:
+            name = _extract_advisor_name(advisor)
             if name:
                 resolved.append(name)
         if not resolved:
@@ -182,15 +186,22 @@ def _resolve_all_keyword(
 
     elif entity_key == "teams":
         teams = cached_data.get("teams", [])
-        resolved = [t.get("name") for t in teams if t.get("name")]
+        resolved = []
+        for team in teams:
+            name = _extract_team_name(team)
+            if name:
+                resolved.append(name)
         if not resolved:
             return None, "No teams found in cached data. Cannot resolve 'ALL'."
         return resolved, None
 
     elif entity_key == "transport_options":
         options = cached_data.get("transport_options", [])
-        resolved = [t.get("customName") or t.get("optionName") for t in options
-                    if t.get("customName") or t.get("optionName")]
+        resolved = []
+        for option in options:
+            name = _extract_transport_name(option)
+            if name:
+                resolved.append(name)
         if not resolved:
             return None, "No transport options found in cached data. Cannot resolve 'ALL'."
         return resolved, None
@@ -422,7 +433,7 @@ def _extract_capacity_entries(
                     factor = limit_info.get("limitingFactor", "")
                     value = limit_info.get("limitValue")
                     details = limit_info.get("details", "")
-                    if value is not None and value < 1e308:
+                    if value is not None and value < UNLIMITED_CAPACITY:
                         limiting_factors.append((entity_display or date_key, factor, value, details))
 
     return entries, limiting_factors
@@ -441,7 +452,7 @@ def _entry_matches_filter(
         if etype == "SOURCE" and has_non_source_filters:
             continue
         for uuid in (uuids or []):
-            if f"{etype}={uuid}" in combo_key:
+            if "%s=%s" % (etype, uuid) in combo_key:
                 return True
     return False
 
@@ -451,20 +462,23 @@ def _build_entity_display_name(combo_key: str, uuid_mapper: Optional[UUIDMapper]
     if not uuid_mapper:
         return ""
 
+    # Map of entity type prefix -> (uuid_map, separator)
+    entity_maps = [
+        ("DEALER_ASSOCIATE_UUID=", uuid_mapper.advisor_map, ""),
+        ("TEAM_UUID=", uuid_mapper.team_map, " (%s)"),
+        ("TRANSPORT_OPTION_UUID=", uuid_mapper.transport_map, " - %s"),
+    ]
+
     display = ""
-    for uuid, name in uuid_mapper.advisor_map.items():
-        if f"DEALER_ASSOCIATE_UUID={uuid}" in combo_key:
-            display = name
-            break
-
-    for uuid, name in uuid_mapper.team_map.items():
-        if f"TEAM_UUID={uuid}" in combo_key:
-            display = name if not display else f"{display} ({name})"
-            break
-
-    for uuid, name in uuid_mapper.transport_map.items():
-        if f"TRANSPORT_OPTION_UUID={uuid}" in combo_key:
-            display = name if not display else f"{display} - {name}"
+    for prefix, uuid_map, separator in entity_maps:
+        for uuid, name in uuid_map.items():
+            if "%s%s" % (prefix, uuid) in combo_key:
+                if not display:
+                    display = name
+                else:
+                    display = display + separator % name
+                break
+        if display:
             break
 
     return display
@@ -495,8 +509,8 @@ def _format_as_table(entries: List[Tuple], limiting_factors: List[Tuple]) -> str
             for _, entity, cap_data, _ in date_entries:
                 used = int(cap_data.get("usedCount", 0))
                 total = cap_data.get("totalCount", float('inf'))
-                total_str = "∞" if total >= 1e308 else str(int(total))
-                avail_str = "∞" if total >= 1e308 else str(max(0, int(total) - used))
+                total_str = "∞" if total >= UNLIMITED_CAPACITY else str(int(total))
+                avail_str = "∞" if total >= UNLIMITED_CAPACITY else str(max(0, int(total) - used))
                 entity_name = entity or "Total"
                 parts.append(f"| {entity_name} | {used} | {avail_str} | {total_str} |")
             parts.append("")
@@ -504,7 +518,7 @@ def _format_as_table(entries: List[Tuple], limiting_factors: List[Tuple]) -> str
             cap_data = date_entries[0][2]
             used = int(cap_data.get("usedCount", 0))
             total = cap_data.get("totalCount", float('inf'))
-            if total >= 1e308:
+            if total >= UNLIMITED_CAPACITY:
                 parts.append(f"**{date_key}**: Unlimited capacity, {used} booked.")
             else:
                 avail = max(0, int(total) - used)
@@ -532,9 +546,9 @@ def _format_conversational(entries: List[Tuple], limiting_factors: List[Tuple]) 
     for date_key, entity, cap_data, _ in entries:
         used = cap_data.get("usedCount", 0.0)
         total = cap_data.get("totalCount", float('inf'))
-        entity_str = f" for {entity}" if entity else ""
+        entity_str = " for %s" % entity if entity else ""
 
-        if total >= 1e308:
+        if total >= UNLIMITED_CAPACITY:
             parts.append(f"For {date_key}{entity_str}: unlimited capacity, {int(used)} booked.")
         else:
             avail = max(0, total - used)
