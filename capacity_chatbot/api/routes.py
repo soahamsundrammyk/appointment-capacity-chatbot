@@ -12,10 +12,10 @@ from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from langchain_core.messages import AIMessage, HumanMessage
-from pydantic import BaseModel
 
 from capacity_chatbot.api.middleware.auth import get_authenticated_session
 from capacity_chatbot.graph import get_graph
+from capacity_chatbot.model.requests import RunInput, RunRequest
 
 # Logging configuration
 logging.basicConfig(
@@ -63,26 +63,6 @@ async def root_ok_check():
 
 # Mount the API under the prefix (e.g., /capacity-chatbot)
 app.mount(MOUNT_PREFIX, api_app)
-
-
-# ============================================================================
-# Request/Response Models
-# ============================================================================
-
-class RunInput(BaseModel):
-    """Input for a run - matches LangGraph API format."""
-    messages: List[Dict[str, Any]]
-    department_uuid: Optional[str] = ""
-    dealer_uuid: Optional[str] = ""
-    mkid: Optional[str] = ""
-    cached_data: Optional[Dict[str, Any]] = None
-
-
-class RunRequest(BaseModel):
-    """Request to create a run - matches LangGraph API format."""
-    input: RunInput
-    config: Optional[Dict[str, Any]] = None
-    stream_mode: Optional[List[str]] = None
 
 
 # ============================================================================

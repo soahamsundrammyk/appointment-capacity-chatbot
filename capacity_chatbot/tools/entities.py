@@ -6,7 +6,7 @@ from typing import Optional
 from langchain_core.tools import tool
 from langchain_core.runnables import RunnableConfig
 
-from capacity_chatbot.model.enums import EntityType
+from capacity_chatbot.enums import EntityType
 from capacity_chatbot.state import CapacityChatbotState
 from capacity_chatbot.utils.uuid_mapper import UUIDMapper
 

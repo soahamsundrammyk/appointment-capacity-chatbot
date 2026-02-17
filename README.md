@@ -82,9 +82,10 @@ capacity_chatbot/
 │   └── capacity_agent.py # ReAct agent node
 ├── knowledge/            # Knowledge base (Q&A database)
 │   └── knowledge_store.py
+├── enums/                # Domain constants and type definitions
+│   └── enums.py          # Enumerations (EntityType, DayName, etc.)
 ├── model/                # Data models
-│   └── enums/            # Enumerations
-│       └── enums.py
+│   └── requests.py       # Request/Response models (RunInput, RunRequest)
 └── utils/                # Pure utility functions
     ├── date_parser.py
     └── uuid_mapper.py

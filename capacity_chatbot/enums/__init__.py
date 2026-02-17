@@ -1,6 +1,6 @@
 """Enums for capacity chatbot - matching Java API enums."""
 
-from capacity_chatbot.model.enums.enums import (
+from capacity_chatbot.enums.enums import (
     MAX_LIMIT,
     ApplicabilityRuleField,
     CapacityType,

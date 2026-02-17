@@ -16,7 +16,7 @@ from capacity_chatbot.tools.validation import (
     validate_transport_option_names,
 )
 from capacity_chatbot.utils.date_parser import parse_date_query, parse_time_query
-from capacity_chatbot.model.enums import (
+from capacity_chatbot.enums import (
     ApplicabilityRuleField,
     CapacityType,
     LimitingFactor,

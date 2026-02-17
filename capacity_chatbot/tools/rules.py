@@ -10,7 +10,7 @@ from langchain_core.tools import tool
 from capacity_chatbot.clients.kappointment_client import KAppointmentAPIClient
 from capacity_chatbot.config.api_config import KAppointmentAPIConfig
 from capacity_chatbot.state import CapacityChatbotState
-from capacity_chatbot.model.enums import FieldDisplayName, FilterField
+from capacity_chatbot.enums import FieldDisplayName, FilterField
 from capacity_chatbot.utils.uuid_mapper import UUIDMapper
 
 logger = logging.getLogger(__name__)
