@@ -137,8 +137,8 @@ async def run_graph_stream(
     """Run the graph and stream results with real-time tool call events."""
     graph = await get_graph()
     
-    # Extract mkid from session_info (from auth) or request body
-    mkid = session_info.get("mkid") or input_data.get("mkid", "")
+    # Extract mkid from session_info (from auth middleware)
+    mkid = session_info.get("mkid", "")
     config = {
         "configurable": {
             "thread_id": thread_id,

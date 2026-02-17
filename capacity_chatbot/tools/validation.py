@@ -2,7 +2,7 @@
 
 import logging
 from difflib import SequenceMatcher
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -50,40 +50,30 @@ def find_closest_match(query: str, candidates: List[str], threshold: float = 0.6
 
 
 def _validate_entity_names_generic(
-    entity_list: List[Dict[str, Any]],
-    name_extractor: Callable[[Dict[str, Any]], Optional[str]],
-    uuid_extractor: Callable[[Dict[str, Any]], Optional[str]],
+    name_uuid_pairs: List[Tuple[str, str]],
     entity_type_name: str,
     names_to_validate: List[str],
-    fuzzy_match: bool = True,
 ) -> Dict[str, Any]:
     """Generic entity validation function.
 
     Args:
-        entity_list: List of entity dicts from cached_data
-        name_extractor: Function to extract name from entity dict
-        uuid_extractor: Function to extract UUID from entity dict
+        name_uuid_pairs: List of (name, uuid) tuples from cached_data
         entity_type_name: Human-readable entity type name (e.g., "advisor", "transport option")
         names_to_validate: List of names to validate
-        fuzzy_match: If True, suggest similar names for non-exact matches
 
     Returns:
         Dict with valid, invalid, suggestions, and message
     """
-    if not entity_list:
+    if not name_uuid_pairs:
         return {
             "valid": [],
-            "invalid": names_to_validate,
-            "suggestions": {},
             "message": f"No {entity_type_name} data available in cache.",
         }
 
     # Build name -> uuid mapping
     name_to_uuid = {}
     all_names = []
-    for entity in entity_list:
-        name = name_extractor(entity)
-        uuid = uuid_extractor(entity)
+    for name, uuid in name_uuid_pairs:
         if name and uuid:
             name_to_uuid[name.lower().strip()] = (name, uuid)
             all_names.append(name)
@@ -100,7 +90,7 @@ def _validate_entity_names_generic(
             original_name, uuid = name_to_uuid[name_lower]
             valid.append((original_name, uuid))
             logger.info("Validated %s: '%s' -> UUID: %s", entity_type_name, name, uuid)
-        elif fuzzy_match:
+        else:
             # Try fuzzy match
             match_result = find_closest_match(name, all_names)
             if match_result:
@@ -116,9 +106,6 @@ def _validate_entity_names_generic(
                 if partial_matches:
                     suggestions[name] = partial_matches[:3]
                 logger.warning("Invalid %s name: '%s'. No match found.", entity_type_name, name)
-        else:
-            invalid.append(name)
-            logger.warning("Invalid %s name: '%s'", entity_type_name, name)
 
     # Build message
     if not invalid:
@@ -132,8 +119,6 @@ def _validate_entity_names_generic(
 
     return {
         "valid": valid,
-        "invalid": invalid,
-        "suggestions": suggestions,
         "message": message,
     }
 
@@ -144,27 +129,23 @@ def _extract_advisor_name(advisor: Dict[str, Any]) -> Optional[str]:
     last_name = advisor.get("lastName", "") or ""
     name = "%s %s" % (first_name, last_name) if first_name or last_name else ""
     name = name.strip()
-    if not name:
-        name = advisor.get("associateName", "") or advisor.get("name", "")
     return name if name else None
 
 
 def _extract_advisor_uuid(advisor: Dict[str, Any]) -> Optional[str]:
     """Extract advisor UUID from advisor dict."""
-    return advisor.get("uuid", "") or advisor.get("dealerAssociateUUID", "") or None
+    return advisor.get("uuid", "")
 
 
 def validate_advisor_names(
     advisor_names: List[str],
     cached_data: Dict[str, Any],
-    fuzzy_match: bool = True,
 ) -> Dict[str, Any]:
     """Validate advisor names against cached data.
 
     Args:
         advisor_names: List of advisor names to validate
         cached_data: Cached data containing advisors list
-        fuzzy_match: If True, suggest similar names for non-exact matches
 
     Returns:
         Dict with:
@@ -174,13 +155,17 @@ def validate_advisor_names(
         - message: Human-readable summary
     """
     advisors = cached_data.get("advisors", [])
+    name_uuid_pairs = []
+    for advisor in advisors:
+        name = _extract_advisor_name(advisor)
+        uuid = _extract_advisor_uuid(advisor)
+        if name and uuid:
+            name_uuid_pairs.append((name, uuid))
+    
     return _validate_entity_names_generic(
-        entity_list=advisors,
-        name_extractor=_extract_advisor_name,
-        uuid_extractor=_extract_advisor_uuid,
+        name_uuid_pairs=name_uuid_pairs,
         entity_type_name="advisor",
         names_to_validate=advisor_names,
-        fuzzy_match=fuzzy_match,
     )
 
 
@@ -189,8 +174,6 @@ def _extract_transport_name(option: Dict[str, Any]) -> Optional[str]:
     return (
         option.get("customName", "") or
         option.get("optionName", "") or
-        option.get("name", "") or
-        option.get("transportOptionName", "") or
         None
     )
 
@@ -199,8 +182,6 @@ def _extract_transport_uuid(option: Dict[str, Any]) -> Optional[str]:
     """Extract transport option UUID from option dict."""
     return (
         option.get("transportOptionUuid", "") or
-        option.get("uuid", "") or
-        option.get("transportOptionUUID", "") or
         None
     )
 
@@ -208,26 +189,28 @@ def _extract_transport_uuid(option: Dict[str, Any]) -> Optional[str]:
 def validate_transport_option_names(
     transport_names: List[str],
     cached_data: Dict[str, Any],
-    fuzzy_match: bool = True,
 ) -> Dict[str, Any]:
     """Validate transport option names against cached data.
 
     Args:
         transport_names: List of transport option names to validate
         cached_data: Cached data containing transport_options list
-        fuzzy_match: If True, suggest similar names for non-exact matches
 
     Returns:
         Dict with valid, invalid, suggestions, and message
     """
     transport_options = cached_data.get("transport_options", [])
+    name_uuid_pairs = []
+    for option in transport_options:
+        name = _extract_transport_name(option)
+        uuid = _extract_transport_uuid(option)
+        if name and uuid:
+            name_uuid_pairs.append((name, uuid))
+    
     return _validate_entity_names_generic(
-        entity_list=transport_options,
-        name_extractor=_extract_transport_name,
-        uuid_extractor=_extract_transport_uuid,
+        name_uuid_pairs=name_uuid_pairs,
         entity_type_name="transport option",
         names_to_validate=transport_names,
-        fuzzy_match=fuzzy_match,
     )
 
 
@@ -244,26 +227,28 @@ def _extract_team_uuid(team: Dict[str, Any]) -> Optional[str]:
 def validate_team_names(
     team_names: List[str],
     cached_data: Dict[str, Any],
-    fuzzy_match: bool = True,
 ) -> Dict[str, Any]:
     """Validate team names against cached data.
 
     Args:
         team_names: List of team names to validate
         cached_data: Cached data containing teams list
-        fuzzy_match: If True, suggest similar names for non-exact matches
 
     Returns:
         Dict with valid, invalid, suggestions, and message
     """
     teams = cached_data.get("teams", [])
+    name_uuid_pairs = []
+    for team in teams:
+        name = _extract_team_name(team)
+        uuid = _extract_team_uuid(team)
+        if name and uuid:
+            name_uuid_pairs.append((name, uuid))
+    
     return _validate_entity_names_generic(
-        entity_list=teams,
-        name_extractor=_extract_team_name,
-        uuid_extractor=_extract_team_uuid,
+        name_uuid_pairs=name_uuid_pairs,
         entity_type_name="team",
         names_to_validate=team_names,
-        fuzzy_match=fuzzy_match,
     )
 
 
@@ -271,7 +256,6 @@ def validate_entities(
     entity_type: str,
     entity_names: List[str],
     cached_data: Dict[str, Any],
-    fuzzy_match: bool = True,
 ) -> Dict[str, Any]:
     """Generic entity validation dispatcher.
 
@@ -279,7 +263,6 @@ def validate_entities(
         entity_type: Type of entity ('advisor', 'transport', 'team')
         entity_names: List of names to validate
         cached_data: Cached data from state
-        fuzzy_match: Whether to use fuzzy matching
 
     Returns:
         Validation result dict
@@ -287,15 +270,13 @@ def validate_entities(
     entity_type_lower = entity_type.lower().strip()
 
     if entity_type_lower in ("advisor", "advisors", "service_advisor"):
-        return validate_advisor_names(entity_names, cached_data, fuzzy_match)
+        return validate_advisor_names(entity_names, cached_data)
     elif entity_type_lower in ("transport", "transport_option", "transport_options"):
-        return validate_transport_option_names(entity_names, cached_data, fuzzy_match)
+        return validate_transport_option_names(entity_names, cached_data)
     elif entity_type_lower in ("team", "teams"):
-        return validate_team_names(entity_names, cached_data, fuzzy_match)
+        return validate_team_names(entity_names, cached_data)
     else:
         return {
             "valid": [],
-            "invalid": entity_names,
-            "suggestions": {},
             "message": "Unknown entity type: %s. Valid types: advisor, transport, team" % entity_type,
         }

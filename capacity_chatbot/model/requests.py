@@ -10,7 +10,6 @@ class RunInput(BaseModel):
     messages: List[Dict[str, Any]]
     department_uuid: Optional[str] = ""
     dealer_uuid: Optional[str] = ""
-    mkid: Optional[str] = ""  # Deprecated: mkid now comes from auth middleware, not request body
     cached_data: Optional[Dict[str, Any]] = None
 
 

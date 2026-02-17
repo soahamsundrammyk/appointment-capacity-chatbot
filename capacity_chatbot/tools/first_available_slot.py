@@ -93,21 +93,21 @@ def _validate_entities(
     errors = []
 
     if advisor_names and cached_data:
-        result = validate_advisor_names(advisor_names, cached_data, fuzzy_match=True)
+        result = validate_advisor_names(advisor_names, cached_data)
         uuids["advisor"] = [uuid for _, uuid in result["valid"]]
-        if result["invalid"]:
+        if len(result["valid"]) < len(advisor_names):
             errors.append(result["message"])
 
     if transport_option_names and cached_data:
-        result = validate_transport_option_names(transport_option_names, cached_data, fuzzy_match=True)
+        result = validate_transport_option_names(transport_option_names, cached_data)
         uuids["transport"] = [uuid for _, uuid in result["valid"]]
-        if result["invalid"]:
+        if len(result["valid"]) < len(transport_option_names):
             errors.append(result["message"])
 
     if team_names and cached_data:
-        result = validate_team_names(team_names, cached_data, fuzzy_match=True)
+        result = validate_team_names(team_names, cached_data)
         uuids["team"] = [uuid for _, uuid in result["valid"]]
-        if result["invalid"]:
+        if len(result["valid"]) < len(team_names):
             errors.append(result["message"])
 
     if errors:
@@ -139,13 +139,6 @@ async def _fetch_first_available_slot(
     uuids, error = _validate_entities(advisor_names, team_names, transport_option_names, cached_data)
     if error:
         return {"formatted_summary": error, "raw_data": None}
-
-    # Fallback to all advisors if none specified
-    if not uuids["advisor"] and cached_data:
-        advisors = cached_data.get("advisors", [])
-        uuids["advisor"] = [a.get("uuid") for a in advisors if a.get("uuid")]
-        if not uuids["advisor"]:
-            return {"formatted_summary": "Error: At least one advisor is required.", "raw_data": None}
 
     # Build request
     request_payload = _build_slot_request(uuids, dates, start_time, end_time, opcodes)

@@ -149,21 +149,10 @@ async def confirm_entity(
     
     from capacity_chatbot.tools.validation import validate_entities
     
-    result = validate_entities(entity_type, names_list, cached_data, fuzzy_match=True)
+    result = validate_entities(entity_type, names_list, cached_data)
     
-    parts = [result["message"]]
-    
-    if result["valid"]:
-        parts.append("\nConfirmed:")
-        for name, uuid in result["valid"]:
-            parts.append(f"  - {name}")
-    
-    if result.get("suggestions"):
-        parts.append("\nSuggestions:")
-        for invalid, suggestions in result["suggestions"].items():
-            parts.append(f"  - '{invalid}' -> {', '.join(suggestions)}")
-    
-    return "\n".join(parts)
+    # Message already contains all info (success, errors, suggestions)
+    return result["message"]
 
 
 ENTITY_TOOLS = [
