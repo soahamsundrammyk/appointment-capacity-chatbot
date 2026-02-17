@@ -14,14 +14,6 @@ class KManageAPIClient:
     """Client for calling kmanage API endpoints.
     
     Usage:
-        # Manual close
-        client = KManageAPIClient()
-        try:
-            result = await client.get_session_info(...)
-        finally:
-            await client.close()
-        
-        # Context manager (recommended)
         async with KManageAPIClient() as client:
             result = await client.get_session_info(...)
     """

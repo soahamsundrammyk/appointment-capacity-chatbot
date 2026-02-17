@@ -14,17 +14,11 @@ logger = logging.getLogger(__name__)
 class KAppointmentAPIClient:
     """Client for calling kappointment-api endpoints.
     
-    All endpoints use basic auth authentication.
+    Authentication:
+    - Most endpoints use basic auth (username/password)
+    - fetch_operations_with_limits uses cookie auth (mkid) - webservice endpoint
     
     Usage:
-        # Manual close
-        client = KAppointmentAPIClient()
-        try:
-            result = await client.get_capacity(...)
-        finally:
-            await client.close()
-        
-        # Context manager (recommended)
         async with KAppointmentAPIClient() as client:
             result = await client.get_capacity(...)
     """
@@ -53,62 +47,61 @@ class KAppointmentAPIClient:
             headers["content-type"] = "application/json"
         return headers
 
-    async def get_capacity(self, department_uuid: str, request: Dict[str, Any]) -> Dict[str, Any]:
-        """Call getCapacity endpoint."""
-        url = f"{self.config.base_url}/department/{department_uuid}/capacity"
+    def _build_url(self, path: str) -> str:
+        """Build full URL from base URL and path."""
+        return f"{self.config.base_url}/{path.lstrip('/')}"
 
+    async def _make_post_request(
+        self, url: str, json_data: Dict[str, Any], endpoint_name: str
+    ) -> Dict[str, Any]:
+        """Make a POST request with basic auth, logging, and error handling."""
         try:
             auth = self._get_auth()
             headers = self._get_headers()
-            logger.debug("Request: %s", json.dumps(request, indent=2, default=str))
+            logger.debug("Request: %s", json.dumps(json_data, indent=2, default=str))
 
-            response = await self._client.post(url, json=request, headers=headers, auth=auth)
+            response = await self._client.post(url, json=json_data, headers=headers, auth=auth)
             response.raise_for_status()
             response_data = response.json()
             logger.debug("Response: %s", json.dumps(response_data, indent=2, default=str))
 
             return response_data
         except httpx.HTTPStatusError as e:
-            logger.error("HTTP error calling getCapacity: %s", e)
+            logger.error("HTTP error calling %s: %s", endpoint_name, e)
             raise
+
+    async def _make_get_request(
+        self, url: str, endpoint_name: str, cookies: Optional[Dict[str, str]] = None
+    ) -> Dict[str, Any]:
+        """Make a GET request with optional cookies, logging, and error handling."""
+        try:
+            headers = self._get_headers(include_content_type=False)
+            logger.debug("GET request to: %s", url)
+
+            response = await self._client.get(url, headers=headers, cookies=cookies)
+            response.raise_for_status()
+            response_data = response.json()
+            logger.debug("Response: %s", json.dumps(response_data, indent=2, default=str))
+
+            return response_data
+        except httpx.HTTPStatusError as e:
+            logger.error("HTTP error calling %s: %s", endpoint_name, e)
+            raise
+
+    async def get_capacity(self, department_uuid: str, request: Dict[str, Any]) -> Dict[str, Any]:
+        """Call getCapacity endpoint."""
+        url = self._build_url(f"department/{department_uuid}/capacity")
+        return await self._make_post_request(url, request, "getCapacity")
 
     async def get_rule_list(self, department_uuid: str, request: Dict[str, Any]) -> Dict[str, Any]:
         """Call rule/list endpoint to get list of rules."""
-        url = f"{self.config.base_url}/department/{department_uuid}/rule/list"
-
-        try:
-            auth = self._get_auth()
-            headers = self._get_headers()
-            logger.debug("Request: %s", json.dumps(request, indent=2, default=str))
-
-            response = await self._client.post(url, json=request, headers=headers, auth=auth)
-            response.raise_for_status()
-            response_data = response.json()
-            logger.debug("Response: %s", json.dumps(response_data, indent=2, default=str))
-
-            return response_data
-        except httpx.HTTPStatusError as e:
-            logger.error("HTTP error calling get_rule_list: %s", e)
-            raise
+        url = self._build_url(f"department/{department_uuid}/rule/list")
+        return await self._make_post_request(url, request, "get_rule_list")
 
     async def get_first_available_slot(self, department_uuid: str, request: Dict[str, Any]) -> Dict[str, Any]:
         """Call getFirstAvailableSlot endpoint."""
-        url = f"{self.config.base_url}/department/{department_uuid}/first-available-slot"
-
-        try:
-            auth = self._get_auth()
-            headers = self._get_headers()
-            logger.debug("Request: %s", json.dumps(request, indent=2, default=str))
-
-            response = await self._client.post(url, json=request, headers=headers, auth=auth)
-            response.raise_for_status()
-            response_data = response.json()
-            logger.debug("Response: %s", json.dumps(response_data, indent=2, default=str))
-
-            return response_data
-        except httpx.HTTPStatusError as e:
-            logger.error("HTTP error calling get_first_available_slot: %s", e)
-            raise
+        url = self._build_url(f"department/{department_uuid}/first-available-slot")
+        return await self._make_post_request(url, request, "get_first_available_slot")
 
     async def fetch_operations_with_limits(self, department_uuid: str, mkid: Optional[str] = None) -> Dict[str, Any]:
         """Call operations-with-limits endpoint to get opcodes with daily limits.
@@ -123,8 +116,6 @@ class KAppointmentAPIClient:
         Returns only opcodes that have daily limits configured (dayLimit != MAX_INT).
         Also includes opcodes mentioned in capacity rules.
         """
-        url = f"{self.config.base_url}/webservice/departments/{department_uuid}/operations-with-limits"
-
         # Fallback to config's mkid if not provided
         if not mkid:
             cookies = self.config.get_cookies()
@@ -137,20 +128,10 @@ class KAppointmentAPIClient:
                 "Please ensure you're logged in with a valid session or set MYKAARMA_MKID in config."
             )
 
-        try:
-            headers = self._get_headers(include_content_type=False)
-            cookies = {"mkid": mkid}
-
-            # Webservice endpoint only accepts mkid cookie, NOT basic auth
-            response = await self._client.get(url, headers=headers, cookies=cookies)
-            response.raise_for_status()
-            response_data = response.json()
-            logger.debug("Response: %s", json.dumps(response_data, indent=2, default=str))
-
-            return response_data
-        except httpx.HTTPStatusError as e:
-            logger.error("HTTP error calling fetch_operations_with_limits: %s", e)
-            raise
+        url = self._build_url(f"webservice/departments/{department_uuid}/operations-with-limits")
+        cookies = {"mkid": mkid}
+        # Webservice endpoint only accepts mkid cookie, NOT basic auth
+        return await self._make_get_request(url, "fetch_operations_with_limits", cookies=cookies)
 
     async def search_operations(self, department_uuid: str, search_token: str, result_size: int = 20) -> Dict[str, Any]:
         """Search for opcodes using the operations endpoint.
@@ -163,7 +144,7 @@ class KAppointmentAPIClient:
         Returns:
             Response with operationList array containing matching operations
         """
-        url = f"{self.config.base_url}/department/{department_uuid}/operations"
+        url = self._build_url(f"department/{department_uuid}/operations")
 
         request_body = {
             "searchToken": search_token,
@@ -172,20 +153,7 @@ class KAppointmentAPIClient:
             "startPosition": 0,
         }
 
-        try:
-            auth = self._get_auth()
-            headers = self._get_headers()
-            logger.debug("Request: %s", json.dumps(request_body, indent=2))
-
-            response = await self._client.post(url, json=request_body, headers=headers, auth=auth)
-            response.raise_for_status()
-            response_data = response.json()
-            logger.debug("Response: %s", json.dumps(response_data, indent=2, default=str))
-
-            return response_data
-        except httpx.HTTPStatusError as e:
-            logger.error("HTTP error calling search_operations: %s", e)
-            raise
+        return await self._make_post_request(url, request_body, "search_operations")
 
     async def close(self):
         """Close the HTTP client."""
