@@ -30,7 +30,8 @@ logger = logging.getLogger(__name__)
 # ============================================================================
 
 # Get mount prefix from environment (for HAProxy routing)
-MOUNT_PREFIX = os.getenv("MOUNT_PREFIX", "")
+# Defaults to /capacity-chatbot for production
+MOUNT_PREFIX = os.getenv("MOUNT_PREFIX", "/capacity-chatbot")
 
 # Create the internal API app with all the routes
 api_app = FastAPI(
@@ -39,7 +40,7 @@ api_app = FastAPI(
     version="1.0.0",
 )
 
-# Create the main app - routes will be mounted under MOUNT_PREFIX if set
+# Create the main app - routes will be mounted under MOUNT_PREFIX
 app = FastAPI(
     title="Capacity Chatbot",
     version="1.0.0",
@@ -55,22 +56,13 @@ for fast_app in [app, api_app]:
         allow_headers=["*"],
     )
 
+# Add root-level health check for Kubernetes probes (works without prefix)
+@app.get("/ok")
+async def root_ok_check():
+    return {"status": "ok"}
+
 # Mount the API under the prefix (e.g., /capacity-chatbot)
-if MOUNT_PREFIX:
-    # Add root-level health check for Kubernetes probes (works without prefix)
-    @app.get("/health")
-    async def root_health_check():
-        return {"status": "healthy"}
-
-    @app.get("/ok")
-    async def root_ok_check():
-        return {"status": "ok"}
-
-    app.mount(MOUNT_PREFIX, api_app)
-    logger.info(f"API mounted under prefix: {MOUNT_PREFIX}")
-else:
-    # No prefix - use api_app directly
-    app = api_app
+app.mount(MOUNT_PREFIX, api_app)
 
 
 # ============================================================================
@@ -91,22 +83,6 @@ class RunRequest(BaseModel):
     input: RunInput
     config: Optional[Dict[str, Any]] = None
     stream_mode: Optional[List[str]] = None
-
-
-# ============================================================================
-# Health Endpoints
-# ============================================================================
-
-@api_app.get("/health")
-async def health_check():
-    """Health check endpoint for Kubernetes probes."""
-    return {"status": "healthy"}
-
-
-@api_app.get("/ok")
-async def ok_check():
-    """Simple OK check."""
-    return {"status": "ok"}
 
 
 # ============================================================================
@@ -144,11 +120,11 @@ def build_graph_input(
     """Build the graph input from state and new messages.
     
     Uses session info from mkid auth (preferred) or falls back to request body.
+    Note: mkid is passed through config, not state.
     """
     # Priority: session_info (from auth) > input_data (request body)
     session = session_info or {}
     updated_context = {
-        "mkid": session.get("mkid") or input_data.get("mkid", ""),
         "department_uuid": input_data.get("department_uuid") or session.get("departmentUuid", ""),
         "dealer_uuid": input_data.get("dealer_uuid") or session.get("dealerUuid", ""),
     }
@@ -158,7 +134,6 @@ def build_graph_input(
     if state.values and state.values.get("messages"):
         # Append to existing conversation
         existing_messages = state.values.get("messages", [])
-        # Merge state with updated context (mkid already set in updated_context from session)
         return {
             **state.values,
             **updated_context,
@@ -181,7 +156,15 @@ async def run_graph_stream(
 ):
     """Run the graph and stream results with real-time tool call events."""
     graph = await get_graph()
-    config = {"configurable": {"thread_id": thread_id}}
+    
+    # Extract mkid from session_info (from auth) or request body
+    mkid = session_info.get("mkid") or input_data.get("mkid", "")
+    config = {
+        "configurable": {
+            "thread_id": thread_id,
+            "mkid": mkid,  # Pass mkid through config, not state
+        }
+    }
 
     try:
         state = await graph.aget_state(config)

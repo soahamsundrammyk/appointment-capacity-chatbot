@@ -44,9 +44,11 @@ async def search_opcode_tool(
 
     try:
         if list_all_with_limits:
-            if not state.mkid:
+            # Get mkid from config (passed from request, not persisted in state)
+            mkid = config.get("configurable", {}).get("mkid") if config else None
+            if not mkid:
                 return "Error: Authentication required. Please ensure you're logged in with a valid session."
-            result = await _fetch_operations_with_limits(state.department_uuid, state.mkid)
+            result = await _fetch_operations_with_limits(state.department_uuid, mkid)
         else:
             result = await _search_opcode(concern_text, state.department_uuid)
         return result.get("formatted_summary", str(result))

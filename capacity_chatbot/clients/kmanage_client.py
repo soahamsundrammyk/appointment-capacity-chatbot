@@ -1,42 +1,13 @@
 """HTTP client for kmanage API endpoints."""
 
 import logging
-import os
-from dataclasses import dataclass
 from typing import Any, Dict, Optional
 
 import httpx
 
+from capacity_chatbot.config.api_config import KManageAPIConfig
+
 logger = logging.getLogger(__name__)
-
-
-@dataclass
-class KManageAPIConfig:
-    """Configuration for KManage API client."""
-    
-    kmanage_api_url: Optional[str] = None
-    service_username: Optional[str] = None
-    service_password: Optional[str] = None
-    timeout: Optional[int] = None
-
-    def __post_init__(self):
-        if self.kmanage_api_url is None:
-            self.kmanage_api_url = os.getenv(
-                "KMANAGE_API_URL", "https://srishti244.mykaarma.dev/manage/v2"
-            ).rstrip("/")
-        
-        if self.service_username is None:
-            self.service_username = os.getenv("APPOINTMENT_CAPACITY_CHATBOT_USERNAME")
-        
-        if self.service_password is None:
-            self.service_password = os.getenv("APPOINTMENT_CAPACITY_CHATBOT_PASSWORD")
-        
-        if self.timeout is None:
-            self.timeout = int(os.getenv("KMANAGE_API_TIMEOUT", "30"))
-
-    def is_configured(self) -> bool:
-        """Check if auth is properly configured."""
-        return bool(self.service_username and self.service_password)
 
 
 class KManageAPIClient:
@@ -86,7 +57,7 @@ class KManageAPIClient:
         try:
             response = await self._client.get(
                 url,
-                auth=(self.config.service_username, self.config.service_password),
+                auth=self.config.get_auth(),
                 headers={"Accept": "application/json"},
             )
 

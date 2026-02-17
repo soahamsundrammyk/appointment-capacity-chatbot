@@ -79,12 +79,13 @@ async def get_checkpointer():
                     "SELECT tablename FROM pg_tables WHERE schemaname = 'public'"
                 )
                 tables = await cur.fetchall()
-                logger.info(f"PostgreSQL tables found: {[t['tablename'] for t in tables]}")
+                table_names = [t['tablename'] for t in tables]
+                logger.info("PostgreSQL tables found: %s", table_names)
 
             logger.info("Using AsyncPostgresSaver with async pool for persistence")
             return checkpointer
         except Exception as e:
-            logger.warning(f"Postgres connection failed: {e}, falling back to MemorySaver")
+            logger.warning("Postgres connection failed: %s, falling back to MemorySaver", e)
 
     logger.info("Using in-memory checkpointer (data lost on restart)")
     return MemorySaver()

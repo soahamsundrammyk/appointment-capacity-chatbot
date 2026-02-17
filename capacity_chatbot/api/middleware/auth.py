@@ -7,7 +7,8 @@ from typing import Any, Dict, Optional
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
-from capacity_chatbot.clients.kmanage_client import KManageAPIClient, KManageAPIConfig
+from capacity_chatbot.clients.kmanage_client import KManageAPIClient
+from capacity_chatbot.config.api_config import KManageAPIConfig
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +21,6 @@ async def get_authenticated_session(
 ) -> Dict[str, Any]:
     """
     To extract and validate mkid from Authorization header.
-
 
     Returns:
         Session info dict with userUuid, dealerUuid, departmentUuid, mkid
@@ -57,6 +57,6 @@ async def get_authenticated_session(
             detail="Invalid or expired mkid. Please refresh your session.",
         )
 
-    user_uuid = session_info.get('userUuid', 'unknown')
+    user_uuid = session_info.get('userUuid')
     logger.info("Authenticated user: %s", user_uuid)
     return session_info

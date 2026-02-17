@@ -4,8 +4,8 @@ from datetime import datetime
 from typing import Optional
 
 
-def get_capacity_agent_system_prompt_minimal(current_time: Optional[str] = None) -> str:
-    """Minimal system prompt for ReAct capacity agent.
+def get_capacity_agent_system_prompt(current_time: Optional[str] = None) -> str:
+    """System prompt for ReAct capacity agent.
 
     Args:
         current_time: Optional current time string for context
