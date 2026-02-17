@@ -2,7 +2,7 @@
 
 import logging
 from difflib import SequenceMatcher
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -49,10 +49,115 @@ def find_closest_match(query: str, candidates: List[str], threshold: float = 0.6
     return None
 
 
+def _validate_entity_names_generic(
+    entity_list: List[Dict[str, Any]],
+    name_extractor: Callable[[Dict[str, Any]], Optional[str]],
+    uuid_extractor: Callable[[Dict[str, Any]], Optional[str]],
+    entity_type_name: str,
+    names_to_validate: List[str],
+    fuzzy_match: bool = True,
+) -> Dict[str, Any]:
+    """Generic entity validation function.
+
+    Args:
+        entity_list: List of entity dicts from cached_data
+        name_extractor: Function to extract name from entity dict
+        uuid_extractor: Function to extract UUID from entity dict
+        entity_type_name: Human-readable entity type name (e.g., "advisor", "transport option")
+        names_to_validate: List of names to validate
+        fuzzy_match: If True, suggest similar names for non-exact matches
+
+    Returns:
+        Dict with valid, invalid, suggestions, and message
+    """
+    if not entity_list:
+        return {
+            "valid": [],
+            "invalid": names_to_validate,
+            "suggestions": {},
+            "message": f"No {entity_type_name} data available in cache.",
+        }
+
+    # Build name -> uuid mapping
+    name_to_uuid = {}
+    all_names = []
+    for entity in entity_list:
+        name = name_extractor(entity)
+        uuid = uuid_extractor(entity)
+        if name and uuid:
+            name_to_uuid[name.lower().strip()] = (name, uuid)
+            all_names.append(name)
+
+    valid = []
+    invalid = []
+    suggestions = {}
+
+    for name in names_to_validate:
+        name_lower = name.lower().strip()
+
+        # Exact match
+        if name_lower in name_to_uuid:
+            original_name, uuid = name_to_uuid[name_lower]
+            valid.append((original_name, uuid))
+            logger.info("Validated %s: '%s' -> UUID: %s", entity_type_name, name, uuid)
+        elif fuzzy_match:
+            # Try fuzzy match
+            match_result = find_closest_match(name, all_names)
+            if match_result:
+                matched_name, score = match_result
+                matched_lower = matched_name.lower().strip()
+                original_name, uuid = name_to_uuid[matched_lower]
+                valid.append((original_name, uuid))
+                logger.info("Fuzzy matched %s: '%s' -> '%s' (score: %.2f)", entity_type_name, name, original_name, score)
+            else:
+                invalid.append(name)
+                # Find partial matches for suggestions
+                partial_matches = [n for n in all_names if name_lower in n.lower() or n.lower() in name_lower]
+                if partial_matches:
+                    suggestions[name] = partial_matches[:3]
+                logger.warning("Invalid %s name: '%s'. No match found.", entity_type_name, name)
+        else:
+            invalid.append(name)
+            logger.warning("Invalid %s name: '%s'", entity_type_name, name)
+
+    # Build message
+    if not invalid:
+        message = "All %d %s(s) validated successfully." % (len(valid), entity_type_name)
+    else:
+        message = "Validated %d %s(s). Could not find: %s." % (len(valid), entity_type_name, ", ".join(invalid))
+        if suggestions:
+            message += " Did you mean: " + "; ".join([
+                "'%s' -> %s" % (k, v) for k, v in suggestions.items()
+            ])
+
+    return {
+        "valid": valid,
+        "invalid": invalid,
+        "suggestions": suggestions,
+        "message": message,
+    }
+
+
+def _extract_advisor_name(advisor: Dict[str, Any]) -> Optional[str]:
+    """Extract advisor name from advisor dict."""
+    first_name = advisor.get("firstName", "") or ""
+    last_name = advisor.get("lastName", "") or ""
+    name = "%s %s" % (first_name, last_name) if first_name or last_name else ""
+    name = name.strip()
+    if not name:
+        name = advisor.get("associateName", "") or advisor.get("name", "")
+    return name if name else None
+
+
+def _extract_advisor_uuid(advisor: Dict[str, Any]) -> Optional[str]:
+    """Extract advisor UUID from advisor dict."""
+    return advisor.get("uuid", "") or advisor.get("dealerAssociateUUID", "") or None
+
+
 def validate_advisor_names(
     advisor_names: List[str],
     cached_data: Dict[str, Any],
-    fuzzy_match: bool = True
+    fuzzy_match: bool = True,
 ) -> Dict[str, Any]:
     """Validate advisor names against cached data.
 
@@ -69,91 +174,41 @@ def validate_advisor_names(
         - message: Human-readable summary
     """
     advisors = cached_data.get("advisors", [])
-    if not advisors:
-        return {
-            "valid": [],
-            "invalid": advisor_names,
-            "suggestions": {},
-            "message": "No advisor data available in cache."
-        }
+    return _validate_entity_names_generic(
+        entity_list=advisors,
+        name_extractor=_extract_advisor_name,
+        uuid_extractor=_extract_advisor_uuid,
+        entity_type_name="advisor",
+        names_to_validate=advisor_names,
+        fuzzy_match=fuzzy_match,
+    )
 
-    # Build name -> uuid mapping
-    # Note: Match how UUIDMapper extracts names: firstName + lastName
-    name_to_uuid = {}
-    all_names = []
-    for advisor in advisors:
-        # Get UUID - check both possible field names
-        uuid = advisor.get("uuid", "") or advisor.get("dealerAssociateUUID", "")
-        if not uuid:
-            continue
 
-        # Get name - use firstName + lastName
-        first_name = advisor.get("firstName", "") or ""
-        last_name = advisor.get("lastName", "") or ""
-        name = f"{first_name} {last_name}".strip()
+def _extract_transport_name(option: Dict[str, Any]) -> Optional[str]:
+    """Extract transport option name from option dict."""
+    return (
+        option.get("customName", "") or
+        option.get("optionName", "") or
+        option.get("name", "") or
+        option.get("transportOptionName", "") or
+        None
+    )
 
-        # Fallback to associateName or name fields if firstName/lastName not available
-        if not name:
-            name = advisor.get("associateName", "") or advisor.get("name", "")
 
-        if name and uuid:
-            name_to_uuid[name.lower().strip()] = (name, uuid)
-            all_names.append(name)
-
-    valid = []
-    invalid = []
-    suggestions = {}
-
-    for name in advisor_names:
-        name_lower = name.lower().strip()
-
-        # Exact match
-        if name_lower in name_to_uuid:
-            original_name, uuid = name_to_uuid[name_lower]
-            valid.append((original_name, uuid))
-            logger.info(f"Validated advisor: '{name}' -> UUID: {uuid[:20]}...")
-        elif fuzzy_match:
-            # Try fuzzy match
-            match_result = find_closest_match(name, all_names)
-            if match_result:
-                matched_name, score = match_result
-                matched_lower = matched_name.lower().strip()
-                original_name, uuid = name_to_uuid[matched_lower]
-                valid.append((original_name, uuid))
-                logger.info(f"Fuzzy matched advisor: '{name}' -> '{original_name}' (score: {score:.2f})")
-            else:
-                invalid.append(name)
-                # Find partial matches for suggestions
-                partial_matches = [n for n in all_names if name_lower in n.lower() or n.lower() in name_lower]
-                if partial_matches:
-                    suggestions[name] = partial_matches[:3]
-                logger.warning(f"Invalid advisor name: '{name}'. No match found.")
-        else:
-            invalid.append(name)
-            logger.warning(f"Invalid advisor name: '{name}'")
-
-    # Build message
-    if not invalid:
-        message = f"All {len(valid)} advisor(s) validated successfully."
-    else:
-        message = f"Validated {len(valid)} advisor(s). Could not find: {', '.join(invalid)}."
-        if suggestions:
-            message += " Did you mean: " + "; ".join([
-                f"'{k}' -> {v}" for k, v in suggestions.items()
-            ])
-
-    return {
-        "valid": valid,
-        "invalid": invalid,
-        "suggestions": suggestions,
-        "message": message
-    }
+def _extract_transport_uuid(option: Dict[str, Any]) -> Optional[str]:
+    """Extract transport option UUID from option dict."""
+    return (
+        option.get("transportOptionUuid", "") or
+        option.get("uuid", "") or
+        option.get("transportOptionUUID", "") or
+        None
+    )
 
 
 def validate_transport_option_names(
     transport_names: List[str],
     cached_data: Dict[str, Any],
-    fuzzy_match: bool = True
+    fuzzy_match: bool = True,
 ) -> Dict[str, Any]:
     """Validate transport option names against cached data.
 
@@ -166,75 +221,30 @@ def validate_transport_option_names(
         Dict with valid, invalid, suggestions, and message
     """
     transport_options = cached_data.get("transport_options", [])
-    if not transport_options:
-        return {
-            "valid": [],
-            "invalid": transport_names,
-            "suggestions": {},
-            "message": "No transport option data available in cache."
-        }
+    return _validate_entity_names_generic(
+        entity_list=transport_options,
+        name_extractor=_extract_transport_name,
+        uuid_extractor=_extract_transport_uuid,
+        entity_type_name="transport option",
+        names_to_validate=transport_names,
+        fuzzy_match=fuzzy_match,
+    )
 
-    # Build name -> uuid mapping
-    # Note: Transport options use customName/optionName, not 'name'
-    name_to_uuid = {}
-    all_names = []
-    for option in transport_options:
-        # Match how UUIDMapper extracts names: customName first, then optionName
-        name = option.get("customName", "") or option.get("optionName", "") or option.get("name", "") or option.get("transportOptionName", "")
-        uuid = option.get("transportOptionUuid", "") or option.get("uuid", "") or option.get("transportOptionUUID", "")
-        if name and uuid:
-            name_to_uuid[name.lower().strip()] = (name, uuid)
-            all_names.append(name)
 
-    valid = []
-    invalid = []
-    suggestions = {}
+def _extract_team_name(team: Dict[str, Any]) -> Optional[str]:
+    """Extract team name from team dict."""
+    return team.get("name", "") or team.get("teamName", "") or None
 
-    for name in transport_names:
-        name_lower = name.lower().strip()
 
-        if name_lower in name_to_uuid:
-            original_name, uuid = name_to_uuid[name_lower]
-            valid.append((original_name, uuid))
-            logger.info(f"Validated transport option: '{name}' -> UUID: {uuid[:20]}...")
-        elif fuzzy_match:
-            match_result = find_closest_match(name, all_names)
-            if match_result:
-                matched_name, score = match_result
-                matched_lower = matched_name.lower().strip()
-                original_name, uuid = name_to_uuid[matched_lower]
-                valid.append((original_name, uuid))
-                logger.info(f"Fuzzy matched transport: '{name}' -> '{original_name}' (score: {score:.2f})")
-            else:
-                invalid.append(name)
-                partial_matches = [n for n in all_names if name_lower in n.lower() or n.lower() in name_lower]
-                if partial_matches:
-                    suggestions[name] = partial_matches[:3]
-                logger.warning(f"Invalid transport option: '{name}'")
-        else:
-            invalid.append(name)
-
-    if not invalid:
-        message = f"All {len(valid)} transport option(s) validated successfully."
-    else:
-        message = f"Validated {len(valid)} transport option(s). Could not find: {', '.join(invalid)}."
-        if suggestions:
-            message += " Did you mean: " + "; ".join([
-                f"'{k}' -> {v}" for k, v in suggestions.items()
-            ])
-
-    return {
-        "valid": valid,
-        "invalid": invalid,
-        "suggestions": suggestions,
-        "message": message
-    }
+def _extract_team_uuid(team: Dict[str, Any]) -> Optional[str]:
+    """Extract team UUID from team dict."""
+    return team.get("uuid", "") or team.get("teamUUID", "") or None
 
 
 def validate_team_names(
     team_names: List[str],
     cached_data: Dict[str, Any],
-    fuzzy_match: bool = True
+    fuzzy_match: bool = True,
 ) -> Dict[str, Any]:
     """Validate team names against cached data.
 
@@ -247,74 +257,21 @@ def validate_team_names(
         Dict with valid, invalid, suggestions, and message
     """
     teams = cached_data.get("teams", [])
-    if not teams:
-        return {
-            "valid": [],
-            "invalid": team_names,
-            "suggestions": {},
-            "message": "No team data available in cache."
-        }
-
-    # Build name -> uuid mapping
-    name_to_uuid = {}
-    all_names = []
-    for team in teams:
-        name = team.get("name", "") or team.get("teamName", "")
-        uuid = team.get("uuid", "") or team.get("teamUUID", "")
-        if name and uuid:
-            name_to_uuid[name.lower().strip()] = (name, uuid)
-            all_names.append(name)
-
-    valid = []
-    invalid = []
-    suggestions = {}
-
-    for name in team_names:
-        name_lower = name.lower().strip()
-
-        if name_lower in name_to_uuid:
-            original_name, uuid = name_to_uuid[name_lower]
-            valid.append((original_name, uuid))
-            logger.info(f"Validated team: '{name}' -> UUID: {uuid[:20]}...")
-        elif fuzzy_match:
-            match_result = find_closest_match(name, all_names)
-            if match_result:
-                matched_name, score = match_result
-                matched_lower = matched_name.lower().strip()
-                original_name, uuid = name_to_uuid[matched_lower]
-                valid.append((original_name, uuid))
-                logger.info(f"Fuzzy matched team: '{name}' -> '{original_name}' (score: {score:.2f})")
-            else:
-                invalid.append(name)
-                partial_matches = [n for n in all_names if name_lower in n.lower() or n.lower() in name_lower]
-                if partial_matches:
-                    suggestions[name] = partial_matches[:3]
-                logger.warning(f"Invalid team name: '{name}'")
-        else:
-            invalid.append(name)
-
-    if not invalid:
-        message = f"All {len(valid)} team(s) validated successfully."
-    else:
-        message = f"Validated {len(valid)} team(s). Could not find: {', '.join(invalid)}."
-        if suggestions:
-            message += " Did you mean: " + "; ".join([
-                f"'{k}' -> {v}" for k, v in suggestions.items()
-            ])
-
-    return {
-        "valid": valid,
-        "invalid": invalid,
-        "suggestions": suggestions,
-        "message": message
-    }
+    return _validate_entity_names_generic(
+        entity_list=teams,
+        name_extractor=_extract_team_name,
+        uuid_extractor=_extract_team_uuid,
+        entity_type_name="team",
+        names_to_validate=team_names,
+        fuzzy_match=fuzzy_match,
+    )
 
 
 def validate_entities(
     entity_type: str,
     entity_names: List[str],
     cached_data: Dict[str, Any],
-    fuzzy_match: bool = True
+    fuzzy_match: bool = True,
 ) -> Dict[str, Any]:
     """Generic entity validation dispatcher.
 
@@ -340,5 +297,5 @@ def validate_entities(
             "valid": [],
             "invalid": entity_names,
             "suggestions": {},
-            "message": f"Unknown entity type: {entity_type}. Valid types: advisor, transport, team"
+            "message": "Unknown entity type: %s. Valid types: advisor, transport, team" % entity_type,
         }

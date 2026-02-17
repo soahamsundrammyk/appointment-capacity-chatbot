@@ -1,7 +1,6 @@
 """First available slot tool for capacity chatbot."""
 
 import logging
-import os
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -10,12 +9,12 @@ from langchain_core.tools import tool
 
 from capacity_chatbot.clients.kappointment_client import KAppointmentAPIClient
 from capacity_chatbot.config.api_config import KAppointmentAPIConfig
-from capacity_chatbot.state import CapacityChatbotState
 from capacity_chatbot.tools.validation import (
     validate_advisor_names,
     validate_team_names,
     validate_transport_option_names,
 )
+from capacity_chatbot.utils.state_extractor import extract_state
 from capacity_chatbot.utils.uuid_mapper import UUIDMapper
 
 logger = logging.getLogger(__name__)
@@ -54,7 +53,7 @@ async def get_first_available_slot_tool(
         opcodes: Opcode UUIDs from search_opcode
         config: RunnableConfig (auto-provided)
     """
-    state, error = _extract_state(config)
+    state, error = extract_state(config)
     if error:
         return error
 
@@ -74,28 +73,8 @@ async def get_first_available_slot_tool(
         )
         return result.get("formatted_summary", str(result))
     except Exception as e:
-        logger.error(f"Error in get_first_available_slot_tool: {e}", exc_info=True)
-        return f"Error finding first available slot: {str(e)}"
-
-
-# =============================================================================
-# State Extraction
-# =============================================================================
-
-
-def _extract_state(config: RunnableConfig) -> Tuple[Optional[CapacityChatbotState], Optional[str]]:
-    """Extract and validate state from config."""
-    if not config:
-        return None, "Error: Config not available"
-
-    state: CapacityChatbotState = config.get("configurable", {}).get("state")
-    if not state:
-        return None, "Error: State not available"
-
-    if not state.department_uuid:
-        return None, "Error: Department UUID is required. Please ensure the UI client provides this value."
-
-    return state, None
+        logger.error("Error in get_first_available_slot_tool: %s", e, exc_info=True)
+        return "Error finding first available slot: %s" % str(e)
 
 
 # =============================================================================
@@ -171,13 +150,7 @@ async def _fetch_first_available_slot(
     # Build request
     request_payload = _build_slot_request(uuids, dates, start_time, end_time, opcodes)
 
-    basic_auth_username = os.getenv("APPOINTMENT_CAPACITY_CHATBOT_USERNAME", "1")
-    basic_auth_password = os.getenv("APPOINTMENT_CAPACITY_CHATBOT_PASSWORD", "1")
-
-    config = KAppointmentAPIConfig(
-        basic_auth_username=basic_auth_username,
-        basic_auth_password=basic_auth_password,
-    )
+    config = KAppointmentAPIConfig()
     async with KAppointmentAPIClient(config=config) as client:
         result = await client.get_first_available_slot(department_uuid, request_payload)
         request_context = {

@@ -2,15 +2,15 @@
 
 import logging
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 from langchain_core.runnables import RunnableConfig
 from langchain_core.tools import tool
 
 from capacity_chatbot.clients.kappointment_client import KAppointmentAPIClient
 from capacity_chatbot.config.api_config import KAppointmentAPIConfig
-from capacity_chatbot.state import CapacityChatbotState
 from capacity_chatbot.enums import FieldDisplayName, FilterField
+from capacity_chatbot.utils.state_extractor import extract_state
 from capacity_chatbot.utils.uuid_mapper import UUIDMapper
 
 logger = logging.getLogger(__name__)
@@ -60,7 +60,7 @@ async def get_rules_tool(
         entity_type: Filter by type: 'team', 'advisor', 'transport', 'opcode'
         config: RunnableConfig (auto-provided)
     """
-    state, error = _extract_state(config)
+    state, error = extract_state(config)
     if error:
         return error
 
@@ -84,23 +84,8 @@ async def get_rules_tool(
 
 
 # =============================================================================
-# State & Input Processing
+# Input Processing
 # =============================================================================
-
-
-def _extract_state(config: RunnableConfig) -> Tuple[Optional[CapacityChatbotState], Optional[str]]:
-    """Extract and validate state from config."""
-    if not config:
-        return None, "Error: Config not available"
-
-    state: CapacityChatbotState = config.get("configurable", {}).get("state")
-    if not state:
-        return None, "Error: State not available"
-
-    if not state.department_uuid:
-        return None, "Error: Department UUID is required."
-
-    return state, None
 
 
 def _get_rule_type_list(rule_type: Optional[str]) -> List[str]:

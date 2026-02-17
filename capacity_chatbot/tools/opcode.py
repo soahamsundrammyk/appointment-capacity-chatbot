@@ -1,15 +1,15 @@
 """Search opcode tool for capacity chatbot."""
 
 import logging
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 from langchain_core.runnables import RunnableConfig
 from langchain_core.tools import tool
 
 from capacity_chatbot.clients.kappointment_client import KAppointmentAPIClient
 from capacity_chatbot.config.api_config import KAppointmentAPIConfig
-from capacity_chatbot.state import CapacityChatbotState
 from capacity_chatbot.enums import DayName, MAX_LIMIT
+from capacity_chatbot.utils.state_extractor import extract_state
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +38,7 @@ async def search_opcode_tool(
         list_all_with_limits: If True, returns all opcodes with daily limits
         config: RunnableConfig (auto-provided)
     """
-    state, error = _extract_state(config)
+    state, error = extract_state(config)
     if error:
         return error
 
@@ -55,26 +55,6 @@ async def search_opcode_tool(
     except Exception as e:
         logger.error(f"Error in search_opcode_tool: {e}", exc_info=True)
         return f"Error: {str(e)}"
-
-
-# =============================================================================
-# State Extraction
-# =============================================================================
-
-
-def _extract_state(config: RunnableConfig) -> Tuple[Optional[CapacityChatbotState], Optional[str]]:
-    """Extract and validate state from config."""
-    if not config:
-        return None, "Error: Config not available"
-
-    state: CapacityChatbotState = config.get("configurable", {}).get("state")
-    if not state:
-        return None, "Error: State not available"
-
-    if not state.department_uuid:
-        return None, "Error: Department UUID is required."
-
-    return state, None
 
 
 # =============================================================================

@@ -9,13 +9,13 @@ from langchain_core.tools import tool
 
 from capacity_chatbot.clients.kappointment_client import KAppointmentAPIClient
 from capacity_chatbot.config.api_config import KAppointmentAPIConfig
-from capacity_chatbot.state import CapacityChatbotState
 from capacity_chatbot.tools.validation import (
     validate_advisor_names,
     validate_team_names,
     validate_transport_option_names,
 )
 from capacity_chatbot.utils.date_parser import parse_date_query, parse_time_query
+from capacity_chatbot.utils.state_extractor import extract_state
 from capacity_chatbot.enums import (
     ApplicabilityRuleField,
     CapacityType,
@@ -92,7 +92,7 @@ async def get_capacity_tool(
         Human-readable formatted summary with capacity counts
     """
     # Extract state and validate
-    state, error = _extract_state(config)
+    state, error = extract_state(config)
     if error:
         return error
 
@@ -154,23 +154,8 @@ async def get_capacity_tool(
 
 
 # =============================================================================
-# State & Validation Helpers
+# Validation Helpers
 # =============================================================================
-
-
-def _extract_state(config: RunnableConfig) -> Tuple[Optional[CapacityChatbotState], Optional[str]]:
-    """Extract and validate state from config."""
-    if not config:
-        return None, "Error: Config not available"
-
-    state: CapacityChatbotState = config.get("configurable", {}).get("state")
-    if not state:
-        return None, "Error: State not available"
-
-    if not state.department_uuid:
-        return None, "Error: Department UUID is required. Please ensure the UI client provides this value."
-
-    return state, None
 
 
 def _resolve_all_keyword(
