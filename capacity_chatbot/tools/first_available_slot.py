@@ -231,7 +231,7 @@ def _format_slot_response(
     is_no_preference = len(requested_advisors) == 0
 
     # Extract result details
-    advisor_name = _get_entity_name(result, "dealerAssociate", uuid_mapper)
+    advisor_name = _get_advisor_name(result, uuid_mapper)
     transport_name = _get_transport_name(result, uuid_mapper)
     team_name = _get_team_name(result, uuid_mapper)
 
@@ -282,16 +282,14 @@ def _format_slot_response(
     return "\n".join(parts)
 
 
-def _get_entity_name(
-    result: dict[str, Any], key_prefix: str, uuid_mapper: UUIDMapper | None
-) -> str:
-    """Get entity name from result, using UUID mapper if available."""
-    uuid = result.get(f"{key_prefix}Uuid")
+def _get_advisor_name(result: dict[str, Any], uuid_mapper: UUIDMapper | None) -> str:
+    """Get advisor name from result, using UUID mapper if available."""
+    uuid = result.get("dealerAssociateUuid")
     if uuid and uuid_mapper:
         name = uuid_mapper.get_advisor_name(uuid)
-        if name:
+        if name and name != uuid:
             return name
-    return result.get(f"{key_prefix}Name", "Available Advisor")
+    return result.get("dealerAssociateName", "Available Advisor")
 
 
 def _get_transport_name(result: dict[str, Any], uuid_mapper: UUIDMapper | None) -> str | None:
@@ -299,7 +297,7 @@ def _get_transport_name(result: dict[str, Any], uuid_mapper: UUIDMapper | None) 
     uuid = result.get("transportOptionUuid")
     if uuid and uuid_mapper:
         name = uuid_mapper.get_transport_name(uuid)
-        if name:
+        if name and name != uuid:
             return name
     return result.get("transportOptionName")
 
@@ -308,8 +306,10 @@ def _get_team_name(result: dict[str, Any], uuid_mapper: UUIDMapper | None) -> st
     """Get team name from result."""
     uuid = result.get("teamUuid")
     if uuid and uuid_mapper:
-        return uuid_mapper.get_team_name(uuid)
-    return None
+        name = uuid_mapper.get_team_name(uuid)
+        if name and name != uuid:
+            return name
+    return result.get("teamName")
 
 
 def _build_search_criteria(

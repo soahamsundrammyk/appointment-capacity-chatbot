@@ -1,7 +1,7 @@
 """Entity tools for listing and validating entities from cached data."""
 
 import logging
-from typing import Any
+from typing import Any, Callable
 
 from langchain_core.runnables import RunnableConfig
 from langchain_core.tools import tool
@@ -9,6 +9,7 @@ from langchain_core.tools import tool
 from capacity_chatbot.tools.validation import (
     _extract_advisor_name,
     _extract_transport_name,
+    validate_entities,
 )
 from capacity_chatbot.utils.state_extractor import extract_state
 from capacity_chatbot.utils.uuid_mapper import UUIDMapper
@@ -33,7 +34,40 @@ def _get_cached_data(config: RunnableConfig) -> dict[str, Any] | None:
         ensure_cached_data(state)
         cached_data = state.cached_data or {}
 
-    return cached_data if cached_data else None
+    return cached_data or None
+
+
+def _format_simple_entity_list(
+    entities: list[dict[str, Any]],
+    name_extractor: Callable[[dict[str, Any]], str | None],
+    entity_type_name: str,
+    not_found_msg: str,
+) -> str:
+    """Format a simple list of entities (transport options or advisors).
+
+    Args:
+        entities: List of entity dictionaries from cached data
+        name_extractor: Function to extract name from entity dict
+        entity_type_name: Human-readable entity type name for output
+        not_found_msg: Message to return if no entities found
+
+    Returns:
+        Formatted string with entity list
+    """
+    if not entities:
+        return not_found_msg
+
+    names = []
+    for entity in entities:
+        name = name_extractor(entity)
+        if name:
+            names.append(name)
+
+    if not names:
+        return not_found_msg
+
+    name_list = "\n".join("- %s" % n for n in names)
+    return "Available %s (%d):\n%s" % (entity_type_name, len(names), name_list)
 
 
 @tool
@@ -64,37 +98,15 @@ async def get_available_entities(
 
     if entity_type_lower in ["transport_options", "transport", "transportation"]:
         options = cached_data.get("transport_options", [])
-        if not options:
-            return "No transport options found."
-
-        names = []
-        for option in options:
-            name = _extract_transport_name(option)
-            if name:
-                names.append(name)
-
-        if not names:
-            return "No transport options found."
-
-        name_list = "\n".join("- %s" % n for n in names)
-        return "Available transport options (%d):\n%s" % (len(names), name_list)
+        return _format_simple_entity_list(
+            options, _extract_transport_name, "transport options", "No transport options found."
+        )
 
     elif entity_type_lower in ["advisors", "advisor", "service_advisors"]:
         advisors = cached_data.get("advisors", [])
-        if not advisors:
-            return "No advisors found."
-
-        names = []
-        for advisor in advisors:
-            name = _extract_advisor_name(advisor)
-            if name:
-                names.append(name)
-
-        if not names:
-            return "No advisors found."
-
-        name_list = "\n".join("- %s" % n for n in names)
-        return "Available advisors (%d):\n%s" % (len(names), name_list)
+        return _format_simple_entity_list(
+            advisors, _extract_advisor_name, "advisors", "No advisors found."
+        )
 
     elif entity_type_lower in ["teams", "team"]:
         teams = cached_data.get("teams", [])
@@ -108,6 +120,7 @@ async def get_available_entities(
             name = team.get("name", "Unknown")
             advisor_uuids = team.get("dealerAssociateUuids", [])
             advisor_names = [uuid_mapper.get_advisor_name(u) for u in advisor_uuids]
+            # Filter out cases where UUID wasn't mapped (get_advisor_name returns UUID if not found)
             advisor_names = [n for n in advisor_names if n and n not in advisor_uuids]
 
             if advisor_names:
@@ -155,8 +168,6 @@ async def confirm_entity(
     names_list = [name.strip() for name in entity_names.split(",") if name.strip()]
     if not names_list:
         return "Please provide at least one entity name."
-
-    from capacity_chatbot.tools.validation import validate_entities
 
     result = validate_entities(entity_type, names_list, cached_data)
 

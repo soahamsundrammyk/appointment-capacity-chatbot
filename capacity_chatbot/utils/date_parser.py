@@ -328,6 +328,45 @@ def format_timing(applicability: dict[str, Any]) -> str:
     if not applicability:
         return ""
 
+    field = applicability.get("field", "")
+    date_list = applicability.get("dateList", [])
+    day_time_list = applicability.get("dayTimeList", [])
+
+    if field == "DATE" and date_list:
+        dates = [format_date(d) for d in date_list[:MAX_DATES_DISPLAY]]
+        return "on %s" % ", ".join(dates)
+
+    elif field in ["DAY", "DAY_AND_TIME"]:
+        days = [e.get("day", "").capitalize() for e in (day_time_list or []) if e.get("day")]
+        if days:
+            all_days = {
+                "Sunday",
+                "Monday",
+                "Tuesday",
+                "Wednesday",
+                "Thursday",
+                "Friday",
+                "Saturday",
+            }
+            missing = all_days - set(days)
+            if len(missing) == 1:
+                return "(except %ss)" % list(missing)[0]
+            elif len(missing) > 0 and len(missing) < 3:
+                return "(except %s)" % ", ".join(missing)
+            return "on %s" % ", ".join(days[:MAX_DAYS_DISPLAY])
+
+    elif field == "DATE_AND_TIME" and date_list:
+        date_str = format_date(date_list[0])
+        times = []
+        for entry in day_time_list or []:
+            for slot in entry.get("timeSlots", [])[:MAX_TIME_SLOTS_DISPLAY]:
+                times.append(format_time(slot))
+        if times:
+            return "on %s at %s" % (date_str, ", ".join(times[:MAX_TIME_SLOTS_DISPLAY]))
+        return "on %s" % date_str
+
+    return ""
+
 
 def parse_dates(dates: list[str] | None, reference_date: date | None = None) -> list[str]:
     """Parse dates from natural language or YYYY-MM-DD format.
@@ -375,42 +414,3 @@ def parse_dates(dates: list[str] | None, reference_date: date | None = None) -> 
         return [default_date]
 
     return sorted(list(set(parsed)))
-
-    field = applicability.get("field", "")
-    date_list = applicability.get("dateList", [])
-    day_time_list = applicability.get("dayTimeList", [])
-
-    if field == "DATE" and date_list:
-        dates = [format_date(d) for d in date_list[:MAX_DATES_DISPLAY]]
-        return "on %s" % ", ".join(dates)
-
-    elif field in ["DAY", "DAY_AND_TIME"]:
-        days = [e.get("day", "").capitalize() for e in (day_time_list or []) if e.get("day")]
-        if days:
-            all_days = {
-                "Sunday",
-                "Monday",
-                "Tuesday",
-                "Wednesday",
-                "Thursday",
-                "Friday",
-                "Saturday",
-            }
-            missing = all_days - set(days)
-            if len(missing) == 1:
-                return "(except %ss)" % list(missing)[0]
-            elif len(missing) > 0 and len(missing) < 3:
-                return "(except %s)" % ", ".join(missing)
-            return "on %s" % ", ".join(days[:MAX_DAYS_DISPLAY])
-
-    elif field == "DATE_AND_TIME" and date_list:
-        date_str = format_date(date_list[0])
-        times = []
-        for entry in day_time_list or []:
-            for slot in entry.get("timeSlots", [])[:MAX_TIME_SLOTS_DISPLAY]:
-                times.append(format_time(slot))
-        if times:
-            return "on %s at %s" % (date_str, ", ".join(times[:MAX_TIME_SLOTS_DISPLAY]))
-        return "on %s" % date_str
-
-    return ""
