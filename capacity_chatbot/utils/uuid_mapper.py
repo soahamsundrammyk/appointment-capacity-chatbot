@@ -154,3 +154,32 @@ class UUIDMapper:
                 return uuid
         return None
 
+
+def resolve_uuids_by_field(field: str, values: List[Any], uuid_mapper: "UUIDMapper") -> List[Any]:  # type: ignore
+    """Resolve UUIDs to names based on field type.
+    
+    Maps API field names to entity types and uses UUIDMapper to convert UUIDs to names.
+    
+    Args:
+        field: API field name (e.g., "DEALER_ASSOCIATE_UUID", "TEAM_UUID", "TRANSPORT_OPTION_UUID")
+        values: List of UUIDs or values to resolve
+        uuid_mapper: UUIDMapper instance
+        
+    Returns:
+        List of names (or original values if field doesn't match known types)
+        
+    Examples:
+        resolve_uuids_by_field("DEALER_ASSOCIATE_UUID", ["uuid1", "uuid2"], mapper)
+        # Returns: ["John Doe", "Jane Smith"]
+        
+        resolve_uuids_by_field("TEAM_UUID", ["team-uuid"], mapper)
+        # Returns: ["Express Shop"]
+    """
+    if field == "DEALER_ASSOCIATE_UUID":
+        return uuid_mapper.replace_uuids_in_list(values, "advisor")
+    elif field == "TEAM_UUID":
+        return uuid_mapper.replace_uuids_in_list(values, "team")
+    elif field == "TRANSPORT_OPTION_UUID":
+        return uuid_mapper.replace_uuids_in_list(values, "transport")
+    return values
+

@@ -1,8 +1,8 @@
-"""Date parsing utilities for natural language date expressions."""
+"""Date parsing and formatting utilities for natural language date expressions and API responses."""
 
 import re
-from datetime import date, timedelta
-from typing import List, Optional
+from datetime import date, datetime, timedelta
+from typing import Any, Dict, List, Optional
 
 # Day name to weekday number (Monday=0, Sunday=6)
 DAY_NAME_TO_NUM = {
@@ -217,3 +217,111 @@ def parse_time_query(query: str) -> Optional[str]:
             return f"{hour:02d}:{minute:02d}"
 
     return None
+
+
+def format_date(date_str: str) -> str:
+    """Format date string from API format (YYYY-MM-DD) to human-readable format.
+    
+    Args:
+        date_str: Date string in YYYY-MM-DD format
+        
+    Returns:
+        Formatted date string like "January 15, 2024", or original string if parsing fails
+        
+    Examples:
+        format_date("2024-01-15") -> "January 15, 2024"
+        format_date("invalid") -> "invalid"
+    """
+    try:
+        return datetime.strptime(date_str, "%Y-%m-%d").strftime("%B %d, %Y")
+    except Exception:
+        return date_str
+
+
+def format_time(time_str: str) -> str:
+    """Format time string from API format (HH:MM or HH:MM:SS) to human-readable 12-hour format.
+    
+    Args:
+        time_str: Time string in HH:MM or HH:MM:SS format (24-hour)
+        
+    Returns:
+        Formatted time string like "9:00 AM", or original string if parsing fails
+        
+    Examples:
+        format_time("09:00:00") -> "9:00 AM"
+        format_time("14:30") -> "2:30 PM"
+        format_time("invalid") -> "invalid"
+    """
+    try:
+        fmt = "%H:%M:%S" if len(time_str) == 8 else "%H:%M"
+        return datetime.strptime(time_str, fmt).strftime("%I:%M %p").lstrip("0")
+    except Exception:
+        return time_str
+
+
+def format_timing(applicability: Dict[str, Any]) -> str:
+    """Format timing info from applicability clause to human-readable string.
+    
+    Handles different applicability field types:
+    - DATE: Specific dates
+    - DAY: Days of week
+    - DAY_AND_TIME: Days with time slots
+    - DATE_AND_TIME: Specific dates with time slots
+    
+    Args:
+        applicability: Applicability clause dictionary with:
+            - field: Field type (DATE, DAY, DAY_AND_TIME, DATE_AND_TIME)
+            - dateList: List of date strings (YYYY-MM-DD)
+            - dayTimeList: List of day/time entries
+            
+    Returns:
+        Human-readable timing string, or empty string if no timing info
+        
+    Examples:
+        format_timing({"field": "DATE", "dateList": ["2024-01-15"]})
+        # Returns: "on January 15, 2024"
+        
+        format_timing({"field": "DAY", "dayTimeList": [{"day": "monday"}, {"day": "wednesday"}]})
+        # Returns: "on Monday, Wednesday"
+        
+        format_timing({"field": "DATE_AND_TIME", "dateList": ["2024-01-15"], 
+                       "dayTimeList": [{"timeSlots": ["09:00:00", "14:00:00"]}]})
+        # Returns: "on January 15, 2024 at 9:00 AM, 2:00 PM"
+    """
+    if not applicability:
+        return ""
+
+    field = applicability.get("field", "")
+    date_list = applicability.get("dateList", [])
+    day_time_list = applicability.get("dayTimeList", [])
+
+    MAX_DATES_DISPLAY = 2
+    MAX_TIME_SLOTS_DISPLAY = 2
+    MAX_DAYS_DISPLAY = 3
+
+    if field == "DATE" and date_list:
+        dates = [format_date(d) for d in date_list[:MAX_DATES_DISPLAY]]
+        return "on %s" % ", ".join(dates)
+
+    elif field in ["DAY", "DAY_AND_TIME"]:
+        days = [e.get("day", "").capitalize() for e in (day_time_list or []) if e.get("day")]
+        if days:
+            all_days = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"}
+            missing = all_days - set(days)
+            if len(missing) == 1:
+                return "(except %ss)" % list(missing)[0]
+            elif len(missing) > 0 and len(missing) < 3:
+                return "(except %s)" % ", ".join(missing)
+            return "on %s" % ", ".join(days[:MAX_DAYS_DISPLAY])
+
+    elif field == "DATE_AND_TIME" and date_list:
+        date_str = format_date(date_list[0])
+        times = []
+        for entry in (day_time_list or []):
+            for slot in entry.get("timeSlots", [])[:MAX_TIME_SLOTS_DISPLAY]:
+                times.append(format_time(slot))
+        if times:
+            return "on %s at %s" % (date_str, ", ".join(times[:MAX_TIME_SLOTS_DISPLAY]))
+        return "on %s" % date_str
+
+    return ""

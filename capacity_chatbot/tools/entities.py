@@ -1,16 +1,38 @@
 """Entity tools for listing and validating entities from cached data."""
 
 import logging
-from typing import Optional
+from typing import Any, Dict, Optional
 
 from langchain_core.tools import tool
 from langchain_core.runnables import RunnableConfig
 
-from capacity_chatbot.enums import EntityType
-from capacity_chatbot.state import CapacityChatbotState
+from capacity_chatbot.tools.validation import (
+    _extract_advisor_name,
+    _extract_transport_name,
+)
+from capacity_chatbot.utils.state_extractor import extract_state
 from capacity_chatbot.utils.uuid_mapper import UUIDMapper
 
 logger = logging.getLogger(__name__)
+
+
+def _get_cached_data(config: RunnableConfig) -> Optional[Dict[str, Any]]:
+    """Get cached data from state, with fallback to test data if needed.
+    
+    Returns:
+        Cached data dict or None if unavailable
+    """
+    state, error = extract_state(config)
+    if error:
+        return None
+    
+    cached_data = state.cached_data or {}
+    if not cached_data:
+        from capacity_chatbot.utils.test_data import ensure_cached_data
+        ensure_cached_data(state)
+        cached_data = state.cached_data or {}
+    
+    return cached_data if cached_data else None
 
 
 @tool
@@ -33,20 +55,7 @@ async def get_available_entities(
     Returns:
         Formatted list of available entities with names
     """
-    if not config:
-        return "Error: Config not available"
-    
-    state: CapacityChatbotState = config.get("configurable", {}).get("state")
-    if not state:
-        return "Error: State not available"
-    
-    cached_data = state.cached_data or {}
-    
-    if not cached_data:
-        from capacity_chatbot.utils.test_data import ensure_cached_data
-        ensure_cached_data(state)
-        cached_data = state.cached_data or {}
-    
+    cached_data = _get_cached_data(config)
     if not cached_data:
         return "No cached data available."
     
@@ -57,8 +66,17 @@ async def get_available_entities(
         if not options:
             return "No transport options found."
         
-        names = [t.get("customName") or t.get("optionName", "") for t in options if t.get("customName") or t.get("optionName")]
-        return f"Available transport options ({len(names)}):\n" + "\n".join(f"- {n}" for n in names)
+        names = []
+        for option in options:
+            name = _extract_transport_name(option)
+            if name:
+                names.append(name)
+        
+        if not names:
+            return "No transport options found."
+        
+        name_list = "\n".join("- %s" % n for n in names)
+        return "Available transport options (%d):\n%s" % (len(names), name_list)
     
     elif entity_type_lower in ["advisors", "advisor", "service_advisors"]:
         advisors = cached_data.get("advisors", [])
@@ -66,17 +84,16 @@ async def get_available_entities(
             return "No advisors found."
         
         names = []
-        for a in advisors:
-            first_name = a.get("firstName", "")
-            last_name = a.get("lastName", "")
-            name = f"{first_name} {last_name}".strip()
-            if not name:
-                # Fallback to associateName or name fields if firstName/lastName not available
-                name = a.get("associateName", "") or a.get("name", "")
+        for advisor in advisors:
+            name = _extract_advisor_name(advisor)
             if name:
                 names.append(name)
         
-        return f"Available advisors ({len(names)}):\n" + "\n".join(f"- {n}" for n in names)
+        if not names:
+            return "No advisors found."
+        
+        name_list = "\n".join("- %s" % n for n in names)
+        return "Available advisors (%d):\n%s" % (len(names), name_list)
     
     elif entity_type_lower in ["teams", "team"]:
         teams = cached_data.get("teams", [])
@@ -93,14 +110,15 @@ async def get_available_entities(
             advisor_names = [n for n in advisor_names if n and n not in advisor_uuids]
             
             if advisor_names:
-                details.append(f"- {name}: {', '.join(advisor_names)}")
+                details.append("- %s: %s" % (name, ", ".join(advisor_names)))
             else:
-                details.append(f"- {name}")
+                details.append("- %s" % name)
         
-        return f"Available teams ({len(teams)}):\n" + "\n".join(details)
+        details_list = "\n".join(details)
+        return "Available teams (%d):\n%s" % (len(teams), details_list)
     
     else:
-        return f"Invalid entity type: '{entity_type}'. Use 'transport_options', 'advisors', or 'teams'."
+        return "Invalid entity type: '%s'. Use 'transport_options', 'advisors', or 'teams'." % entity_type
 
 
 @tool
@@ -126,20 +144,7 @@ async def confirm_entity(
     Returns:
         Validation result with confirmed names and suggestions for typos
     """
-    if not config:
-        return "Error: Config not available"
-    
-    state: CapacityChatbotState = config.get("configurable", {}).get("state")
-    if not state:
-        return "Error: State not available"
-    
-    cached_data = state.cached_data or {}
-    
-    if not cached_data:
-        from capacity_chatbot.utils.test_data import ensure_cached_data
-        ensure_cached_data(state)
-        cached_data = state.cached_data or {}
-    
+    cached_data = _get_cached_data(config)
     if not cached_data:
         return "No cached data available."
     

@@ -16,6 +16,7 @@ from capacity_chatbot.tools.validation import (
 )
 from capacity_chatbot.utils.state_extractor import extract_state
 from capacity_chatbot.utils.uuid_mapper import UUIDMapper
+from capacity_chatbot.model.requests import EntityFilterRequest
 
 logger = logging.getLogger(__name__)
 
@@ -59,16 +60,21 @@ async def get_first_available_slot_tool(
 
     cached_data = state.cached_data or {}
 
+    # Create request model
+    request = EntityFilterRequest(
+        advisor_names=advisor_names,
+        team_names=team_names,
+        transport_option_names=transport_option_names,
+        dates=dates,
+        start_time=start_time,
+        end_time=end_time,
+        opcodes=opcodes,
+    )
+
     try:
         result = await _fetch_first_available_slot(
             department_uuid=state.department_uuid,
-            advisor_names=advisor_names,
-            team_names=team_names,
-            transport_option_names=transport_option_names,
-            dates=dates,
-            start_time=start_time,
-            end_time=end_time,
-            opcodes=opcodes,
+            request=request,
             cached_data=cached_data,
         )
         return result.get("formatted_summary", str(result))
@@ -123,34 +129,32 @@ def _validate_entities(
 
 async def _fetch_first_available_slot(
     department_uuid: str,
-    advisor_names: Optional[List[str]],
-    team_names: Optional[List[str]],
-    transport_option_names: Optional[List[str]],
-    dates: Optional[List[str]],
-    start_time: Optional[str],
-    end_time: Optional[str],
-    opcodes: Optional[List[str]],
+    request: EntityFilterRequest,
     cached_data: Dict[str, Any],
 ) -> Dict[str, Any]:
     """Fetch first available slot from API."""
     uuid_mapper = UUIDMapper(cached_data) if cached_data else None
 
     # Validate entities
-    uuids, error = _validate_entities(advisor_names, team_names, transport_option_names, cached_data)
+    uuids, error = _validate_entities(
+        request.advisor_names, request.team_names, request.transport_option_names, cached_data
+    )
     if error:
         return {"formatted_summary": error, "raw_data": None}
 
     # Build request
-    request_payload = _build_slot_request(uuids, dates, start_time, end_time, opcodes)
+    request_payload = _build_slot_request(
+        uuids, request.dates, request.start_time, request.end_time, request.opcodes
+    )
 
     config = KAppointmentAPIConfig()
     async with KAppointmentAPIClient(config=config) as client:
         result = await client.get_first_available_slot(department_uuid, request_payload)
         request_context = {
-            "transport_option_names": transport_option_names or [],
-            "advisor_names": advisor_names or [],
-            "team_names": team_names or [],
-            "opcodes": opcodes or [],
+            "transport_option_names": request.transport_option_names or [],
+            "advisor_names": request.advisor_names or [],
+            "team_names": request.team_names or [],
+            "opcodes": request.opcodes or [],
         }
         formatted = _format_slot_response(result, uuid_mapper, request_context)
         return {"formatted_summary": formatted, "raw_data": result}

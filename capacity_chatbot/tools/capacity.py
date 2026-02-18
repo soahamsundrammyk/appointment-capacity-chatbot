@@ -2,7 +2,7 @@
 
 import logging
 from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from langchain_core.runnables import RunnableConfig
 from langchain_core.tools import tool
@@ -27,17 +27,11 @@ from capacity_chatbot.enums import (
     SourceType,
 )
 from capacity_chatbot.utils.uuid_mapper import UUIDMapper
+from capacity_chatbot.model.requests import EntityFilterRequest, GetCapacityRequest
 
 logger = logging.getLogger(__name__)
-
-# Constants
 UNLIMITED_CAPACITY = 1e308  # Represents unlimited capacity in API responses
-
-
-# =============================================================================
-# Main Tool
-# =============================================================================
-
+MIN_YEAR = 2024  # Minimum year for date validation
 
 @tool
 async def get_capacity_tool(
@@ -108,50 +102,27 @@ async def get_capacity_tool(
         ensure_cached_data(state)
         cached_data = state.cached_data or {}
 
-    # Resolve "ALL" keywords to actual entity names
-    advisor_names, err = _resolve_all_keyword(advisor_names, cached_data, "advisors")
-    if err:
-        return err
-    team_names, err = _resolve_all_keyword(team_names, cached_data, "teams")
-    if err:
-        return err
-    transport_option_names, err = _resolve_all_keyword(transport_option_names, cached_data, "transport_options")
-    if err:
-        return err
-
-    has_entity_filters = bool(transport_option_names or advisor_names or team_names or opcodes)
-
-    # Validate entity names and get UUIDs
-    uuids, validation_error = _validate_entities(
-        advisor_names, team_names, transport_option_names, cached_data
-    )
-    if validation_error:
-        return validation_error
-
-    # Parse dates with fallback to tomorrow
-    parsed_dates = _parse_dates(dates)
-
-    # Build entity map for API
-    entity_map, field_combinations = _build_entity_map(
-        uuids, opcodes, _parse_source(source)
+    # Create request model
+    request = EntityFilterRequest(
+        dates=dates,
+        transport_option_names=transport_option_names,
+        advisor_names=advisor_names,
+        team_names=team_names,
+        opcodes=opcodes,
+        source=source,
+        start_time=start_time,
     )
 
-    # Parse time filter
-    parsed_time = None
-    if start_time:
-        parsed_time = parse_time_query(start_time)
-        if not parsed_time:
-            return "Error: Could not parse time '%s'. Use '9 AM', '14:00', or 'morning'." % start_time
+    # Prepare request (resolve ALL, validate, parse)
+    prepared, error = _prepare_capacity_request(request, cached_data)
+    if error:
+        return error
 
     try:
         result = await _fetch_capacity(
             department_uuid=state.department_uuid,
-            dates=parsed_dates,
-            entity_map=entity_map,
-            field_combinations=field_combinations,
+            request=prepared,
             cached_data=cached_data,
-            has_entity_filters=has_entity_filters,
-            start_time=parsed_time,
         )
         return result.get("formatted_summary", str(result))
     except Exception as e:
@@ -159,54 +130,133 @@ async def get_capacity_tool(
         return "Error fetching capacity: %s" % str(e)
 
 
-# =============================================================================
-# Validation Helpers
-# =============================================================================
-
-
-def _resolve_all_keyword(
-    names: Optional[List[str]],
+def _prepare_capacity_request(
+    request: EntityFilterRequest,
     cached_data: Dict[str, Any],
-    entity_key: str,
+) -> Tuple[Optional[GetCapacityRequest], Optional[str]]:
+    """Prepare and validate capacity request.
+    
+    Returns:
+        Tuple of (GetCapacityRequest, error_string)
+    """
+    # Resolve "ALL" keywords
+    advisor_names, team_names, transport_option_names, err = _resolve_all_keywords(
+        request.advisor_names,
+        request.team_names,
+        request.transport_option_names,
+        cached_data,
+    )
+    if err:
+        return None, err
+
+    has_entity_filters = bool(transport_option_names or advisor_names or team_names or request.opcodes)
+
+    # Validate entity names and get UUIDs
+    uuids, validation_error = _validate_entities(
+        advisor_names, team_names, transport_option_names, cached_data
+    )
+    if validation_error:
+        return None, validation_error
+
+    # Parse dates with fallback to tomorrow
+    parsed_dates = _parse_dates(request.dates)
+
+    # Parse source
+    parsed_source = _parse_source(request.source)
+
+    # Build entity map for API
+    entity_map, field_combinations = _build_entity_map(
+        uuids, request.opcodes, parsed_source
+    )
+
+    # Parse time filter
+    parsed_time = None
+    if request.start_time:
+        parsed_time = parse_time_query(request.start_time)
+        if not parsed_time:
+            return None, "Error: Could not parse time '%s'. Use '9 AM', '14:00', or 'morning'." % request.start_time
+
+    return GetCapacityRequest(
+        dates=parsed_dates,
+        entity_map=entity_map,
+        field_combinations=field_combinations,
+        has_entity_filters=has_entity_filters,
+        start_time=parsed_time,
+    ), None
+
+
+
+def _resolve_single_entity_all_keyword(
+    names: Optional[List[str]],
+    entity_list: List[Dict[str, Any]],
+    name_extractor: Callable[[Dict[str, Any]], Optional[str]],
+    entity_type: str,
 ) -> Tuple[Optional[List[str]], Optional[str]]:
-    """Resolve ["ALL"] to actual entity names from cached data."""
+    """Resolve a single "ALL" keyword to actual entity names.
+    
+    Returns:
+        Tuple of (resolved_names, error_string)
+    """
     if not names or len(names) != 1 or names[0].upper() != "ALL":
         return names, None
+    
+    resolved = []
+    for entity in entity_list:
+        name = name_extractor(entity)
+        if name:
+            resolved.append(name)
+    
+    if not resolved:
+        return None, "No %s found in cached data. Cannot resolve 'ALL'." % entity_type
+    
+    return resolved, None
 
-    if entity_key == "advisors":
+
+def _resolve_all_keywords(
+    advisor_names: Optional[List[str]],
+    team_names: Optional[List[str]],
+    transport_option_names: Optional[List[str]],
+    cached_data: Dict[str, Any],
+) -> Tuple[Optional[List[str]], Optional[List[str]], Optional[List[str]], Optional[str]]:
+    """Resolve all "ALL" keywords to actual entity names from cached data.
+    
+    Returns:
+        Tuple of (resolved_advisor_names, resolved_team_names, resolved_transport_names, error)
+    """
+    errors = []
+    
+    # Resolve advisors
+    if advisor_names and len(advisor_names) == 1 and advisor_names[0].upper() == "ALL":
         advisors = cached_data.get("advisors", [])
-        resolved = []
-        for advisor in advisors:
-            name = _extract_advisor_name(advisor)
-            if name:
-                resolved.append(name)
-        if not resolved:
-            return None, "No advisors found in cached data. Cannot resolve 'ALL'."
-        return resolved, None
-
-    elif entity_key == "teams":
+        resolved, err = _resolve_single_entity_all_keyword(
+            advisor_names, advisors, _extract_advisor_name, "advisors"
+        )
+        if err:
+            errors.append(err)
+        advisor_names = resolved
+    
+    # Resolve teams
+    if team_names and len(team_names) == 1 and team_names[0].upper() == "ALL":
         teams = cached_data.get("teams", [])
-        resolved = []
-        for team in teams:
-            name = _extract_team_name(team)
-            if name:
-                resolved.append(name)
-        if not resolved:
-            return None, "No teams found in cached data. Cannot resolve 'ALL'."
-        return resolved, None
-
-    elif entity_key == "transport_options":
+        resolved, err = _resolve_single_entity_all_keyword(
+            team_names, teams, _extract_team_name, "teams"
+        )
+        if err:
+            errors.append(err)
+        team_names = resolved
+    
+    # Resolve transport options
+    if transport_option_names and len(transport_option_names) == 1 and transport_option_names[0].upper() == "ALL":
         options = cached_data.get("transport_options", [])
-        resolved = []
-        for option in options:
-            name = _extract_transport_name(option)
-            if name:
-                resolved.append(name)
-        if not resolved:
-            return None, "No transport options found in cached data. Cannot resolve 'ALL'."
-        return resolved, None
-
-    return names, None
+        resolved, err = _resolve_single_entity_all_keyword(
+            transport_option_names, options, _extract_transport_name, "transport options"
+        )
+        if err:
+            errors.append(err)
+        transport_option_names = resolved
+    
+    error = "\n".join(errors) if errors else None
+    return advisor_names, team_names, transport_option_names, error
 
 
 def _validate_entities(
@@ -219,41 +269,38 @@ def _validate_entities(
     uuids = {"advisor": [], "team": [], "transport": []}
     errors = []
 
-    if transport_option_names and cached_data:
-        result = validate_transport_option_names(transport_option_names, cached_data)
-        uuids["transport"] = [uuid for _, uuid in result["valid"]]
-        if len(result["valid"]) < len(transport_option_names):
-            errors.append(result["message"])
+    # Map of entity type -> (names, validation_function, uuid_key)
+    entity_validations = [
+        (transport_option_names, validate_transport_option_names, "transport"),
+        (advisor_names, validate_advisor_names, "advisor"),
+        (team_names, validate_team_names, "team"),
+    ]
 
-    if advisor_names and cached_data:
-        result = validate_advisor_names(advisor_names, cached_data)
-        uuids["advisor"] = [uuid for _, uuid in result["valid"]]
-        if len(result["valid"]) < len(advisor_names):
-            errors.append(result["message"])
-
-    if team_names and cached_data:
-        result = validate_team_names(team_names, cached_data)
-        uuids["team"] = [uuid for _, uuid in result["valid"]]
-        if len(result["valid"]) < len(team_names):
-            errors.append(result["message"])
+    for names, validate_func, uuid_key in entity_validations:
+        if names and cached_data:
+            result = validate_func(names, cached_data)
+            uuids[uuid_key] = [uuid for _, uuid in result["valid"]]
+            if len(result["valid"]) < len(names):
+                errors.append(result["message"])
 
     if errors:
         return uuids, "Entity validation failed:\n" + "\n".join(errors)
 
     return uuids, None
 
-
-# =============================================================================
-# Date & Source Parsing
-# =============================================================================
+def _get_default_date() -> str:
+    """Get default date (tomorrow) as YYYY-MM-DD string."""
+    today = datetime.now().date()
+    return (today + timedelta(days=1)).strftime("%Y-%m-%d")
 
 
 def _parse_dates(dates: Optional[List[str]]) -> List[str]:
     """Parse dates from natural language or YYYY-MM-DD format."""
     today = datetime.now().date()
+    default_date = _get_default_date()
 
     if not dates:
-        return [(today + timedelta(days=1)).strftime("%Y-%m-%d")]
+        return [default_date]
 
     parsed = []
     for d in dates:
@@ -263,13 +310,13 @@ def _parse_dates(dates: Optional[List[str]]) -> List[str]:
         else:
             try:
                 dt = datetime.strptime(d, "%Y-%m-%d").date()
-                if dt.year >= 2024 and dt >= (today - timedelta(days=365)):
+                if dt.year >= MIN_YEAR and dt >= (today - timedelta(days=365)):
                     parsed.append(d)
             except ValueError:
                 continue
 
     if not parsed:
-        return [(today + timedelta(days=1)).strftime("%Y-%m-%d")]
+        return [default_date]
 
     return sorted(list(set(parsed)))
 
@@ -283,12 +330,6 @@ def _parse_source(source: Optional[str]) -> Optional[str]:
     except (KeyError, AttributeError):
         return source
 
-
-# =============================================================================
-# Entity Map Building
-# =============================================================================
-
-
 def _build_entity_map(
     uuids: Dict[str, List[str]],
     opcodes: Optional[List[str]],
@@ -299,17 +340,17 @@ def _build_entity_map(
     entity_map = {"SOURCE": [source] if source else ["DealerApp", "Web"]}
     field_combinations = [["SOURCE"]]
 
-    if uuids["transport"]:
-        entity_map["TRANSPORT_OPTION_UUID"] = uuids["transport"]
-        field_combinations.append(["TRANSPORT_OPTION_UUID"])
+    # Map of uuid_key -> (entity_map_key, field_combination_key)
+    entity_mappings = [
+        ("transport", "TRANSPORT_OPTION_UUID"),
+        ("advisor", "DEALER_ASSOCIATE_UUID"),
+        ("team", "TEAM_UUID"),
+    ]
 
-    if uuids["advisor"]:
-        entity_map["DEALER_ASSOCIATE_UUID"] = uuids["advisor"]
-        field_combinations.append(["DEALER_ASSOCIATE_UUID"])
-
-    if uuids["team"]:
-        entity_map["TEAM_UUID"] = uuids["team"]
-        field_combinations.append(["TEAM_UUID"])
+    for uuid_key, entity_key in entity_mappings:
+        if uuids[uuid_key]:
+            entity_map[entity_key] = uuids[uuid_key]
+            field_combinations.append([entity_key])
 
     if opcodes:
         entity_map["OPERATION_UUID"] = opcodes
@@ -325,36 +366,32 @@ def _build_entity_map(
 
 async def _fetch_capacity(
     department_uuid: str,
-    dates: List[str],
-    entity_map: Dict[str, List[str]],
-    field_combinations: List[List[str]],
+    request: GetCapacityRequest,
     cached_data: Dict[str, Any],
-    has_entity_filters: bool,
-    start_time: Optional[str],
 ) -> Dict[str, Any]:
     """Fetch capacity from API and format response."""
     applicability_field = (
-        ApplicabilityRuleField.DATE_AND_TIME.value if start_time
+        ApplicabilityRuleField.DATE_AND_TIME.value if request.start_time
         else ApplicabilityRuleField.DATE.value
     )
 
     request_payload = {
         "applicabilityRuleField": applicability_field,
-        "applicabilityFieldValues": list(set(dates)),
+        "applicabilityFieldValues": list(set(request.dates)),
         "capacityTypeSet": [CapacityType.APPOINTMENT_COUNT.value],
         "ruleMatchingCriteria": RuleMatchingCriteria.EXACTLY_MATCHES.value,
         "includeLimitInfo": True,
-        "entityMap": {k: list(set(v)) for k, v in entity_map.items()},
-        "fieldCombinations": [list(set(c)) for c in field_combinations],
+        "entityMap": {k: list(set(v)) for k, v in request.entity_map.items()},
+        "fieldCombinations": [list(set(c)) for c in request.field_combinations],
     }
 
-    if start_time:
-        request_payload["startTime"] = start_time
+    if request.start_time:
+        request_payload["startTime"] = request.start_time
 
     async with KAppointmentAPIClient(config=KAppointmentAPIConfig()) as client:
         result = await client.get_capacity(department_uuid, request_payload)
         uuid_mapper = UUIDMapper(cached_data) if cached_data else None
-        formatted = _format_capacity_response(result, uuid_mapper, entity_map, has_entity_filters)
+        formatted = _format_capacity_response(result, uuid_mapper, request.entity_map, request.has_entity_filters)
         return {"formatted_summary": formatted, "raw_data": result}
 
 
@@ -388,6 +425,26 @@ def _format_capacity_response(
     if len(entries) >= 3:
         return _format_as_table(entries, limiting_factors)
     return _format_conversational(entries, limiting_factors)
+
+
+def _extract_limiting_factor(cap_data: Dict[str, Any]) -> Optional[Tuple[str, float, str]]:
+    """Extract limiting factor from capacity data.
+    
+    Returns:
+        Tuple of (factor_name, value, details) or None if no limiting factor
+    """
+    limit_info = cap_data.get("limitInfo")
+    if not limit_info:
+        return None
+    
+    factor = limit_info.get("limitingFactor", "")
+    value = limit_info.get("limitValue")
+    details = limit_info.get("details", "")
+    
+    if value is not None and value < UNLIMITED_CAPACITY:
+        return (factor, value, details)
+    
+    return None
 
 
 def _extract_capacity_entries(
@@ -428,13 +485,10 @@ def _extract_capacity_entries(
                 entries.append((date_key, entity_display, cap_data, combo_key))
 
                 # Collect limiting factor
-                limit_info = cap_data.get("limitInfo")
-                if limit_info:
-                    factor = limit_info.get("limitingFactor", "")
-                    value = limit_info.get("limitValue")
-                    details = limit_info.get("details", "")
-                    if value is not None and value < UNLIMITED_CAPACITY:
-                        limiting_factors.append((entity_display or date_key, factor, value, details))
+                limit_result = _extract_limiting_factor(cap_data)
+                if limit_result:
+                    factor, value, details = limit_result
+                    limiting_factors.append((entity_display or date_key, factor, value, details))
 
     return entries, limiting_factors
 
@@ -484,6 +538,19 @@ def _build_entity_display_name(combo_key: str, uuid_mapper: Optional[UUIDMapper]
     return display
 
 
+def _calculate_capacity_metrics(cap_data: Dict[str, Any]) -> Tuple[int, float, int, bool]:
+    """Calculate capacity metrics from capacity data.
+    
+    Returns:
+        Tuple of (used, total, available, is_unlimited)
+    """
+    used = int(cap_data.get("usedCount", 0))
+    total = cap_data.get("totalCount", float('inf'))
+    is_unlimited = total >= UNLIMITED_CAPACITY
+    available = 0 if is_unlimited else max(0, int(total) - used)
+    return used, total, available, is_unlimited
+
+
 def _get_limiting_factor_name(factor: str) -> str:
     """Get human-readable name for a limiting factor."""
     try:
@@ -502,27 +569,24 @@ def _format_as_table(entries: List[Tuple], limiting_factors: List[Tuple]) -> str
         date_entries = [e for e in entries if e[0] == date_key]
 
         if has_entities:
-            parts.append(f"**{date_key}**\n")
+            parts.append("**%s**\n" % date_key)
             parts.append("| Entity | Booked | Available | Total |")
             parts.append("|--------|--------|-----------|-------|")
 
             for _, entity, cap_data, _ in date_entries:
-                used = int(cap_data.get("usedCount", 0))
-                total = cap_data.get("totalCount", float('inf'))
-                total_str = "∞" if total >= UNLIMITED_CAPACITY else str(int(total))
-                avail_str = "∞" if total >= UNLIMITED_CAPACITY else str(max(0, int(total) - used))
+                used, total, available, is_unlimited = _calculate_capacity_metrics(cap_data)
+                total_str = "∞" if is_unlimited else str(int(total))
+                avail_str = "∞" if is_unlimited else str(available)
                 entity_name = entity or "Total"
-                parts.append(f"| {entity_name} | {used} | {avail_str} | {total_str} |")
+                parts.append("| %s | %d | %s | %s |" % (entity_name, used, avail_str, total_str))
             parts.append("")
         else:
             cap_data = date_entries[0][2]
-            used = int(cap_data.get("usedCount", 0))
-            total = cap_data.get("totalCount", float('inf'))
-            if total >= UNLIMITED_CAPACITY:
-                parts.append(f"**{date_key}**: Unlimited capacity, {used} booked.")
+            used, total, available, is_unlimited = _calculate_capacity_metrics(cap_data)
+            if is_unlimited:
+                parts.append("**%s**: Unlimited capacity, %d booked." % (date_key, used))
             else:
-                avail = max(0, int(total) - used)
-                parts.append(f"**{date_key}**: {avail} available ({used}/{int(total)} booked)")
+                parts.append("**%s**: %d available (%d/%d booked)" % (date_key, available, used, int(total)))
 
     if limiting_factors:
         parts.append("\n**Limiting Factors:**")
@@ -532,8 +596,8 @@ def _format_as_table(entries: List[Tuple], limiting_factors: List[Tuple]) -> str
             key = (entity, factor, value)
             if key not in seen:
                 seen.add(key)
-                detail_str = f" - {details}" if details else ""
-                parts.append(f"- {entity}: {friendly} ({int(value)}){detail_str}")
+                detail_str = " - %s" % details if details else ""
+                parts.append("- %s: %s (%d)%s" % (entity, friendly, int(value), detail_str))
         parts.append("\nWould you like me to explain how to increase any of these?")
 
     return "\n".join(parts)
@@ -544,21 +608,21 @@ def _format_conversational(entries: List[Tuple], limiting_factors: List[Tuple]) 
     parts = []
 
     for date_key, entity, cap_data, _ in entries:
-        used = cap_data.get("usedCount", 0.0)
-        total = cap_data.get("totalCount", float('inf'))
+        used, total, available, is_unlimited = _calculate_capacity_metrics(cap_data)
         entity_str = " for %s" % entity if entity else ""
 
-        if total >= UNLIMITED_CAPACITY:
-            parts.append(f"For {date_key}{entity_str}: unlimited capacity, {int(used)} booked.")
+        if is_unlimited:
+            parts.append("For %s%s: unlimited capacity, %d booked." % (date_key, entity_str, used))
         else:
-            avail = max(0, total - used)
-            parts.append(f"For {date_key}{entity_str}:\n• Total: {int(total)}\n• Booked: {int(used)}\n• Available: {int(avail)}")
+            parts.append("For %s%s:\n• Total: %d\n• Booked: %d\n• Available: %d" % (
+                date_key, entity_str, int(total), used, available
+            ))
 
     if limiting_factors:
         for entity, factor, value, details in limiting_factors:
             friendly = _get_limiting_factor_name(factor)
-            detail_str = f" - {details}" if details else ""
-            parts.append(f"\nLimiting Factor: {friendly} ({int(value)}){detail_str}")
+            detail_str = " - %s" % details if details else ""
+            parts.append("\nLimiting Factor: %s (%d)%s" % (friendly, int(value), detail_str))
         parts.append("\nWould you like me to explain how to increase this capacity?")
 
     return "\n".join(parts)

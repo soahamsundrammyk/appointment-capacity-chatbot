@@ -1,7 +1,6 @@
 """Rules tool for fetching capacity and assignment rules."""
 
 import logging
-from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 from langchain_core.runnables import RunnableConfig
@@ -10,16 +9,16 @@ from langchain_core.tools import tool
 from capacity_chatbot.clients.kappointment_client import KAppointmentAPIClient
 from capacity_chatbot.config.api_config import KAppointmentAPIConfig
 from capacity_chatbot.enums import FieldDisplayName, FilterField
+from capacity_chatbot.utils.date_parser import format_timing
 from capacity_chatbot.utils.state_extractor import extract_state
-from capacity_chatbot.utils.uuid_mapper import UUIDMapper
+from capacity_chatbot.utils.uuid_mapper import UUIDMapper, resolve_uuids_by_field
 
 logger = logging.getLogger(__name__)
 
-
-# =============================================================================
-# Main Tool
-# =============================================================================
-
+# Constants
+MAX_RULES_RESULT_SIZE = 100
+MAX_INTERSECTION_VALUES = 3
+MAX_SUMMARY_VALUES = 2
 
 @tool
 async def get_rules_tool(
@@ -79,14 +78,8 @@ async def get_rules_tool(
         )
         return result.get("formatted_summary", str(result))
     except Exception as e:
-        logger.error(f"Error in get_rules_tool: {e}", exc_info=True)
-        return f"Error fetching rules: {str(e)}"
-
-
-# =============================================================================
-# Input Processing
-# =============================================================================
-
+        logger.error("Error in get_rules_tool: %s", e, exc_info=True)
+        return "Error fetching rules: %s" % str(e)
 
 def _get_rule_type_list(rule_type: Optional[str]) -> List[str]:
     """Get rule type list from input."""
@@ -122,12 +115,6 @@ def _build_filters(
         filters["entity_type"] = entity_type.lower()
     return filters
 
-
-# =============================================================================
-# API Call
-# =============================================================================
-
-
 async def _fetch_rules(
     department_uuid: str,
     rule_type_list: List[str],
@@ -137,7 +124,7 @@ async def _fetch_rules(
     """Fetch rules from API."""
     request = {
         "dealerUUIDList": [],
-        "resultSize": 100,
+        "resultSize": MAX_RULES_RESULT_SIZE,
         "startPosition": 0,
         "ruleStatusList": ["ACTIVE"],
         "ruleTypeList": rule_type_list,
@@ -148,12 +135,6 @@ async def _fetch_rules(
         uuid_mapper = UUIDMapper(cached_data) if cached_data else None
         formatted = _format_rules_response(result, uuid_mapper, filters)
         return {"formatted_summary": formatted, "raw_data": result}
-
-
-# =============================================================================
-# Response Formatting
-# =============================================================================
-
 
 def _format_rules_response(
     api_response: Dict[str, Any],
@@ -176,7 +157,7 @@ def _format_rules_response(
     if filtered_count == 0:
         if filters:
             desc = _describe_filters(filters)
-            return f"No rules found matching: {desc}. There are {original_count} total rules."
+            return "No rules found matching: %s. There are %d total rules." % (desc, original_count)
         return "No active rules found for this department."
 
     # Format each rule
@@ -186,32 +167,28 @@ def _format_rules_response(
             continue
         name = rule.get("ruleName", "Unnamed Rule")
         desc = _build_rule_description(rule, uuid_mapper)
-        formatted.append(f"{idx}. \"{name}\" - {desc}")
+        formatted.append('%d. "%s" - %s' % (idx, name, desc))
 
     # Build result
     if filters:
-        result = f"Found {filtered_count} rule(s) matching {_describe_filters(filters)}:\n" + "\n".join(formatted)
+        result = "Found %d rule(s) matching %s:\n%s" % (filtered_count, _describe_filters(filters), "\n".join(formatted))
     else:
-        result = f"Found {filtered_count} active rule(s):\n" + "\n".join(formatted)
+        result = "Found %d active rule(s):\n%s" % (filtered_count, "\n".join(formatted))
 
-    # Check for conflicts in assignment rules
-    conflicts = _detect_conflicts(rule_list)
-    if conflicts:
-        names = [f"'{c['rule1_name']}' and '{c['rule2_name']}'" for c in conflicts[:2]]
-        result += f"\n\n⚠️ Detected {len(conflicts)} conflicting assignment rule(s) ({', '.join(names)}). "
-        result += "Would you like me to explain these conflicts?"
+    # Check for potential conflicts in assignment rules
+    # Note: This is a simple heuristic. The LLM will analyze rule descriptions
+    # to determine if rules are truly conflicting (e.g., mutually exclusive conditions).
+    potential_conflicts = _detect_conflicts(rule_list)
+    if potential_conflicts:
+        names = ["'%s' and '%s'" % (c['rule1_name'], c['rule2_name']) for c in potential_conflicts[:2]]
+        result += "\n\n⚠️ Found %d assignment rule pair(s) with potentially overlapping conditions (%s). " % (len(potential_conflicts), ", ".join(names))
+        result += "Please review these rules to ensure they don't conflict (e.g., mutually exclusive conditions like '> 3' and '<= 3' are fine)."
     elif filters and ("opcode_name" in filters or filters.get("entity_type") == "opcode"):
         result += "\n\nIf you want to check daily limits for a specific opcode, please share the name."
     else:
         result += "\n\nWould you like me to explain how to modify or create these rules?"
 
     return result
-
-
-# =============================================================================
-# Rule Filtering
-# =============================================================================
-
 
 def _rule_matches_filter(rule: Dict[str, Any], filters: Dict[str, str]) -> bool:
     """Check if a rule matches the given filters."""
@@ -250,7 +227,7 @@ def _rule_matches_filter(rule: Dict[str, Any], filters: Dict[str, str]) -> bool:
                 continue
 
             # Check verbose values first, then regular values
-            for v in clause.get("verboseValues", []) or clause.get("values", []):
+            for v in _get_clause_values(clause):
                 if filter_value in str(v).lower():
                     return True
 
@@ -261,21 +238,20 @@ def _describe_filters(filters: Dict[str, str]) -> str:
     """Create human-readable filter description."""
     parts = []
     if "team_name" in filters:
-        parts.append(f"team '{filters['team_name']}'")
+        parts.append("team '%s'" % filters['team_name'])
     if "advisor_name" in filters:
-        parts.append(f"advisor '{filters['advisor_name']}'")
+        parts.append("advisor '%s'" % filters['advisor_name'])
     if "transport_option" in filters:
-        parts.append(f"transport '{filters['transport_option']}'")
+        parts.append("transport '%s'" % filters['transport_option'])
     if "opcode_name" in filters:
-        parts.append(f"service '{filters['opcode_name']}'")
+        parts.append("service '%s'" % filters['opcode_name'])
     if "entity_type" in filters:
-        parts.append(f"any {filters['entity_type']}-related rules")
+        parts.append("any %s-related rules" % filters['entity_type'])
     return ", ".join(parts) or "specified criteria"
 
-
-# =============================================================================
-# Rule Description Building
-# =============================================================================
+def _get_clause_values(clause: Dict[str, Any]) -> List[Any]:
+    """Extract values from a clause, preferring verboseValues over values."""
+    return clause.get("verboseValues", []) or clause.get("values", [])
 
 
 def _build_rule_description(rule: Dict[str, Any], uuid_mapper: Optional[UUIDMapper]) -> str:
@@ -287,7 +263,7 @@ def _build_rule_description(rule: Dict[str, Any], uuid_mapper: Optional[UUIDMapp
 
     subject = _extract_subject(if_clauses, uuid_mapper)
     effect = _extract_effect(then_clauses, uuid_mapper)
-    timing = _format_timing(applicability)
+    timing = format_timing(applicability)
 
     if rule_type == "CAPACITY":
         return _build_capacity_sentence(subject, effect, timing)
@@ -298,15 +274,15 @@ def _build_rule_description(rule: Dict[str, Any], uuid_mapper: Optional[UUIDMapp
     return ", ".join(parts) + "." if parts else "Rule details not available."
 
 
-def _extract_subject(if_clauses: List[Dict], uuid_mapper: Optional[UUIDMapper]) -> str:
+def _extract_subject(if_clauses: List[Dict[str, Any]], uuid_mapper: Optional[UUIDMapper]) -> str:
     """Extract main subject from if clauses."""
     for clause in if_clauses:
         field = clause.get("field", "")
-        values = clause.get("verboseValues", []) or clause.get("values", [])
+        values = _get_clause_values(clause)
 
         # Resolve UUIDs if needed
         if uuid_mapper and not clause.get("verboseValues"):
-            values = _resolve_uuids(field, values, uuid_mapper)
+            values = resolve_uuids_by_field(field, values, uuid_mapper)
 
         names = ", ".join(str(v) for v in values) if values else ""
 
@@ -317,21 +293,21 @@ def _extract_subject(if_clauses: List[Dict], uuid_mapper: Optional[UUIDMapper]) 
         elif field == "TRANSPORT_OPTION_UUID":
             return names or "transport options"
         elif field == "VEHICLE_MAKE":
-            return f"{names} vehicles" if names else "vehicles"
+            return "%s vehicles" % names if names else "vehicles"
         elif field in ["OPERATION_UUID", "OP_CODE", "OPCODE"]:
-            return f"{names} service" if names else "services"
+            return "%s service" % names if names else "services"
 
     return ""
 
 
-def _extract_effect(then_clauses: List[Dict], uuid_mapper: Optional[UUIDMapper]) -> Dict[str, Any]:
+def _extract_effect(then_clauses: List[Dict[str, Any]], uuid_mapper: Optional[UUIDMapper]) -> Dict[str, Any]:
     """Extract effect from then clauses."""
     for clause in then_clauses:
         field = clause.get("field", "")
-        values = clause.get("verboseValues", []) or clause.get("values", [])
+        values = _get_clause_values(clause)
 
         if uuid_mapper and not clause.get("verboseValues"):
-            values = _resolve_uuids(field, values, uuid_mapper)
+            values = resolve_uuids_by_field(field, values, uuid_mapper)
 
         return {
             "field": field,
@@ -341,54 +317,6 @@ def _extract_effect(then_clauses: List[Dict], uuid_mapper: Optional[UUIDMapper])
             "operator": clause.get("operator", ""),
         }
     return {}
-
-
-def _resolve_uuids(field: str, values: List, uuid_mapper: UUIDMapper) -> List:
-    """Resolve UUIDs to names based on field type."""
-    if field == "DEALER_ASSOCIATE_UUID":
-        return uuid_mapper.replace_uuids_in_list(values, "advisor")
-    elif field == "TEAM_UUID":
-        return uuid_mapper.replace_uuids_in_list(values, "team")
-    elif field == "TRANSPORT_OPTION_UUID":
-        return uuid_mapper.replace_uuids_in_list(values, "transport")
-    return values
-
-
-def _format_timing(applicability: Dict[str, Any]) -> str:
-    """Format timing info from applicability clause."""
-    if not applicability:
-        return ""
-
-    field = applicability.get("field", "")
-    date_list = applicability.get("dateList", [])
-    day_time_list = applicability.get("dayTimeList", [])
-
-    if field == "DATE" and date_list:
-        dates = [_format_date(d) for d in date_list[:2]]
-        return f"on {', '.join(dates)}"
-
-    elif field in ["DAY", "DAY_AND_TIME"]:
-        days = [e.get("day", "").capitalize() for e in (day_time_list or []) if e.get("day")]
-        if days:
-            all_days = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"}
-            missing = all_days - set(days)
-            if len(missing) == 1:
-                return f"(except {list(missing)[0]}s)"
-            elif len(missing) > 0 and len(missing) < 3:
-                return f"(except {', '.join(missing)})"
-            return f"on {', '.join(days[:3])}"
-
-    elif field == "DATE_AND_TIME" and date_list:
-        date_str = _format_date(date_list[0])
-        times = []
-        for entry in (day_time_list or []):
-            for slot in entry.get("timeSlots", [])[:2]:
-                times.append(_format_time(slot))
-        if times:
-            return f"on {date_str} at {', '.join(times[:2])}"
-        return f"on {date_str}"
-
-    return ""
 
 
 def _build_capacity_sentence(subject: str, effect: Dict, timing: str) -> str:
@@ -409,16 +337,16 @@ def _build_capacity_sentence(subject: str, effect: Dict, timing: str) -> str:
 
     if str(limit) == "0":
         if subject:
-            return f"{subject} is blocked {timing} (no appointments)." if timing else f"{subject} is blocked."
-        return f"All appointments blocked {timing}." if timing else "All appointments blocked."
+            return "%s is blocked %s (no appointments)." % (subject, timing) if timing else "%s is blocked." % subject
+        return "All appointments blocked %s." % timing if timing else "All appointments blocked."
     else:
         if subject:
-            msg = f"{subject} can only take {limit} appointment(s) {freq_text}"
-            return f"{msg} {timing}." if timing else f"{msg}."
-        return f"Maximum {limit} appointment(s) allowed {freq_text}."
+            msg = "%s can only take %s appointment(s) %s" % (subject, limit, freq_text)
+            return "%s %s." % (msg, timing) if timing else "%s." % msg
+        return "Maximum %s appointment(s) allowed %s." % (limit, freq_text)
 
 
-def _build_assignment_sentence(if_clauses: List[Dict], then_clauses: List[Dict], uuid_mapper: Optional[UUIDMapper]) -> str:
+def _build_assignment_sentence(if_clauses: List[Dict[str, Any]], then_clauses: List[Dict[str, Any]], uuid_mapper: Optional[UUIDMapper]) -> str:
     """Build natural sentence for assignment rules."""
     if not if_clauses and not then_clauses:
         return "Assignment rule with no conditions defined."
@@ -427,7 +355,7 @@ def _build_assignment_sentence(if_clauses: List[Dict], then_clauses: List[Dict],
     if_parts = []
     for clause in if_clauses:
         field = clause.get("field", "")
-        values = clause.get("verboseValues", []) or clause.get("values", [])
+        values = _get_clause_values(clause)
         operator = clause.get("operator", "IN")
 
         if uuid_mapper and not clause.get("verboseValues"):
@@ -437,15 +365,15 @@ def _build_assignment_sentence(if_clauses: List[Dict], then_clauses: List[Dict],
         field_name = FieldDisplayName.get(field)
 
         if operator == "NOT_IN":
-            if_parts.append(f"{field_name} NOT IN ({names})")
+            if_parts.append("%s NOT IN (%s)" % (field_name, names))
         else:
-            if_parts.append(f"{field_name}={names}")
+            if_parts.append("%s=%s" % (field_name, names))
 
     # Build THEN parts
     then_parts = []
     for clause in then_clauses:
         field = clause.get("field", "")
-        values = clause.get("verboseValues", []) or clause.get("values", [])
+        values = _get_clause_values(clause)
         operator = clause.get("operator", "IN")
 
         if uuid_mapper and not clause.get("verboseValues"):
@@ -455,19 +383,14 @@ def _build_assignment_sentence(if_clauses: List[Dict], then_clauses: List[Dict],
         field_name = FieldDisplayName.get(field)
 
         if operator == "NOT_IN":
-            then_parts.append(f"{field_name} NOT IN ({names})")
+            then_parts.append("%s NOT IN (%s)" % (field_name, names))
         else:
-            then_parts.append(f"→ {field_name}: {names}")
+            then_parts.append("→ %s: %s" % (field_name, names))
 
     if_text = " AND ".join(if_parts) if if_parts else "Any appointment"
     then_text = ", ".join(then_parts) if then_parts else "assignment restricted"
 
-    return f"IF {if_text} {then_text}"
-
-
-# =============================================================================
-# Conflict Detection
-# =============================================================================
+    return "IF %s %s" % (if_text, then_text)
 
 
 def _detect_conflicts(rules: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -491,7 +414,12 @@ def _detect_conflicts(rules: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
 
 
 def _check_condition_overlap(rule1: Dict[str, Any], rule2: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-    """Check if two rules' conditions can match the same input."""
+    """Check if two rules' conditions can match the same input.
+    
+    This is a simple heuristic that checks for same field and overlapping values.
+    The LLM will analyze the actual rule descriptions to determine if they're truly conflicting
+    (e.g., mutually exclusive conditions like > 3 and <= 3 are fine).
+    """
     cond1 = {c.get("field", ""): set(c.get("values", [])) for c in (rule1.get("ifClauses") or [])}
     cond2 = {c.get("field", ""): set(c.get("values", [])) for c in (rule2.get("ifClauses") or [])}
 
@@ -499,7 +427,7 @@ def _check_condition_overlap(rule1: Dict[str, Any], rule2: Dict[str, Any]) -> Op
     for field in set(cond1.keys()) & set(cond2.keys()):
         intersection = cond1[field] & cond2[field]
         if intersection:
-            return {"field": field, "values": list(intersection)[:3]}
+            return {"field": field, "values": list(intersection)[:MAX_INTERSECTION_VALUES]}
 
     # If one has no conditions, it matches everything
     if not cond1 or not cond2:
@@ -511,7 +439,7 @@ def _check_condition_overlap(rule1: Dict[str, Any], rule2: Dict[str, Any]) -> Op
 def _has_different_actions(rule1: Dict[str, Any], rule2: Dict[str, Any]) -> bool:
     """Check if two rules have different THEN actions."""
     def normalize(clauses):
-        parts = [f"{c.get('field', '')}:{sorted(c.get('values', []))}" for c in (clauses or [])]
+        parts = ["%s:%s" % (c.get('field', ''), sorted(c.get('values', []))) for c in (clauses or [])]
         return "|".join(sorted(parts))
 
     return normalize(rule1.get("thenClauses", [])) != normalize(rule2.get("thenClauses", []))
@@ -522,29 +450,9 @@ def _summarize_then(rule: Dict[str, Any]) -> str:
     parts = []
     for clause in (rule.get("thenClauses") or []):
         field = clause.get("field", "")
-        values = clause.get("verboseValues", []) or clause.get("values", [])
+        values = _get_clause_values(clause)
         name = FieldDisplayName.get(field)
-        parts.append(f"{name}: {', '.join(str(v) for v in values[:2])}")
+        parts.append("%s: %s" % (name, ", ".join(str(v) for v in values[:MAX_SUMMARY_VALUES])))
     return "; ".join(parts) if parts else "No action"
 
 
-# =============================================================================
-# Utilities
-# =============================================================================
-
-
-def _format_date(date_str: str) -> str:
-    """Format date string to readable format."""
-    try:
-        return datetime.strptime(date_str, "%Y-%m-%d").strftime("%B %d, %Y")
-    except Exception:
-        return date_str
-
-
-def _format_time(time_str: str) -> str:
-    """Format time string to readable format."""
-    try:
-        fmt = "%H:%M:%S" if len(time_str) == 8 else "%H:%M"
-        return datetime.strptime(time_str, fmt).strftime("%I:%M %p").lstrip("0")
-    except Exception:
-        return time_str
