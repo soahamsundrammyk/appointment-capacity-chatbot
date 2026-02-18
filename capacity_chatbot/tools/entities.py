@@ -1,7 +1,8 @@
 """Entity tools for listing and validating entities from cached data."""
 
 import logging
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from langchain_core.runnables import RunnableConfig
 from langchain_core.tools import tool

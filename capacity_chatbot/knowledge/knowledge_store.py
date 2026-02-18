@@ -1,6 +1,5 @@
 """Knowledge base for capacity chatbot - stores common questions and documentation."""
 
-
 # Common questions users can ask (knowledge-based, no API calls needed)
 # Last updated: 2026-01-06 from MyKaarma support documentation
 COMMON_QUESTIONS: list[dict[str, str]] = [

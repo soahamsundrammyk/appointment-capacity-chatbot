@@ -21,11 +21,6 @@ from capacity_chatbot.utils.uuid_mapper import UUIDMapper
 logger = logging.getLogger(__name__)
 
 
-# =============================================================================
-# Main Tool
-# =============================================================================
-
-
 @tool
 async def get_first_available_slot_tool(
     advisor_names: list[str] | None = None,
@@ -83,11 +78,6 @@ async def get_first_available_slot_tool(
         return "Error finding first available slot: %s" % str(e)
 
 
-# =============================================================================
-# Entity Validation
-# =============================================================================
-
-
 def _validate_entities(
     advisor_names: list[str] | None,
     team_names: list[str] | None,
@@ -120,11 +110,6 @@ def _validate_entities(
         return uuids, "Entity validation failed:\n" + "\n".join(errors)
 
     return uuids, None
-
-
-# =============================================================================
-# API Call
-# =============================================================================
 
 
 async def _fetch_first_available_slot(
@@ -195,11 +180,6 @@ def _build_slot_request(
         request["selectedOperationUuidSet"] = opcodes
 
     return request
-
-
-# =============================================================================
-# Response Formatting
-# =============================================================================
 
 
 def _format_slot_response(

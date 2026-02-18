@@ -1,6 +1,5 @@
 """Utility for extracting state from LangGraph RunnableConfig."""
 
-
 from langchain_core.runnables import RunnableConfig
 
 from capacity_chatbot.state import CapacityChatbotState

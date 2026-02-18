@@ -442,9 +442,7 @@ def _detect_conflicts(rules: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return conflicts
 
 
-def _check_condition_overlap(
-    rule1: dict[str, Any], rule2: dict[str, Any]
-) -> dict[str, Any] | None:
+def _check_condition_overlap(rule1: dict[str, Any], rule2: dict[str, Any]) -> dict[str, Any] | None:
     """Check if two rules' conditions can match the same input.
 
     This is a simple heuristic that checks for same field and overlapping values.
