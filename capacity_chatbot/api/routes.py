@@ -84,7 +84,6 @@ def build_graph_input(
     Uses session info from mkid auth (preferred) or falls back to request body.
     Note: mkid is passed through config, not state.
     """
-    # Priority: session_info (from auth) > input_data (request body)
     session = session_info or {}
     updated_context = {
         "department_uuid": input_data.get("department_uuid") or session.get("departmentUuid", ""),
@@ -119,7 +118,7 @@ async def run_graph_stream(
     config = {
         "configurable": {
             "thread_id": thread_id,
-            "mkid": mkid,  # Pass mkid through config, not state
+            "mkid": mkid, 
         }
     }
 
