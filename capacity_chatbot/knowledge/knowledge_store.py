@@ -1,5 +1,61 @@
 """Knowledge base for capacity chatbot - stores common questions and documentation."""
 
+# =============================================================================
+# Constants
+# =============================================================================
+
+# Minimum word length for matching (filters out short words like "a", "an", "is")
+MIN_WORD_LENGTH = 2
+
+# Phrase lengths to check for multi-word matching
+PHRASE_LENGTHS = [3, 2]
+
+# Scoring weights for different match types
+SCORE_EXACT_MATCH = 100
+SCORE_PHRASE_MATCH_MULTIPLIER = 20
+SCORE_KEYWORD_MATCH = 10
+SCORE_WORD_OVERLAP = 5
+SCORE_HOW_TO_BOOST = 30
+SCORE_INCREASE_BOOST = 50
+
+# Maximum number of example questions to show
+MAX_EXAMPLE_QUESTIONS = 10
+
+# Synonym mappings for query expansion
+SYNONYMS: dict[str, list[str]] = {
+    "waiter": ["will wait", "waiting"],
+    "waiters": ["will wait", "waiting"],
+    "appt": ["appointment", "appointments"],
+    "appts": ["appointment", "appointments"],
+    "advisor": ["service advisor", "SA"],
+    "SA": ["service advisor", "advisor"],
+    "adjust": ["change", "modify", "increase", "decrease"],
+    "fix": ["change", "modify", "correct"],
+    "restrict": ["block", "limit", "disable"],
+    "rideshare": ["uber", "lyft", "ride share"],
+    "loaners": ["loaner", "loaner car", "loaner vehicle"],
+    "slots": ["slot", "time slot", "time slots", "appointments"],
+    "saturday": ["sat", "saturdays"],
+    "sunday": ["sun", "sundays"],
+    "mainshop": ["main shop"],
+    "rotate": ["rotation", "rotation shop"],
+}
+
+# Phrases that indicate a how-to question
+HOW_TO_PHRASES = [
+    "how do i",
+    "how to",
+    "how can i",
+    "how should i",
+    "increase",
+    "change",
+    "modify",
+    "enable",
+    "disable",
+    "add",
+    "create",
+]
+
 # Common questions users can ask (knowledge-based, no API calls needed)
 # Last updated: 2026-01-06 from MyKaarma support documentation
 COMMON_QUESTIONS: list[dict[str, str]] = [
@@ -917,16 +973,8 @@ KNOWLEDGE_SUMMARY = """You are a capacity chatbot assistant. Key concepts:
 - Answer concept questions from knowledge, use tools for current data queries
 - IMPORTANT: When users ask follow-up questions like "how do I increase it?", check previous tool responses for specific actionable advice before generating generic responses."""
 
-# Additional knowledge documentation (can be expanded)
-# NOTE: If you have the full KNOWLEDGE_DOCUMENTATION dict with all sections,
-# it will be included when condensed=False
-KNOWLEDGE_DOCUMENTATION: dict[str, str] = {
-    # Add your documentation sections here if needed
-    # Example structure:
-    # "capacity_concepts": "...",
-    # "rule_structure": "...",
-    # etc.
-}
+# Additional knowledge documentation (can be expanded in the future if needed)
+KNOWLEDGE_DOCUMENTATION: dict[str, str] = {}
 
 
 def get_knowledge_base_section(condensed: bool = True) -> str:
@@ -954,8 +1002,8 @@ def get_knowledge_base_section(condensed: bool = True) -> str:
     sections.append("")
 
     for i, qa in enumerate(COMMON_QUESTIONS, 1):
-        sections.append(f"Q{i}: {qa['question']}")
-        sections.append(f"A{i}: {qa['answer']}")
+        sections.append("Q%d: %s" % (i, qa["question"]))
+        sections.append("A%d: %s" % (i, qa["answer"]))
         sections.append("")
 
     # Add documentation sections (if available)
@@ -966,6 +1014,127 @@ def get_knowledge_base_section(condensed: bool = True) -> str:
             sections.append("")
 
     return "\n".join(sections)
+
+
+def _expand_query_with_synonyms(query: str) -> str:
+    """Expand query with synonyms for better matching.
+
+    Args:
+        query: Original query string
+
+    Returns:
+        Expanded query with synonyms added
+    """
+    expanded = query
+    for word, synonyms in SYNONYMS.items():
+        if word in query:
+            expanded += " " + " ".join(synonyms)
+    return expanded
+
+
+def _is_how_to_query(query: str) -> bool:
+    """Check if query is asking a how-to question.
+
+    Args:
+        query: User query string
+
+    Returns:
+        True if query appears to be a how-to question
+    """
+    return any(phrase in query for phrase in HOW_TO_PHRASES)
+
+
+def _calculate_exact_match_score(query: str, question: str) -> int:
+    """Calculate score for exact phrase match.
+
+    Args:
+        query: User query (lowercase)
+        question: Question text (lowercase)
+
+    Returns:
+        Score for exact match (0 or SCORE_EXACT_MATCH)
+    """
+    if query in question or question in query:
+        return SCORE_EXACT_MATCH
+    return 0
+
+
+def _calculate_phrase_match_score(query: str, question: str) -> int:
+    """Calculate score for multi-word phrase matches.
+
+    Args:
+        query: User query (lowercase)
+        question: Question text (lowercase)
+
+    Returns:
+        Score for phrase matches
+    """
+    score = 0
+    query_split = query.split()
+    for phrase_len in PHRASE_LENGTHS:
+        for i in range(len(query_split) - phrase_len + 1):
+            phrase = " ".join(query_split[i : i + phrase_len])
+            if phrase in question:
+                score += SCORE_PHRASE_MATCH_MULTIPLIER * phrase_len
+    return score
+
+
+def _calculate_keyword_match_score(query: str, keywords: list[str]) -> int:
+    """Calculate score based on keyword matches.
+
+    Args:
+        query: User query (lowercase)
+        keywords: List of keywords from Q&A (lowercase)
+
+    Returns:
+        Score for keyword matches
+    """
+    matches = sum(1 for kw in keywords if kw in query)
+    return matches * SCORE_KEYWORD_MATCH
+
+
+def _calculate_word_overlap_score(query_words: set[str], question: str) -> int:
+    """Calculate score based on word overlap.
+
+    Args:
+        query_words: Set of words from expanded query (filtered by min length)
+        question: Question text (lowercase)
+
+    Returns:
+        Score for word overlap
+    """
+    question_words = set(
+        word for word in question.split() if len(word) > MIN_WORD_LENGTH
+    )
+    overlap = len(query_words & question_words)
+    return overlap * SCORE_WORD_OVERLAP
+
+
+def _calculate_category_boost(
+    is_how_to: bool, category: str, query: str, question: str
+) -> int:
+    """Calculate boost score based on category and special matches.
+
+    Args:
+        is_how_to: Whether query is a how-to question
+        category: Category of the Q&A
+        query: User query (lowercase)
+        question: Question text (lowercase)
+
+    Returns:
+        Boost score
+    """
+    score = 0
+
+    # Boost how-to category when user asks how-to
+    if is_how_to and category == "how-to":
+        score += SCORE_HOW_TO_BOOST
+
+    # Boost if "increase" appears in both query and question
+    if "increase" in query and "increase" in question:
+        score += SCORE_INCREASE_BOOST
+
+    return score
 
 
 def get_relevant_knowledge(user_query: str, max_items: int = 3) -> str:
@@ -985,93 +1154,32 @@ def get_relevant_knowledge(user_query: str, max_items: int = 3) -> str:
     Returns:
         Formatted string with relevant knowledge only
     """
-    # Synonym mappings for query expansion
-    SYNONYMS = {
-        "waiter": ["will wait", "waiting"],
-        "waiters": ["will wait", "waiting"],
-        "appt": ["appointment", "appointments"],
-        "appts": ["appointment", "appointments"],
-        "advisor": ["service advisor", "SA"],
-        "SA": ["service advisor", "advisor"],
-        "adjust": ["change", "modify", "increase", "decrease"],
-        "fix": ["change", "modify", "correct"],
-        "restrict": ["block", "limit", "disable"],
-        "rideshare": ["uber", "lyft", "ride share"],
-        "loaners": ["loaner", "loaner car", "loaner vehicle"],
-        "slots": ["slot", "time slot", "time slots", "appointments"],
-        "saturday": ["sat", "saturdays"],
-        "sunday": ["sun", "sundays"],
-        "mainshop": ["main shop"],
-        "rotate": ["rotation", "rotation shop"],
-    }
-
     query_lower = user_query.lower().strip()
 
     # Expand query with synonyms
-    expanded_query = query_lower
-    for word, synonyms in SYNONYMS.items():
-        if word in query_lower:
-            # Add synonyms to the query for matching
-            expanded_query += " " + " ".join(synonyms)
+    expanded_query = _expand_query_with_synonyms(query_lower)
 
-    query_words = set(word for word in expanded_query.split() if len(word) > 2)
+    # Extract words (filter short words)
+    query_words = set(
+        word for word in expanded_query.split() if len(word) > MIN_WORD_LENGTH
+    )
 
     # Detect if user is asking a how-to question
-    is_how_to_query = any(
-        phrase in query_lower
-        for phrase in [
-            "how do i",
-            "how to",
-            "how can i",
-            "how should i",
-            "increase",
-            "change",
-            "modify",
-            "enable",
-            "disable",
-            "add",
-            "create",
-        ]
-    )
+    is_how_to = _is_how_to_query(query_lower)
 
     scored_items = []
 
     for qa in COMMON_QUESTIONS:
         question_lower = qa.get("question", "").lower()
-        qa.get("answer", "").lower()
         keywords = [k.lower() for k in qa.get("keywords", [])]
         category = qa.get("category", "")
 
-        score = 0
-
-        # Exact phrase match in question (highest priority)
-        if query_lower in question_lower or question_lower in query_lower:
-            score += 100
-
-        # Check for multi-word phrase matches (e.g., "transport option")
-        for phrase_len in [3, 2]:
-            query_split = query_lower.split()
-            for i in range(len(query_split) - phrase_len + 1):
-                phrase = " ".join(query_split[i : i + phrase_len])
-                if phrase in question_lower:
-                    score += 20 * phrase_len
-
-        # Keyword matches - count how many keywords match
-        keyword_matches = sum(1 for kw in keywords if kw in query_lower)
-        score += keyword_matches * 10
-
-        # Word overlap with question
-        question_words = set(word for word in question_lower.split() if len(word) > 2)
-        word_overlap = len(query_words & question_words)
-        score += word_overlap * 5
-
-        # Boost how-to category when user asks how-to
-        if is_how_to_query and category == "how-to":
-            score += 30
-
-        # Boost if "increase" appears in both query and question
-        if "increase" in query_lower and "increase" in question_lower:
-            score += 50
+        # Calculate all score components
+        score = _calculate_exact_match_score(query_lower, question_lower)
+        score += _calculate_phrase_match_score(query_lower, question_lower)
+        score += _calculate_keyword_match_score(query_lower, keywords)
+        score += _calculate_word_overlap_score(query_words, question_lower)
+        score += _calculate_category_boost(is_how_to, category, query_lower, question_lower)
 
         if score > 0:
             scored_items.append((score, qa))
@@ -1083,14 +1191,13 @@ def get_relevant_knowledge(user_query: str, max_items: int = 3) -> str:
     relevant_items = [qa for score, qa in scored_items[:max_items]]
 
     if not relevant_items:
-        # Fallback to summary if no matches
         return ""
 
     # Format relevant items
     sections = ["=== RELEVANT KNOWLEDGE ==="]
     for i, qa in enumerate(relevant_items, 1):
-        sections.append(f"Q{i}: {qa['question']}")
-        sections.append(f"A{i}: {qa['answer']}")
+        sections.append("Q%d: %s" % (i, qa["question"]))
+        sections.append("A%d: %s" % (i, qa["answer"]))
         sections.append("")
 
     return "\n".join(sections)
@@ -1103,15 +1210,6 @@ def get_question_examples() -> str:
         Formatted string with example questions
     """
     questions = [qa["question"] for qa in COMMON_QUESTIONS]
-    return "\n".join([f"- {q}" for q in questions[:10]])  # Show first 10 as examples
-
-
-# You can extend this by loading from external files
-def load_knowledge_from_file(file_path: str) -> None:
-    """Load additional knowledge from a file (e.g., markdown, JSON).
-
-    Args:
-        file_path: Path to knowledge file
-    """
-    # TODO: Implement file loading if needed
-    pass
+    return "\n".join(
+        ["- %s" % q for q in questions[:MAX_EXAMPLE_QUESTIONS]]
+    )
