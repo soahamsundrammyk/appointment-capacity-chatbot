@@ -1,7 +1,7 @@
 """Enums for capacity chatbot - matching Java API enums."""
 
 from enum import Enum
-from typing import List
+from typing import List, Optional
 
 
 # Maximum integer value used by API to represent "unlimited"
@@ -54,15 +54,18 @@ class LimitingFactor(str, Enum):
     @property
     def display_name(self) -> str:
         """Human-readable name for the limiting factor."""
-        names = {
-            "TRANSPORT_OPTION": "transport option limit",
-            "CAPACITY_RULE": "capacity rule",
-            "DEALER_SCHEDULE": "dealer schedule",
-            "INDIVIDUAL_SCHEDULE": "advisor schedule",
-            "OPCODE_DAILY_LIMIT": "opcode daily limit",
-            "TEAM": "team limit",
-        }
+        names = LimitingFactor.__dict__.get("_DISPLAY_NAMES", {})
         return names.get(self.value, self.value.lower().replace("_", " "))
+
+
+LimitingFactor._DISPLAY_NAMES = {
+    "TRANSPORT_OPTION": "transport option limit",
+    "CAPACITY_RULE": "capacity rule",
+    "DEALER_SCHEDULE": "dealer schedule",
+    "INDIVIDUAL_SCHEDULE": "advisor schedule",
+    "OPCODE_DAILY_LIMIT": "opcode daily limit",
+    "TEAM": "team limit",
+}
 
 
 class SourceType(str, Enum):
@@ -74,15 +77,19 @@ class SourceType(str, Enum):
     @classmethod
     def from_input(cls, value: str) -> "SourceType":
         """Map user input to SourceType."""
-        mappings = {
-            "web": cls.WEB,
-            "online": cls.WEB,
-            "online scheduler": cls.WEB,
-            "dealerapp": cls.DEALER_APP,
-            "dealer app": cls.DEALER_APP,
-            "dms": cls.DMS,
-        }
-        return mappings.get(value.lower(), cls.WEB)
+        # Use class __dict__ to access the mapping (Enum treats class vars as members)
+        mappings = SourceType.__dict__.get("_INPUT_MAPPINGS", {})
+        return cls[mappings.get(value.lower(), "WEB")]
+
+
+SourceType._INPUT_MAPPINGS = {
+    "web": "WEB",
+    "online": "WEB",
+    "online scheduler": "WEB",
+    "dealerapp": "DEALER_APP",
+    "dealer app": "DEALER_APP",
+    "dms": "DMS",
+}
 
 
 class EntityType(str, Enum):
@@ -92,19 +99,25 @@ class EntityType(str, Enum):
     TEAMS = "teams"
 
     @classmethod
-    def from_alias(cls, value: str) -> "EntityType":
+    def from_alias(cls, value: str) -> Optional["EntityType"]:
         """Resolve entity type from alias."""
-        aliases = {
-            "transport_options": cls.TRANSPORT_OPTIONS,
-            "transport": cls.TRANSPORT_OPTIONS,
-            "transportation": cls.TRANSPORT_OPTIONS,
-            "advisors": cls.ADVISORS,
-            "advisor": cls.ADVISORS,
-            "service_advisors": cls.ADVISORS,
-            "teams": cls.TEAMS,
-            "team": cls.TEAMS,
-        }
-        return aliases.get(value.lower().strip())
+        # Use class __dict__ to access the mapping (Enum treats class vars as members)
+        aliases = EntityType.__dict__.get("_ALIAS_MAPPINGS", {})
+        alias_key = value.lower().strip()
+        enum_name = aliases.get(alias_key)
+        return cls[enum_name] if enum_name else None
+
+
+EntityType._ALIAS_MAPPINGS = {
+    "transport_options": "TRANSPORT_OPTIONS",
+    "transport": "TRANSPORT_OPTIONS",
+    "transportation": "TRANSPORT_OPTIONS",
+    "advisors": "ADVISORS",
+    "advisor": "ADVISORS",
+    "service_advisors": "ADVISORS",
+    "teams": "TEAMS",
+    "team": "TEAMS",
+}
 
 
 class FieldDisplayName(str, Enum):
@@ -144,15 +157,9 @@ class DayName(str, Enum):
     @property
     def full_name(self) -> str:
         """Get full day name."""
-        return {
-            "Sun": "Sunday",
-            "Mon": "Monday",
-            "Tue": "Tuesday",
-            "Wed": "Wednesday",
-            "Thu": "Thursday",
-            "Fri": "Friday",
-            "Sat": "Saturday",
-        }[self.value]
+        # Use class __dict__ to access the mapping (Enum treats class vars as members)
+        full_names = DayName.__dict__.get("_FULL_NAMES", {})
+        return full_names[self.value]
 
     @classmethod
     def from_index(cls, index: int) -> "DayName":
@@ -170,6 +177,17 @@ class DayName(str, Enum):
         return [d.full_name for d in cls]
 
 
+DayName._FULL_NAMES = {
+    "Sun": "Sunday",
+    "Mon": "Monday",
+    "Tue": "Tuesday",
+    "Wed": "Wednesday",
+    "Thu": "Thursday",
+    "Fri": "Friday",
+    "Sat": "Saturday",
+}
+
+
 class FilterField(str, Enum):
     """Maps filter parameter names to API field names."""
     TEAM = "TEAM_UUID,TEAM"
@@ -183,23 +201,32 @@ class FilterField(str, Enum):
         return self.value.split(",")
 
     @classmethod
-    def from_param_name(cls, param: str) -> "FilterField":
+    def from_param_name(cls, param: str) -> Optional["FilterField"]:
         """Map parameter name to FilterField."""
-        mappings = {
-            "team_name": cls.TEAM,
-            "advisor_name": cls.ADVISOR,
-            "transport_option": cls.TRANSPORT,
-            "opcode_name": cls.OPCODE,
-        }
-        return mappings.get(param)
+        # Use class __dict__ to access the mapping (Enum treats class vars as members)
+        mappings = FilterField.__dict__.get("_PARAM_NAME_MAPPINGS", {})
+        enum_name = mappings.get(param)
+        return cls[enum_name] if enum_name else None
 
     @classmethod
-    def from_entity_type(cls, entity_type: str) -> "FilterField":
+    def from_entity_type(cls, entity_type: str) -> Optional["FilterField"]:
         """Map entity type to FilterField."""
-        mappings = {
-            "team": cls.TEAM,
-            "advisor": cls.ADVISOR,
-            "transport": cls.TRANSPORT,
-            "opcode": cls.OPCODE,
-        }
-        return mappings.get(entity_type.lower())
+        # Use class __dict__ to access the mapping (Enum treats class vars as members)
+        mappings = FilterField.__dict__.get("_ENTITY_TYPE_MAPPINGS", {})
+        enum_name = mappings.get(entity_type.lower())
+        return cls[enum_name] if enum_name else None
+
+
+FilterField._PARAM_NAME_MAPPINGS = {
+    "team_name": "TEAM",
+    "advisor_name": "ADVISOR",
+    "transport_option": "TRANSPORT",
+    "opcode_name": "OPCODE",
+}
+
+FilterField._ENTITY_TYPE_MAPPINGS = {
+    "team": "TEAM",
+    "advisor": "ADVISOR",
+    "transport": "TRANSPORT",
+    "opcode": "OPCODE",
+}
