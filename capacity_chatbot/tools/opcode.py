@@ -191,12 +191,6 @@ def _format_operations_with_limits(operations: list[dict[str, Any]]) -> str:
 
     return "\n".join(parts)
 
-
-# =============================================================================
-# Utilities
-# =============================================================================
-
-
 def _has_actual_limit(op: dict[str, Any]) -> bool:
     """Check if operation has at least one non-unlimited day."""
     limits = _get_daily_limits_from_opcode(op)
