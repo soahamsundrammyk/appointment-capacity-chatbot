@@ -18,9 +18,6 @@ SCORE_WORD_OVERLAP = 5
 SCORE_HOW_TO_BOOST = 30
 SCORE_INCREASE_BOOST = 50
 
-# Maximum number of example questions to show
-MAX_EXAMPLE_QUESTIONS = 10
-
 # Synonym mappings for query expansion
 SYNONYMS: dict[str, list[str]] = {
     "waiter": ["will wait", "waiting"],
@@ -962,60 +959,6 @@ This manually closes the scheduler for that day. For recurring closures (like ev
 ]
 
 
-# Short summary version (for fast queries)
-KNOWLEDGE_SUMMARY = """You are a capacity chatbot assistant. Key concepts:
-- Capacity = max appointments per time period/advisor/team/transport
-- Capacity Rules = define when/how many appointments (Applicability + If + Then clauses)
-- Transport Options = ways customers get to/from service (Loaner, Shuttle, etc.)
-- Teams = groups of advisors (Main Shop, Express Shop, etc.)
-- Use get_rules tool to fetch current rules
-- Use get_capacity tool to fetch current capacity data (includes actionable "HOW TO INCREASE CAPACITY" advice)
-- Answer concept questions from knowledge, use tools for current data queries
-- IMPORTANT: When users ask follow-up questions like "how do I increase it?", check previous tool responses for specific actionable advice before generating generic responses."""
-
-# Additional knowledge documentation (can be expanded in the future if needed)
-KNOWLEDGE_DOCUMENTATION: dict[str, str] = {}
-
-
-def get_knowledge_base_section(condensed: bool = True) -> str:
-    """Generate the knowledge base section for the system prompt.
-
-    Args:
-        condensed: If True, use short summary. If False, include full Q&A list.
-                   Default True for better performance.
-
-    Returns:
-        Formatted string containing knowledge base content
-    """
-    if condensed:
-        # Use short summary for better latency
-        return KNOWLEDGE_SUMMARY
-
-    # Full knowledge base (only use when needed)
-    sections = []
-
-    # Add common questions
-    sections.append("=== COMMON QUESTIONS & ANSWERS ===")
-    sections.append(
-        "Users frequently ask these questions. Answer them directly using this knowledge (no API calls needed):"
-    )
-    sections.append("")
-
-    for i, qa in enumerate(COMMON_QUESTIONS, 1):
-        sections.append("Q%d: %s" % (i, qa["question"]))
-        sections.append("A%d: %s" % (i, qa["answer"]))
-        sections.append("")
-
-    # Add documentation sections (if available)
-    if KNOWLEDGE_DOCUMENTATION:
-        sections.append("=== ADDITIONAL KNOWLEDGE ===")
-        for key, content in KNOWLEDGE_DOCUMENTATION.items():
-            sections.append(content.strip())
-            sections.append("")
-
-    return "\n".join(sections)
-
-
 def _expand_query_with_synonyms(query: str) -> str:
     """Expand query with synonyms for better matching.
 
@@ -1201,15 +1144,3 @@ def get_relevant_knowledge(user_query: str, max_items: int = 3) -> str:
         sections.append("")
 
     return "\n".join(sections)
-
-
-def get_question_examples() -> str:
-    """Get example questions users might ask.
-
-    Returns:
-        Formatted string with example questions
-    """
-    questions = [qa["question"] for qa in COMMON_QUESTIONS]
-    return "\n".join(
-        ["- %s" % q for q in questions[:MAX_EXAMPLE_QUESTIONS]]
-    )
