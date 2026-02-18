@@ -1,6 +1,9 @@
 """Utility to map UUIDs to human-readable names."""
 
+import logging
 from typing import Any, Dict, List, Optional
+
+logger = logging.getLogger(__name__)
 
 
 class UUIDMapper:
@@ -17,8 +20,8 @@ class UUIDMapper:
                 - hours_of_operation: Hours of operation data
         """
         self.advisor_map: Dict[str, str] = {}  # uuid -> name
-        self.team_map: Dict[str, str] = {}      # uuid -> name
-        self.transport_map: Dict[str, str] = {} # uuid -> name
+        self.team_map: Dict[str, str] = {}  # uuid -> name
+        self.transport_map: Dict[str, str] = {}  # uuid -> name
 
         if cached_data:
             self._build_maps(cached_data)
@@ -52,9 +55,7 @@ class UUIDMapper:
 
         # Map transport options: transportOptionUuid or uuid -> optionName or customName
         transport_options = cached_data.get("transport_options", [])
-        import logging
-        logger = logging.getLogger(__name__)
-        logger.debug(f"Building transport_map from {len(transport_options)} transport options")
+        logger.debug("Building transport_map from %d transport options", len(transport_options))
 
         for transport in transport_options:
             # Handle both "transportOptionUuid" (from API) and "uuid" (from test data)
@@ -64,11 +65,11 @@ class UUIDMapper:
                 name = transport.get("customName") or transport.get("optionName")
                 if name:
                     self.transport_map[uuid] = name
-                    logger.debug(f"Mapped transport: {name} -> {uuid[:20]}...")
+                    logger.debug("Mapped transport: %s -> %s...", name, uuid[:20])
                 else:
-                    logger.warning(f"Transport option with UUID {uuid[:20]}... has no name (customName or optionName)")
+                    logger.warning("Transport option with UUID %s... has no name (customName or optionName)", uuid[:20])
             else:
-                logger.warning(f"Transport option missing UUID: {transport}")
+                logger.warning("Transport option missing UUID: %s", transport)
 
     def get_advisor_name(self, uuid: str) -> str:
         """Get advisor name from UUID."""
@@ -92,13 +93,39 @@ class UUIDMapper:
         Returns:
             List of names (or UUIDs if not found)
         """
-        if entity_type == "advisor":
-            return [self.get_advisor_name(uuid) for uuid in uuid_list]
-        elif entity_type == "team":
-            return [self.get_team_name(uuid) for uuid in uuid_list]
-        elif entity_type == "transport":
-            return [self.get_transport_name(uuid) for uuid in uuid_list]
+        # Map entity types to their respective getter methods
+        entity_getters = {
+            "advisor": self.get_advisor_name,
+            "team": self.get_team_name,
+            "transport": self.get_transport_name,
+        }
+        getter = entity_getters.get(entity_type)
+        if getter:
+            return [getter(uuid) for uuid in uuid_list]
         return uuid_list
+
+    def _get_uuid_by_name(self, name: str, entity_map: Dict[str, str], entity_type: str) -> Optional[str]:
+        """Generic helper to get UUID by name (case-insensitive partial match).
+
+        Args:
+            name: Entity name to search for
+            entity_map: Dictionary mapping UUID -> name
+            entity_type: Type of entity (for logging)
+
+        Returns:
+            UUID if found, None otherwise
+        """
+        name_lower = name.lower().strip()
+        logger.debug("Searching for %s '%s' (normalized: '%s') in %d options", entity_type, name, name_lower, len(entity_map))
+
+        for uuid, entity_name in entity_map.items():
+            entity_name_lower = entity_name.lower()
+            if name_lower in entity_name_lower or entity_name_lower in name_lower:
+                logger.debug("Matched %s '%s' -> '%s' (UUID: %s...)", entity_type, name, entity_name, uuid[:20])
+                return uuid
+
+        logger.warning("No match found for %s '%s'. Available options: %s", entity_type, name, list(entity_map.values()))
+        return None
 
     def get_transport_uuid_by_name(self, name: str) -> Optional[str]:
         """Get transport option UUID by name (case-insensitive partial match).
@@ -109,20 +136,7 @@ class UUIDMapper:
         Returns:
             UUID if found, None otherwise
         """
-        import logging
-        logger = logging.getLogger(__name__)
-
-        name_lower = name.lower().strip()
-        logger.debug(f"Searching for transport option '{name}' (normalized: '{name_lower}') in {len(self.transport_map)} options")
-
-        for uuid, transport_name in self.transport_map.items():
-            transport_name_lower = transport_name.lower()
-            if name_lower in transport_name_lower or transport_name_lower in name_lower:
-                logger.info(f"Matched '{name}' -> '{transport_name}' (UUID: {uuid[:20]}...)")
-                return uuid
-
-        logger.warning(f"No match found for transport option '{name}'. Available options: {list(self.transport_map.values())}")
-        return None
+        return self._get_uuid_by_name(name, self.transport_map, "transport option")
 
     def get_advisor_uuid_by_name(self, name: str) -> Optional[str]:
         """Get advisor UUID by name (case-insensitive partial match).
@@ -133,11 +147,7 @@ class UUIDMapper:
         Returns:
             UUID if found, None otherwise
         """
-        name_lower = name.lower().strip()
-        for uuid, advisor_name in self.advisor_map.items():
-            if name_lower in advisor_name.lower() or advisor_name.lower() in name_lower:
-                return uuid
-        return None
+        return self._get_uuid_by_name(name, self.advisor_map, "advisor")
 
     def get_team_uuid_by_name(self, name: str) -> Optional[str]:
         """Get team UUID by name (case-insensitive partial match).
@@ -148,14 +158,10 @@ class UUIDMapper:
         Returns:
             UUID if found, None otherwise
         """
-        name_lower = name.lower().strip()
-        for uuid, team_name in self.team_map.items():
-            if name_lower in team_name.lower() or team_name.lower() in name_lower:
-                return uuid
-        return None
+        return self._get_uuid_by_name(name, self.team_map, "team")
 
 
-def resolve_uuids_by_field(field: str, values: List[Any], uuid_mapper: "UUIDMapper") -> List[Any]:  # type: ignore
+def resolve_uuids_by_field(field: str, values: List[Any], uuid_mapper: UUIDMapper) -> List[Any]:
     """Resolve UUIDs to names based on field type.
     
     Maps API field names to entity types and uses UUIDMapper to convert UUIDs to names.
@@ -175,11 +181,15 @@ def resolve_uuids_by_field(field: str, values: List[Any], uuid_mapper: "UUIDMapp
         resolve_uuids_by_field("TEAM_UUID", ["team-uuid"], mapper)
         # Returns: ["Express Shop"]
     """
-    if field == "DEALER_ASSOCIATE_UUID":
-        return uuid_mapper.replace_uuids_in_list(values, "advisor")
-    elif field == "TEAM_UUID":
-        return uuid_mapper.replace_uuids_in_list(values, "team")
-    elif field == "TRANSPORT_OPTION_UUID":
-        return uuid_mapper.replace_uuids_in_list(values, "transport")
+    # Map API field names to entity types
+    field_to_entity_type = {
+        "DEALER_ASSOCIATE_UUID": "advisor",
+        "TEAM_UUID": "team",
+        "TRANSPORT_OPTION_UUID": "transport",
+    }
+    
+    entity_type = field_to_entity_type.get(field)
+    if entity_type:
+        return uuid_mapper.replace_uuids_in_list(values, entity_type)
     return values
 
