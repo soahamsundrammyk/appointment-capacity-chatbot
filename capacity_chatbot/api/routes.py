@@ -24,50 +24,32 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-
-# ============================================================================
-# FastAPI App Setup
-# ============================================================================
-
 # Get mount prefix from environment (for HAProxy routing)
 # Defaults to /capacity-chatbot for production
 MOUNT_PREFIX = os.getenv("MOUNT_PREFIX", "/capacity-chatbot")
 
-# Create the internal API app with all the routes
-api_app = FastAPI(
+app = FastAPI(
     title="Capacity Chatbot API",
     description="AI-powered chatbot for capacity-related questions",
     version="1.0.0",
 )
 
-# Create the main app - routes will be mounted under MOUNT_PREFIX
-app = FastAPI(
-    title="Capacity Chatbot",
-    version="1.0.0",
+# CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
-# CORS middleware on both apps
-for fast_app in [app, api_app]:
-    fast_app.add_middleware(
-        CORSMiddleware,
-        allow_origins=["*"],
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
-
-# Add root-level health check for Kubernetes probes (works without prefix)
+# Health check endpoint (will be available at /capacity-chatbot/ok when mounted)
 @app.get("/ok")
-async def root_ok_check():
+async def health_check():
     return {"status": "ok"}
 
-# Mount the API under the prefix (e.g., /capacity-chatbot)
-app.mount(MOUNT_PREFIX, api_app)
-
-
-# ============================================================================
-# Helper Functions
-# ============================================================================
+root_app = FastAPI(title="Capacity Chatbot")
+root_app.mount(MOUNT_PREFIX, app)
 
 def convert_to_langchain_messages(messages: List[Dict[str, Any]]) -> List:
     """Convert API message format to LangChain messages."""
@@ -125,11 +107,6 @@ def build_graph_input(
             "messages": messages,
             **updated_context,
         }
-
-
-# ============================================================================
-# Streaming Run Endpoint
-# ============================================================================
 
 async def run_graph_stream(
     thread_id: str, input_data: Dict[str, Any], stream_mode: List[str], session_info: Dict[str, Any]
@@ -194,7 +171,7 @@ async def run_graph_stream(
         yield f"event: error\ndata: {json.dumps({'error': str(e)})}\n\n"
 
 
-@api_app.post("/threads/{thread_id}/runs/stream")
+@app.post("/threads/{thread_id}/runs/stream")
 async def create_run_stream(
     thread_id: str,
     request: RunRequest,
@@ -216,12 +193,7 @@ async def create_run_stream(
         },
     )
 
-
-# ============================================================================
-# Startup
-# ============================================================================
-
-@api_app.on_event("startup")
+@app.on_event("startup")
 async def startup_event():
     """Initialize the graph on startup."""
     logger.info("Starting Capacity Chatbot API server...")
@@ -235,4 +207,4 @@ async def startup_event():
 if __name__ == "__main__":
     import uvicorn
     port = int(os.getenv("PORT", "3334"))
-    uvicorn.run(app, host="0.0.0.0", port=port)
+    uvicorn.run(root_app, host="0.0.0.0", port=port)
