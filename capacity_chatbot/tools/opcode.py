@@ -16,12 +16,6 @@ logger = logging.getLogger(__name__)
 # Constants
 DAYS_IN_WEEK = 7
 
-
-# =============================================================================
-# Main Tool
-# =============================================================================
-
-
 @tool
 async def search_opcode_tool(
     concern_text: str | None = None,
@@ -72,12 +66,6 @@ async def search_opcode_tool(
         logger.error("Error in search_opcode_tool: %s", e, exc_info=True)
         return "Error: %s" % str(e)
 
-
-# =============================================================================
-# API Calls
-# =============================================================================
-
-
 async def _search_opcode(
     search_token: str,
     department_uuid: str,
@@ -103,12 +91,6 @@ async def _fetch_operations_with_limits(
         result = await client.fetch_operations_with_limits(department_uuid, mkid=mkid)
         formatted = _format_operations_with_limits(result.get("operationList", []))
         return {"formatted_summary": formatted, "raw_data": result}
-
-
-# =============================================================================
-# Response Formatting
-# =============================================================================
-
 
 def _get_daily_limits_from_opcode(op: dict[str, Any]) -> list[dict[str, Any]]:
     """Extract daily limits from opcode, handling different field names.
