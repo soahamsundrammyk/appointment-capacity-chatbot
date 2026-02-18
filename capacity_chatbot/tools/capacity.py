@@ -17,7 +17,7 @@ from capacity_chatbot.tools.validation import (
     validate_team_names,
     validate_transport_option_names,
 )
-from capacity_chatbot.utils.date_parser import parse_date_query, parse_time_query
+from capacity_chatbot.utils.date_parser import parse_date_query, parse_dates, parse_time_query
 from capacity_chatbot.utils.state_extractor import extract_state
 from capacity_chatbot.enums import (
     ApplicabilityRuleField,
@@ -31,7 +31,6 @@ from capacity_chatbot.model.requests import EntityFilterRequest, GetCapacityRequ
 
 logger = logging.getLogger(__name__)
 UNLIMITED_CAPACITY = 1e308  # Represents unlimited capacity in API responses
-MIN_YEAR = 2024  # Minimum year for date validation
 
 @tool
 async def get_capacity_tool(
@@ -159,7 +158,7 @@ def _prepare_capacity_request(
         return None, validation_error
 
     # Parse dates with fallback to tomorrow
-    parsed_dates = _parse_dates(request.dates)
+    parsed_dates = parse_dates(request.dates)
 
     # Parse source
     parsed_source = _parse_source(request.source)
@@ -287,39 +286,6 @@ def _validate_entities(
         return uuids, "Entity validation failed:\n" + "\n".join(errors)
 
     return uuids, None
-
-def _get_default_date() -> str:
-    """Get default date (tomorrow) as YYYY-MM-DD string."""
-    today = datetime.now().date()
-    return (today + timedelta(days=1)).strftime("%Y-%m-%d")
-
-
-def _parse_dates(dates: Optional[List[str]]) -> List[str]:
-    """Parse dates from natural language or YYYY-MM-DD format."""
-    today = datetime.now().date()
-    default_date = _get_default_date()
-
-    if not dates:
-        return [default_date]
-
-    parsed = []
-    for d in dates:
-        result = parse_date_query(d, reference_date=today)
-        if result:
-            parsed.extend(result)
-        else:
-            try:
-                dt = datetime.strptime(d, "%Y-%m-%d").date()
-                if dt.year >= MIN_YEAR and dt >= (today - timedelta(days=365)):
-                    parsed.append(d)
-            except ValueError:
-                continue
-
-    if not parsed:
-        return [default_date]
-
-    return sorted(list(set(parsed)))
-
 
 def _parse_source(source: Optional[str]) -> Optional[str]:
     """Map source string to API value."""

@@ -4,6 +4,16 @@ import re
 from datetime import date, datetime, timedelta
 from typing import Any, Dict, List, Optional
 
+# Constants
+MIN_YEAR = 2024  # Minimum year for date validation
+TIME_STRING_WITH_SECONDS_LENGTH = 8  # Length of "HH:MM:SS" format
+MAX_DATES_DISPLAY = 2
+MAX_TIME_SLOTS_DISPLAY = 2
+MAX_DAYS_DISPLAY = 3
+
+# Regex patterns
+DATE_PATTERN = re.compile(r'^\d{4}-\d{2}-\d{2}$')
+
 # Day name to weekday number (Monday=0, Sunday=6)
 DAY_NAME_TO_NUM = {
     "monday": 0, "mon": 0,
@@ -42,7 +52,7 @@ def parse_date_query(query: str, reference_date: Optional[date] = None) -> List[
     query_lower = query.lower().strip()
 
     # Try to parse as YYYY-MM-DD first
-    if re.match(r'^\d{4}-\d{2}-\d{2}$', query):
+    if DATE_PATTERN.match(query):
         return [query]
 
     # Handle relative expressions
@@ -114,8 +124,8 @@ def _get_next_weekday(from_date: date, target_weekday: int, skip_this_week: bool
         # If today is Tuesday and target is Monday, days_ahead = 6 (already next week)
         # If today is Monday and target is Monday, days_ahead = 0, need to add 7
         # If today is Wednesday and target is Friday, days_ahead = 2 (this week), need to add 7
-        if days_ahead == 0 or days_ahead > 0:
-            days_ahead += 7
+        # Since days_ahead is always >= 0 (result of modulo 7), we always add 7
+        days_ahead += 7
     else:
         # Find next occurrence (could be this week)
         if days_ahead == 0:
@@ -140,7 +150,7 @@ def is_date_expression(query: str) -> bool:
     query_lower = query.lower().strip()
 
     # Check YYYY-MM-DD format
-    if re.match(r'^\d{4}-\d{2}-\d{2}$', query):
+    if DATE_PATTERN.match(query):
         return True
 
     # Check common date expressions
@@ -253,7 +263,7 @@ def format_time(time_str: str) -> str:
         format_time("invalid") -> "invalid"
     """
     try:
-        fmt = "%H:%M:%S" if len(time_str) == 8 else "%H:%M"
+        fmt = "%H:%M:%S" if len(time_str) == TIME_STRING_WITH_SECONDS_LENGTH else "%H:%M"
         return datetime.strptime(time_str, fmt).strftime("%I:%M %p").lstrip("0")
     except Exception:
         return time_str
@@ -291,13 +301,57 @@ def format_timing(applicability: Dict[str, Any]) -> str:
     if not applicability:
         return ""
 
+
+def parse_dates(dates: Optional[List[str]], reference_date: Optional[date] = None) -> List[str]:
+    """Parse dates from natural language or YYYY-MM-DD format.
+    
+    Parses a list of date strings (which can be natural language like "tomorrow" or 
+    YYYY-MM-DD format) and returns a sorted, deduplicated list of valid dates.
+    If no valid dates are found, returns tomorrow's date as default.
+    
+    Args:
+        dates: List of date strings to parse (can be None or empty)
+        reference_date: Reference date for relative expressions (defaults to today)
+        
+    Returns:
+        Sorted list of unique date strings in YYYY-MM-DD format
+        
+    Examples:
+        parse_dates(["tomorrow", "2024-01-15"]) -> ["2024-01-14", "2024-01-15"]
+        parse_dates(None) -> ["2024-01-14"]  # tomorrow
+        parse_dates(["invalid"]) -> ["2024-01-14"]  # falls back to tomorrow
+    """
+    if reference_date is None:
+        reference_date = date.today()
+    
+    default_date = (reference_date + timedelta(days=1)).strftime("%Y-%m-%d")
+    
+    if not dates:
+        return [default_date]
+    
+    parsed = []
+    for d in dates:
+        result = parse_date_query(d, reference_date=reference_date)
+        if result:
+            parsed.extend(result)
+        else:
+            # Try to parse as YYYY-MM-DD directly
+            try:
+                dt = datetime.strptime(d, "%Y-%m-%d").date()
+                # Validate year and date range (within last year to future)
+                if dt.year >= MIN_YEAR and dt >= (reference_date - timedelta(days=365)):
+                    parsed.append(d)
+            except ValueError:
+                continue
+    
+    if not parsed:
+        return [default_date]
+    
+    return sorted(list(set(parsed)))
+
     field = applicability.get("field", "")
     date_list = applicability.get("dateList", [])
     day_time_list = applicability.get("dayTimeList", [])
-
-    MAX_DATES_DISPLAY = 2
-    MAX_TIME_SLOTS_DISPLAY = 2
-    MAX_DAYS_DISPLAY = 3
 
     if field == "DATE" and date_list:
         dates = [format_date(d) for d in date_list[:MAX_DATES_DISPLAY]]
