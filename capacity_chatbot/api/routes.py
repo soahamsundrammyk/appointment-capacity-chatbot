@@ -6,16 +6,16 @@ This server provides LangGraph-compatible API endpoints for the UI client.
 import json
 import logging
 import os
-from typing import Any, Dict, List, Optional
+from typing import Any
 
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from langchain_core.messages import AIMessage, HumanMessage
 
 from capacity_chatbot.api.middleware.auth import get_authenticated_session
 from capacity_chatbot.graph import get_graph
-from capacity_chatbot.model.requests import RunInput, RunRequest
+from capacity_chatbot.model.requests import RunRequest
 
 # Logging configuration
 logging.basicConfig(
@@ -43,15 +43,18 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 # Health check endpoint (will be available at /capacity-chatbot/ok when mounted)
 @app.get("/ok")
 async def health_check():
     return {"status": "ok"}
 
+
 root_app = FastAPI(title="Capacity Chatbot")
 root_app.mount(MOUNT_PREFIX, app)
 
-def convert_to_langchain_messages(messages: List[Dict[str, Any]]) -> List:
+
+def convert_to_langchain_messages(messages: list[dict[str, Any]]) -> list:
     """Convert API message format to LangChain messages."""
     result = []
     for msg in messages:
@@ -66,7 +69,7 @@ def convert_to_langchain_messages(messages: List[Dict[str, Any]]) -> List:
     return result
 
 
-def serialize_message(msg) -> Dict[str, Any]:
+def serialize_message(msg) -> dict[str, Any]:
     """Convert a LangChain message to API format."""
     if hasattr(msg, "type"):
         return {
@@ -77,10 +80,10 @@ def serialize_message(msg) -> Dict[str, Any]:
 
 
 def build_graph_input(
-    state, messages: List, input_data: Dict[str, Any], session_info: Optional[Dict[str, Any]] = None
-) -> Dict[str, Any]:
+    state, messages: list, input_data: dict[str, Any], session_info: dict[str, Any] | None = None
+) -> dict[str, Any]:
     """Build the graph input from state and new messages.
-    
+
     Uses session info from mkid auth (preferred) or falls back to request body.
     Note: mkid is passed through config, not state.
     """
@@ -107,18 +110,19 @@ def build_graph_input(
             **updated_context,
         }
 
+
 async def run_graph_stream(
-    thread_id: str, input_data: Dict[str, Any], stream_mode: List[str], session_info: Dict[str, Any]
+    thread_id: str, input_data: dict[str, Any], stream_mode: list[str], session_info: dict[str, Any]
 ):
     """Run the graph and stream results with real-time tool call events."""
     graph = await get_graph()
-    
+
     # Extract mkid from session_info (from auth middleware)
     mkid = session_info.get("mkid", "")
     config = {
         "configurable": {
             "thread_id": thread_id,
-            "mkid": mkid, 
+            "mkid": mkid,
         }
     }
 
@@ -147,7 +151,7 @@ async def run_graph_stream(
                 if chunk and hasattr(chunk, "content") and chunk.content:
                     event_data = {
                         "event": "on_chat_model_stream",
-                        "data": {"chunk": {"content": chunk.content}}
+                        "data": {"chunk": {"content": chunk.content}},
                     }
                     yield f"event: on_chat_model_stream\ndata: {json.dumps(event_data)}\n\n"
 
@@ -158,9 +162,7 @@ async def run_graph_stream(
 
         # Stream final values
         if "values" in stream_mode and final_messages:
-            final_values = {
-                "messages": [serialize_message(m) for m in final_messages]
-            }
+            final_values = {"messages": [serialize_message(m) for m in final_messages]}
             yield f"event: values\ndata: {json.dumps(final_values)}\n\n"
 
         yield f"event: end\ndata: {json.dumps({'status': 'done'})}\n\n"
@@ -174,11 +176,11 @@ async def run_graph_stream(
 async def create_run_stream(
     thread_id: str,
     request: RunRequest,
-    session: Dict[str, Any] = Depends(get_authenticated_session),
+    session: dict[str, Any] = Depends(get_authenticated_session),
 ):
     """
     Stream a run with real-time SSE events.
-    
+
     Requires valid mkid in Authorization header (Bearer token).
     """
     stream_mode = request.stream_mode or ["messages-tuple", "values"]
@@ -191,6 +193,7 @@ async def create_run_stream(
             "X-Accel-Buffering": "no",
         },
     )
+
 
 @app.on_event("startup")
 async def startup_event():
@@ -205,5 +208,6 @@ async def startup_event():
 
 if __name__ == "__main__":
     import uvicorn
+
     port = int(os.getenv("PORT", "3334"))
     uvicorn.run(root_app, host="0.0.0.0", port=port)

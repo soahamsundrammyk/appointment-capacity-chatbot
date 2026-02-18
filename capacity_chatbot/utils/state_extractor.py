@@ -1,13 +1,12 @@
 """Utility for extracting state from LangGraph RunnableConfig."""
 
-from typing import Optional, Tuple
 
 from langchain_core.runnables import RunnableConfig
 
 from capacity_chatbot.state import CapacityChatbotState
 
 
-def extract_state(config: RunnableConfig) -> Tuple[Optional[CapacityChatbotState], Optional[str]]:
+def extract_state(config: RunnableConfig) -> tuple[CapacityChatbotState | None, str | None]:
     """Extract and validate state from config.
 
     Args:
@@ -24,6 +23,9 @@ def extract_state(config: RunnableConfig) -> Tuple[Optional[CapacityChatbotState
         return None, "Error: State not available"
 
     if not state.department_uuid:
-        return None, "Error: Department UUID is required. Please ensure the UI client provides this value."
+        return (
+            None,
+            "Error: Department UUID is required. Please ensure the UI client provides this value.",
+        )
 
     return state, None

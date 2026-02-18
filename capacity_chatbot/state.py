@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass, field
-from typing import Any, Dict, Optional, Sequence
+from typing import Annotated, Any
 
 from langchain_core.messages import AnyMessage
 from langgraph.graph import add_messages
-from typing_extensions import Annotated
 
 
 @dataclass
@@ -17,7 +17,7 @@ class InputState:
     messages: Annotated[Sequence[AnyMessage], add_messages] = field(default_factory=list)
     department_uuid: str = ""
     dealer_uuid: str = ""
-    cached_data: Optional[Dict[str, Any]] = None
+    cached_data: dict[str, Any] | None = None
 
 
 @dataclass
@@ -30,4 +30,5 @@ class OutputState:
 @dataclass
 class CapacityChatbotState(InputState):
     """Complete state of the capacity chatbot agent."""
+
     pass

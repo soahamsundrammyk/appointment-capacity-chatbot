@@ -1,14 +1,14 @@
 """Search opcode tool for capacity chatbot."""
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from langchain_core.runnables import RunnableConfig
 from langchain_core.tools import tool
 
 from capacity_chatbot.clients.kappointment_client import KAppointmentAPIClient
 from capacity_chatbot.config.api_config import KAppointmentAPIConfig
-from capacity_chatbot.enums import DayName, MAX_LIMIT
+from capacity_chatbot.enums import MAX_LIMIT, DayName
 from capacity_chatbot.utils.state_extractor import extract_state
 
 logger = logging.getLogger(__name__)
@@ -24,7 +24,7 @@ DAYS_IN_WEEK = 7
 
 @tool
 async def search_opcode_tool(
-    concern_text: Optional[str] = None,
+    concern_text: str | None = None,
     list_all_with_limits: bool = False,
     config: RunnableConfig = None,
 ) -> str:
@@ -44,7 +44,7 @@ async def search_opcode_tool(
     # Validate mutually exclusive parameters
     if list_all_with_limits and concern_text:
         return "Error: Cannot use both 'concern_text' and 'list_all_with_limits'. Use one mode at a time."
-    
+
     if not list_all_with_limits and not concern_text:
         return "Error: Either 'concern_text' or 'list_all_with_limits' must be provided."
 
@@ -81,7 +81,7 @@ async def search_opcode_tool(
 async def _search_opcode(
     search_token: str,
     department_uuid: str,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Search for opcodes by name."""
     async with KAppointmentAPIClient(config=KAppointmentAPIConfig()) as client:
         result = await client.search_operations(department_uuid, search_token)
@@ -91,10 +91,10 @@ async def _search_opcode(
 
 async def _fetch_operations_with_limits(
     department_uuid: str,
-    mkid: Optional[str] = None,
-) -> Dict[str, Any]:
+    mkid: str | None = None,
+) -> dict[str, Any]:
     """Fetch all opcodes with daily limits configured.
-    
+
     Args:
         department_uuid: Department UUID
         mkid: Optional mkid cookie for authentication (required for webservice endpoint)
@@ -110,29 +110,25 @@ async def _fetch_operations_with_limits(
 # =============================================================================
 
 
-def _get_daily_limits_from_opcode(op: Dict[str, Any]) -> List[Dict[str, Any]]:
+def _get_daily_limits_from_opcode(op: dict[str, Any]) -> list[dict[str, Any]]:
     """Extract daily limits from opcode, handling different field names.
-    
+
     Different API endpoints return different field names:
     - search_operations returns: dailyLimitConfigDTOList
     - fetch_operations_with_limits returns: dailyLimitConfigList
     """
-    return (
-        op.get("dailyLimitConfigDTOList") or
-        op.get("dailyLimitConfigList") or
-        []
-    )
+    return op.get("dailyLimitConfigDTOList") or op.get("dailyLimitConfigList") or []
 
 
 def _format_opcode_entry(
-    op: Dict[str, Any],
+    op: dict[str, Any],
     idx: int,
     show_uuid: bool = True,
     show_duration: bool = True,
     full_limit_names: bool = True,
 ) -> str:
     """Format a single opcode entry.
-    
+
     Args:
         op: Opcode dictionary
         idx: Index number for display
@@ -149,7 +145,7 @@ def _format_opcode_entry(
     text = "%d. **%s**" % (idx, name)
     if labor and labor != name:
         text += " (%s)" % labor
-    
+
     if show_uuid:
         text += "\n   - UUID: %s\n" % uuid
     else:
@@ -175,7 +171,7 @@ def _format_opcode_entry(
     return text
 
 
-def _format_opcode_response(result: Dict[str, Any]) -> str:
+def _format_opcode_response(result: dict[str, Any]) -> str:
     """Format opcode search response."""
     operations = result.get("operationList", [])
     if not operations:
@@ -184,12 +180,14 @@ def _format_opcode_response(result: Dict[str, Any]) -> str:
     parts = ["Found %d matching opcode(s):\n" % len(operations)]
 
     for idx, op in enumerate(operations, 1):
-        parts.append(_format_opcode_entry(op, idx, show_uuid=True, show_duration=True, full_limit_names=True))
+        parts.append(
+            _format_opcode_entry(op, idx, show_uuid=True, show_duration=True, full_limit_names=True)
+        )
 
     return "\n".join(parts)
 
 
-def _format_operations_with_limits(operations: List[Dict[str, Any]]) -> str:
+def _format_operations_with_limits(operations: list[dict[str, Any]]) -> str:
     """Format operations with limits response."""
     if not operations:
         return "No opcodes with daily limits configured."
@@ -203,7 +201,11 @@ def _format_operations_with_limits(operations: List[Dict[str, Any]]) -> str:
     parts = ["📋 **Opcodes with Daily Limits** (%d total):\n" % len(filtered)]
 
     for idx, op in enumerate(filtered, 1):
-        parts.append(_format_opcode_entry(op, idx, show_uuid=False, show_duration=False, full_limit_names=False))
+        parts.append(
+            _format_opcode_entry(
+                op, idx, show_uuid=False, show_duration=False, full_limit_names=False
+            )
+        )
 
     return "\n".join(parts)
 
@@ -213,7 +215,7 @@ def _format_operations_with_limits(operations: List[Dict[str, Any]]) -> str:
 # =============================================================================
 
 
-def _has_actual_limit(op: Dict[str, Any]) -> bool:
+def _has_actual_limit(op: dict[str, Any]) -> bool:
     """Check if operation has at least one non-unlimited day."""
     limits = _get_daily_limits_from_opcode(op)
     for lc in limits:
@@ -222,7 +224,7 @@ def _has_actual_limit(op: Dict[str, Any]) -> bool:
     return False
 
 
-def _format_daily_limits(limits: List[Dict[str, Any]], full_names: bool = False) -> str:
+def _format_daily_limits(limits: list[dict[str, Any]], full_names: bool = False) -> str:
     """Format daily limits into readable string."""
     if not limits:
         return ""
@@ -249,6 +251,8 @@ def _format_daily_limits(limits: List[Dict[str, Any]], full_names: bool = False)
         elif limit == 0:
             parts.append("%s: Blocked" % day_name if full_names else "%s=❌" % day_name)
         else:
-            parts.append("%s: %d" % (day_name, limit) if full_names else "%s=%d" % (day_name, limit))
+            parts.append(
+                "%s: %d" % (day_name, limit) if full_names else "%s=%d" % (day_name, limit)
+            )
 
     return ", ".join(parts)

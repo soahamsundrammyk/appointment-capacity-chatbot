@@ -1,8 +1,7 @@
 """Enums for capacity chatbot - matching Java API enums."""
 
 from enum import Enum
-from typing import List, Optional
-
+from typing import Optional
 
 # Maximum integer value used by API to represent "unlimited"
 MAX_LIMIT = 2147483647
@@ -10,12 +9,14 @@ MAX_LIMIT = 2147483647
 
 class CapacityType(str, Enum):
     """Capacity type enum."""
+
     APPOINTMENT_COUNT = "APPOINTMENT_COUNT"
     SERVICE_HOURS = "SERVICE_HOURS"
 
 
 class ApplicabilityRuleField(str, Enum):
     """Applicability rule field enum."""
+
     DAY = "DAY"
     DATE = "DATE"
     DATE_AND_TIME = "DATE_AND_TIME"
@@ -24,12 +25,14 @@ class ApplicabilityRuleField(str, Enum):
 
 class RuleMatchingCriteria(str, Enum):
     """Rule matching criteria enum."""
+
     EXACTLY_MATCHES = "EXACTLY_MATCHES"
     INCLUSIVELY_MATCHES = "INCLUSIVELY_MATCHES"
 
 
 class RuleField(str, Enum):
     """Rule field enum for entity/filter mapping."""
+
     TRANSPORT_OPTION_UUID = "TRANSPORT_OPTION_UUID"
     DEALER_ASSOCIATE_UUID = "DEALER_ASSOCIATE_UUID"
     TEAM_UUID = "TEAM_UUID"
@@ -44,6 +47,7 @@ class RuleField(str, Enum):
 
 class LimitingFactor(str, Enum):
     """Limiting factor types returned by capacity API."""
+
     TRANSPORT_OPTION = "TRANSPORT_OPTION"
     CAPACITY_RULE = "CAPACITY_RULE"
     DEALER_SCHEDULE = "DEALER_SCHEDULE"
@@ -70,6 +74,7 @@ LimitingFactor._DISPLAY_NAMES = {
 
 class SourceType(str, Enum):
     """Booking source types."""
+
     WEB = "Web"
     DEALER_APP = "DealerApp"
     DMS = "DMS"
@@ -94,6 +99,7 @@ SourceType._INPUT_MAPPINGS = {
 
 class EntityType(str, Enum):
     """Entity types for filtering and display."""
+
     TRANSPORT_OPTIONS = "transport_options"
     ADVISORS = "advisors"
     TEAMS = "teams"
@@ -122,6 +128,7 @@ EntityType._ALIAS_MAPPINGS = {
 
 class FieldDisplayName(str, Enum):
     """Human-readable field names for API fields."""
+
     DEALER_ASSOCIATE_UUID = "Advisor"
     TEAM_UUID = "Team"
     TRANSPORT_OPTION_UUID = "Transport Option"
@@ -146,6 +153,7 @@ class FieldDisplayName(str, Enum):
 
 class DayName(str, Enum):
     """Day names for scheduling (index 0 = Sunday)."""
+
     SUN = "Sun"
     MON = "Mon"
     TUE = "Tue"
@@ -167,12 +175,12 @@ class DayName(str, Enum):
         return list(cls)[index % 7]
 
     @classmethod
-    def all_short(cls) -> List[str]:
+    def all_short(cls) -> list[str]:
         """Get all short day names."""
         return [d.value for d in cls]
 
     @classmethod
-    def all_full(cls) -> List[str]:
+    def all_full(cls) -> list[str]:
         """Get all full day names."""
         return [d.full_name for d in cls]
 
@@ -190,13 +198,14 @@ DayName._FULL_NAMES = {
 
 class FilterField(str, Enum):
     """Maps filter parameter names to API field names."""
+
     TEAM = "TEAM_UUID,TEAM"
     ADVISOR = "DEALER_ASSOCIATE_UUID,ADVISOR,SERVICE_ADVISOR"
     TRANSPORT = "TRANSPORT_OPTION_UUID,TRANSPORT_OPTION"
     OPCODE = "OPERATION_UUID,OP_CODE,OPCODE,SKILL"
 
     @property
-    def fields(self) -> List[str]:
+    def fields(self) -> list[str]:
         """Get list of API field names for this filter."""
         return self.value.split(",")
 

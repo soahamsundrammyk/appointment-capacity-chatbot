@@ -1,7 +1,7 @@
 """Rules tool for fetching capacity and assignment rules."""
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from langchain_core.runnables import RunnableConfig
 from langchain_core.tools import tool
@@ -20,14 +20,15 @@ MAX_RULES_RESULT_SIZE = 100
 MAX_INTERSECTION_VALUES = 3
 MAX_SUMMARY_VALUES = 2
 
+
 @tool
 async def get_rules_tool(
-    rule_type: Optional[str] = None,
-    team_name: Optional[str] = None,
-    advisor_name: Optional[str] = None,
-    transport_option: Optional[str] = None,
-    opcode_name: Optional[str] = None,
-    entity_type: Optional[str] = None,
+    rule_type: str | None = None,
+    team_name: str | None = None,
+    advisor_name: str | None = None,
+    transport_option: str | None = None,
+    opcode_name: str | None = None,
+    entity_type: str | None = None,
     config: RunnableConfig = None,
 ) -> str:
     """Fetch capacity and assignment rules with optional filtering.
@@ -81,7 +82,8 @@ async def get_rules_tool(
         logger.error("Error in get_rules_tool: %s", e, exc_info=True)
         return "Error fetching rules: %s" % str(e)
 
-def _get_rule_type_list(rule_type: Optional[str]) -> List[str]:
+
+def _get_rule_type_list(rule_type: str | None) -> list[str]:
     """Get rule type list from input."""
     if not rule_type:
         return ["CAPACITY", "ASSIGNMENT"]
@@ -95,12 +97,12 @@ def _get_rule_type_list(rule_type: Optional[str]) -> List[str]:
 
 
 def _build_filters(
-    team_name: Optional[str],
-    advisor_name: Optional[str],
-    transport_option: Optional[str],
-    opcode_name: Optional[str],
-    entity_type: Optional[str],
-) -> Dict[str, str]:
+    team_name: str | None,
+    advisor_name: str | None,
+    transport_option: str | None,
+    opcode_name: str | None,
+    entity_type: str | None,
+) -> dict[str, str]:
     """Build filters dict from inputs."""
     filters = {}
     if team_name:
@@ -115,12 +117,13 @@ def _build_filters(
         filters["entity_type"] = entity_type.lower()
     return filters
 
+
 async def _fetch_rules(
     department_uuid: str,
-    rule_type_list: List[str],
-    cached_data: Dict[str, Any],
-    filters: Dict[str, str],
-) -> Dict[str, Any]:
+    rule_type_list: list[str],
+    cached_data: dict[str, Any],
+    filters: dict[str, str],
+) -> dict[str, Any]:
     """Fetch rules from API."""
     request = {
         "dealerUUIDList": [],
@@ -136,10 +139,11 @@ async def _fetch_rules(
         formatted = _format_rules_response(result, uuid_mapper, filters)
         return {"formatted_summary": formatted, "raw_data": result}
 
+
 def _format_rules_response(
-    api_response: Dict[str, Any],
-    uuid_mapper: Optional[UUIDMapper],
-    filters: Dict[str, str],
+    api_response: dict[str, Any],
+    uuid_mapper: UUIDMapper | None,
+    filters: dict[str, str],
 ) -> str:
     """Format rules API response."""
     if not api_response or "ruleList" not in api_response:
@@ -171,7 +175,11 @@ def _format_rules_response(
 
     # Build result
     if filters:
-        result = "Found %d rule(s) matching %s:\n%s" % (filtered_count, _describe_filters(filters), "\n".join(formatted))
+        result = "Found %d rule(s) matching %s:\n%s" % (
+            filtered_count,
+            _describe_filters(filters),
+            "\n".join(formatted),
+        )
     else:
         result = "Found %d active rule(s):\n%s" % (filtered_count, "\n".join(formatted))
 
@@ -180,17 +188,25 @@ def _format_rules_response(
     # to determine if rules are truly conflicting (e.g., mutually exclusive conditions).
     potential_conflicts = _detect_conflicts(rule_list)
     if potential_conflicts:
-        names = ["'%s' and '%s'" % (c['rule1_name'], c['rule2_name']) for c in potential_conflicts[:2]]
-        result += "\n\n⚠️ Found %d assignment rule pair(s) with potentially overlapping conditions (%s). " % (len(potential_conflicts), ", ".join(names))
+        names = [
+            "'%s' and '%s'" % (c["rule1_name"], c["rule2_name"]) for c in potential_conflicts[:2]
+        ]
+        result += (
+            "\n\n⚠️ Found %d assignment rule pair(s) with potentially overlapping conditions (%s). "
+            % (len(potential_conflicts), ", ".join(names))
+        )
         result += "Please review these rules to ensure they don't conflict (e.g., mutually exclusive conditions like '> 3' and '<= 3' are fine)."
     elif filters and ("opcode_name" in filters or filters.get("entity_type") == "opcode"):
-        result += "\n\nIf you want to check daily limits for a specific opcode, please share the name."
+        result += (
+            "\n\nIf you want to check daily limits for a specific opcode, please share the name."
+        )
     else:
         result += "\n\nWould you like me to explain how to modify or create these rules?"
 
     return result
 
-def _rule_matches_filter(rule: Dict[str, Any], filters: Dict[str, str]) -> bool:
+
+def _rule_matches_filter(rule: dict[str, Any], filters: dict[str, str]) -> bool:
     """Check if a rule matches the given filters."""
     if not filters:
         return True
@@ -234,27 +250,28 @@ def _rule_matches_filter(rule: Dict[str, Any], filters: Dict[str, str]) -> bool:
     return False
 
 
-def _describe_filters(filters: Dict[str, str]) -> str:
+def _describe_filters(filters: dict[str, str]) -> str:
     """Create human-readable filter description."""
     parts = []
     if "team_name" in filters:
-        parts.append("team '%s'" % filters['team_name'])
+        parts.append("team '%s'" % filters["team_name"])
     if "advisor_name" in filters:
-        parts.append("advisor '%s'" % filters['advisor_name'])
+        parts.append("advisor '%s'" % filters["advisor_name"])
     if "transport_option" in filters:
-        parts.append("transport '%s'" % filters['transport_option'])
+        parts.append("transport '%s'" % filters["transport_option"])
     if "opcode_name" in filters:
-        parts.append("service '%s'" % filters['opcode_name'])
+        parts.append("service '%s'" % filters["opcode_name"])
     if "entity_type" in filters:
-        parts.append("any %s-related rules" % filters['entity_type'])
+        parts.append("any %s-related rules" % filters["entity_type"])
     return ", ".join(parts) or "specified criteria"
 
-def _get_clause_values(clause: Dict[str, Any]) -> List[Any]:
+
+def _get_clause_values(clause: dict[str, Any]) -> list[Any]:
     """Extract values from a clause, preferring verboseValues over values."""
     return clause.get("verboseValues", []) or clause.get("values", [])
 
 
-def _build_rule_description(rule: Dict[str, Any], uuid_mapper: Optional[UUIDMapper]) -> str:
+def _build_rule_description(rule: dict[str, Any], uuid_mapper: UUIDMapper | None) -> str:
     """Build natural English description of a rule."""
     rule_type = rule.get("ruleType", "")
     applicability = rule.get("applicabilityClause", {}) or {}
@@ -274,7 +291,7 @@ def _build_rule_description(rule: Dict[str, Any], uuid_mapper: Optional[UUIDMapp
     return ", ".join(parts) + "." if parts else "Rule details not available."
 
 
-def _extract_subject(if_clauses: List[Dict[str, Any]], uuid_mapper: Optional[UUIDMapper]) -> str:
+def _extract_subject(if_clauses: list[dict[str, Any]], uuid_mapper: UUIDMapper | None) -> str:
     """Extract main subject from if clauses."""
     for clause in if_clauses:
         field = clause.get("field", "")
@@ -300,7 +317,9 @@ def _extract_subject(if_clauses: List[Dict[str, Any]], uuid_mapper: Optional[UUI
     return ""
 
 
-def _extract_effect(then_clauses: List[Dict[str, Any]], uuid_mapper: Optional[UUIDMapper]) -> Dict[str, Any]:
+def _extract_effect(
+    then_clauses: list[dict[str, Any]], uuid_mapper: UUIDMapper | None
+) -> dict[str, Any]:
     """Extract effect from then clauses."""
     for clause in then_clauses:
         field = clause.get("field", "")
@@ -319,7 +338,7 @@ def _extract_effect(then_clauses: List[Dict[str, Any]], uuid_mapper: Optional[UU
     return {}
 
 
-def _build_capacity_sentence(subject: str, effect: Dict, timing: str) -> str:
+def _build_capacity_sentence(subject: str, effect: dict, timing: str) -> str:
     """Build natural sentence for capacity rules."""
     if not effect:
         return "Capacity rule with no specific effect defined."
@@ -337,7 +356,11 @@ def _build_capacity_sentence(subject: str, effect: Dict, timing: str) -> str:
 
     if str(limit) == "0":
         if subject:
-            return "%s is blocked %s (no appointments)." % (subject, timing) if timing else "%s is blocked." % subject
+            return (
+                "%s is blocked %s (no appointments)." % (subject, timing)
+                if timing
+                else "%s is blocked." % subject
+            )
         return "All appointments blocked %s." % timing if timing else "All appointments blocked."
     else:
         if subject:
@@ -346,7 +369,11 @@ def _build_capacity_sentence(subject: str, effect: Dict, timing: str) -> str:
         return "Maximum %s appointment(s) allowed %s." % (limit, freq_text)
 
 
-def _build_assignment_sentence(if_clauses: List[Dict[str, Any]], then_clauses: List[Dict[str, Any]], uuid_mapper: Optional[UUIDMapper]) -> str:
+def _build_assignment_sentence(
+    if_clauses: list[dict[str, Any]],
+    then_clauses: list[dict[str, Any]],
+    uuid_mapper: UUIDMapper | None,
+) -> str:
     """Build natural sentence for assignment rules."""
     if not if_clauses and not then_clauses:
         return "Assignment rule with no conditions defined."
@@ -393,29 +420,33 @@ def _build_assignment_sentence(if_clauses: List[Dict[str, Any]], then_clauses: L
     return "IF %s %s" % (if_text, then_text)
 
 
-def _detect_conflicts(rules: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+def _detect_conflicts(rules: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Detect conflicting assignment rules."""
     conflicts = []
     assignment_rules = [r for r in rules if r.get("ruleType") == "ASSIGNMENT"]
 
     for i, rule1 in enumerate(assignment_rules):
-        for rule2 in assignment_rules[i+1:]:
+        for rule2 in assignment_rules[i + 1 :]:
             overlap = _check_condition_overlap(rule1, rule2)
             if overlap and _has_different_actions(rule1, rule2):
-                conflicts.append({
-                    "rule1_name": rule1.get("ruleName", "Unnamed"),
-                    "rule2_name": rule2.get("ruleName", "Unnamed"),
-                    "overlap_field": overlap["field"],
-                    "rule1_action": _summarize_then(rule1),
-                    "rule2_action": _summarize_then(rule2),
-                })
+                conflicts.append(
+                    {
+                        "rule1_name": rule1.get("ruleName", "Unnamed"),
+                        "rule2_name": rule2.get("ruleName", "Unnamed"),
+                        "overlap_field": overlap["field"],
+                        "rule1_action": _summarize_then(rule1),
+                        "rule2_action": _summarize_then(rule2),
+                    }
+                )
 
     return conflicts
 
 
-def _check_condition_overlap(rule1: Dict[str, Any], rule2: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+def _check_condition_overlap(
+    rule1: dict[str, Any], rule2: dict[str, Any]
+) -> dict[str, Any] | None:
     """Check if two rules' conditions can match the same input.
-    
+
     This is a simple heuristic that checks for same field and overlapping values.
     The LLM will analyze the actual rule descriptions to determine if they're truly conflicting
     (e.g., mutually exclusive conditions like > 3 and <= 3 are fine).
@@ -436,23 +467,24 @@ def _check_condition_overlap(rule1: Dict[str, Any], rule2: Dict[str, Any]) -> Op
     return None
 
 
-def _has_different_actions(rule1: Dict[str, Any], rule2: Dict[str, Any]) -> bool:
+def _has_different_actions(rule1: dict[str, Any], rule2: dict[str, Any]) -> bool:
     """Check if two rules have different THEN actions."""
+
     def normalize(clauses):
-        parts = ["%s:%s" % (c.get('field', ''), sorted(c.get('values', []))) for c in (clauses or [])]
+        parts = [
+            "%s:%s" % (c.get("field", ""), sorted(c.get("values", []))) for c in (clauses or [])
+        ]
         return "|".join(sorted(parts))
 
     return normalize(rule1.get("thenClauses", [])) != normalize(rule2.get("thenClauses", []))
 
 
-def _summarize_then(rule: Dict[str, Any]) -> str:
+def _summarize_then(rule: dict[str, Any]) -> str:
     """Summarize a rule's THEN action."""
     parts = []
-    for clause in (rule.get("thenClauses") or []):
+    for clause in rule.get("thenClauses") or []:
         field = clause.get("field", "")
         values = _get_clause_values(clause)
         name = FieldDisplayName.get(field)
         parts.append("%s: %s" % (name, ", ".join(str(v) for v in values[:MAX_SUMMARY_VALUES])))
     return "; ".join(parts) if parts else "No action"
-
-

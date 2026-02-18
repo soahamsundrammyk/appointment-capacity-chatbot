@@ -2,7 +2,7 @@
 
 import re
 from datetime import date, datetime, timedelta
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 # Constants
 MIN_YEAR = 2024  # Minimum year for date validation
@@ -12,21 +12,31 @@ MAX_TIME_SLOTS_DISPLAY = 2
 MAX_DAYS_DISPLAY = 3
 
 # Regex patterns
-DATE_PATTERN = re.compile(r'^\d{4}-\d{2}-\d{2}$')
+DATE_PATTERN = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 # Day name to weekday number (Monday=0, Sunday=6)
 DAY_NAME_TO_NUM = {
-    "monday": 0, "mon": 0,
-    "tuesday": 1, "tue": 1, "tues": 1,
-    "wednesday": 2, "wed": 2,
-    "thursday": 3, "thu": 3, "thur": 3, "thurs": 3,
-    "friday": 4, "fri": 4,
-    "saturday": 5, "sat": 5,
-    "sunday": 6, "sun": 6,
+    "monday": 0,
+    "mon": 0,
+    "tuesday": 1,
+    "tue": 1,
+    "tues": 1,
+    "wednesday": 2,
+    "wed": 2,
+    "thursday": 3,
+    "thu": 3,
+    "thur": 3,
+    "thurs": 3,
+    "friday": 4,
+    "fri": 4,
+    "saturday": 5,
+    "sat": 5,
+    "sunday": 6,
+    "sun": 6,
 }
 
 
-def parse_date_query(query: str, reference_date: Optional[date] = None) -> List[str]:
+def parse_date_query(query: str, reference_date: date | None = None) -> list[str]:
     """Parse natural language date expressions to list of YYYY-MM-DD strings.
 
     Args:
@@ -82,14 +92,16 @@ def parse_date_query(query: str, reference_date: Optional[date] = None) -> List[
         return [(next_monday + timedelta(days=i)).strftime("%Y-%m-%d") for i in range(7)]
 
     # Handle "next N days"
-    next_n_match = re.match(r'next\s+(\d+)\s+days?', query_lower)
+    next_n_match = re.match(r"next\s+(\d+)\s+days?", query_lower)
     if next_n_match:
         n_days = int(next_n_match.group(1))
-        return [(reference_date + timedelta(days=i+1)).strftime("%Y-%m-%d") for i in range(n_days)]
+        return [
+            (reference_date + timedelta(days=i + 1)).strftime("%Y-%m-%d") for i in range(n_days)
+        ]
 
     # Handle day names (e.g., "Thursday", "next Monday")
     # Check for "next [day]" pattern first
-    next_day_match = re.match(r'next\s+(\w+)', query_lower)
+    next_day_match = re.match(r"next\s+(\w+)", query_lower)
     if next_day_match:
         day_name = next_day_match.group(1).lower()
         if day_name in DAY_NAME_TO_NUM:
@@ -155,10 +167,25 @@ def is_date_expression(query: str) -> bool:
 
     # Check common date expressions
     date_keywords = [
-        "today", "tomorrow", "yesterday",
-        "this week", "next week",
-        "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday",
-        "mon", "tue", "wed", "thu", "fri", "sat", "sun",
+        "today",
+        "tomorrow",
+        "yesterday",
+        "this week",
+        "next week",
+        "monday",
+        "tuesday",
+        "wednesday",
+        "thursday",
+        "friday",
+        "saturday",
+        "sunday",
+        "mon",
+        "tue",
+        "wed",
+        "thu",
+        "fri",
+        "sat",
+        "sun",
     ]
 
     for keyword in date_keywords:
@@ -166,13 +193,13 @@ def is_date_expression(query: str) -> bool:
             return True
 
     # Check "next N days" pattern
-    if re.match(r'next\s+\d+\s+days?', query_lower):
+    if re.match(r"next\s+\d+\s+days?", query_lower):
         return True
 
     return False
 
 
-def parse_time_query(query: str) -> Optional[str]:
+def parse_time_query(query: str) -> str | None:
     """Parse natural language time expressions to HH:MM format (24-hour).
 
     Args:
@@ -204,7 +231,7 @@ def parse_time_query(query: str) -> Optional[str]:
         return time_periods[query_lower]
 
     # Try to match HH:MM (24-hour) format first
-    match_24h = re.match(r'^(\d{1,2}):(\d{2})$', query)
+    match_24h = re.match(r"^(\d{1,2}):(\d{2})$", query)
     if match_24h:
         hour = int(match_24h.group(1))
         minute = int(match_24h.group(2))
@@ -212,7 +239,7 @@ def parse_time_query(query: str) -> Optional[str]:
             return f"{hour:02d}:{minute:02d}"
 
     # Try to match 12-hour format: "9 AM", "9:30 AM", "9AM", "9:30AM"
-    match_12h = re.match(r'^(\d{1,2})(?::(\d{2}))?\s*(am|pm)$', query_lower)
+    match_12h = re.match(r"^(\d{1,2})(?::(\d{2}))?\s*(am|pm)$", query_lower)
     if match_12h:
         hour = int(match_12h.group(1))
         minute = int(match_12h.group(2)) if match_12h.group(2) else 0
@@ -231,13 +258,13 @@ def parse_time_query(query: str) -> Optional[str]:
 
 def format_date(date_str: str) -> str:
     """Format date string from API format (YYYY-MM-DD) to human-readable format.
-    
+
     Args:
         date_str: Date string in YYYY-MM-DD format
-        
+
     Returns:
         Formatted date string like "January 15, 2024", or original string if parsing fails
-        
+
     Examples:
         format_date("2024-01-15") -> "January 15, 2024"
         format_date("invalid") -> "invalid"
@@ -250,13 +277,13 @@ def format_date(date_str: str) -> str:
 
 def format_time(time_str: str) -> str:
     """Format time string from API format (HH:MM or HH:MM:SS) to human-readable 12-hour format.
-    
+
     Args:
         time_str: Time string in HH:MM or HH:MM:SS format (24-hour)
-        
+
     Returns:
         Formatted time string like "9:00 AM", or original string if parsing fails
-        
+
     Examples:
         format_time("09:00:00") -> "9:00 AM"
         format_time("14:30") -> "2:30 PM"
@@ -269,32 +296,32 @@ def format_time(time_str: str) -> str:
         return time_str
 
 
-def format_timing(applicability: Dict[str, Any]) -> str:
+def format_timing(applicability: dict[str, Any]) -> str:
     """Format timing info from applicability clause to human-readable string.
-    
+
     Handles different applicability field types:
     - DATE: Specific dates
     - DAY: Days of week
     - DAY_AND_TIME: Days with time slots
     - DATE_AND_TIME: Specific dates with time slots
-    
+
     Args:
         applicability: Applicability clause dictionary with:
             - field: Field type (DATE, DAY, DAY_AND_TIME, DATE_AND_TIME)
             - dateList: List of date strings (YYYY-MM-DD)
             - dayTimeList: List of day/time entries
-            
+
     Returns:
         Human-readable timing string, or empty string if no timing info
-        
+
     Examples:
         format_timing({"field": "DATE", "dateList": ["2024-01-15"]})
         # Returns: "on January 15, 2024"
-        
+
         format_timing({"field": "DAY", "dayTimeList": [{"day": "monday"}, {"day": "wednesday"}]})
         # Returns: "on Monday, Wednesday"
-        
-        format_timing({"field": "DATE_AND_TIME", "dateList": ["2024-01-15"], 
+
+        format_timing({"field": "DATE_AND_TIME", "dateList": ["2024-01-15"],
                        "dayTimeList": [{"timeSlots": ["09:00:00", "14:00:00"]}]})
         # Returns: "on January 15, 2024 at 9:00 AM, 2:00 PM"
     """
@@ -302,20 +329,20 @@ def format_timing(applicability: Dict[str, Any]) -> str:
         return ""
 
 
-def parse_dates(dates: Optional[List[str]], reference_date: Optional[date] = None) -> List[str]:
+def parse_dates(dates: list[str] | None, reference_date: date | None = None) -> list[str]:
     """Parse dates from natural language or YYYY-MM-DD format.
-    
-    Parses a list of date strings (which can be natural language like "tomorrow" or 
+
+    Parses a list of date strings (which can be natural language like "tomorrow" or
     YYYY-MM-DD format) and returns a sorted, deduplicated list of valid dates.
     If no valid dates are found, returns tomorrow's date as default.
-    
+
     Args:
         dates: List of date strings to parse (can be None or empty)
         reference_date: Reference date for relative expressions (defaults to today)
-        
+
     Returns:
         Sorted list of unique date strings in YYYY-MM-DD format
-        
+
     Examples:
         parse_dates(["tomorrow", "2024-01-15"]) -> ["2024-01-14", "2024-01-15"]
         parse_dates(None) -> ["2024-01-14"]  # tomorrow
@@ -323,12 +350,12 @@ def parse_dates(dates: Optional[List[str]], reference_date: Optional[date] = Non
     """
     if reference_date is None:
         reference_date = date.today()
-    
+
     default_date = (reference_date + timedelta(days=1)).strftime("%Y-%m-%d")
-    
+
     if not dates:
         return [default_date]
-    
+
     parsed = []
     for d in dates:
         result = parse_date_query(d, reference_date=reference_date)
@@ -343,10 +370,10 @@ def parse_dates(dates: Optional[List[str]], reference_date: Optional[date] = Non
                     parsed.append(d)
             except ValueError:
                 continue
-    
+
     if not parsed:
         return [default_date]
-    
+
     return sorted(list(set(parsed)))
 
     field = applicability.get("field", "")
@@ -360,7 +387,15 @@ def parse_dates(dates: Optional[List[str]], reference_date: Optional[date] = Non
     elif field in ["DAY", "DAY_AND_TIME"]:
         days = [e.get("day", "").capitalize() for e in (day_time_list or []) if e.get("day")]
         if days:
-            all_days = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"}
+            all_days = {
+                "Sunday",
+                "Monday",
+                "Tuesday",
+                "Wednesday",
+                "Thursday",
+                "Friday",
+                "Saturday",
+            }
             missing = all_days - set(days)
             if len(missing) == 1:
                 return "(except %ss)" % list(missing)[0]
@@ -371,7 +406,7 @@ def parse_dates(dates: Optional[List[str]], reference_date: Optional[date] = Non
     elif field == "DATE_AND_TIME" and date_list:
         date_str = format_date(date_list[0])
         times = []
-        for entry in (day_time_list or []):
+        for entry in day_time_list or []:
             for slot in entry.get("timeSlots", [])[:MAX_TIME_SLOTS_DISPLAY]:
                 times.append(format_time(slot))
         if times:

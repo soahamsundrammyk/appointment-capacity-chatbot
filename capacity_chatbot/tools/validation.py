@@ -2,12 +2,14 @@
 
 import logging
 from difflib import SequenceMatcher
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
 
-def find_closest_match(query: str, candidates: List[str], threshold: float = 0.6) -> Optional[Tuple[str, float]]:
+def find_closest_match(
+    query: str, candidates: list[str], threshold: float = 0.6
+) -> tuple[str, float] | None:
     """Find the closest matching string from a list of candidates.
 
     Args:
@@ -50,10 +52,10 @@ def find_closest_match(query: str, candidates: List[str], threshold: float = 0.6
 
 
 def _validate_entity_names_generic(
-    name_uuid_pairs: List[Tuple[str, str]],
+    name_uuid_pairs: list[tuple[str, str]],
     entity_type_name: str,
-    names_to_validate: List[str],
-) -> Dict[str, Any]:
+    names_to_validate: list[str],
+) -> dict[str, Any]:
     """Generic entity validation function.
 
     Args:
@@ -98,11 +100,19 @@ def _validate_entity_names_generic(
                 matched_lower = matched_name.lower().strip()
                 original_name, uuid = name_to_uuid[matched_lower]
                 valid.append((original_name, uuid))
-                logger.info("Fuzzy matched %s: '%s' -> '%s' (score: %.2f)", entity_type_name, name, original_name, score)
+                logger.info(
+                    "Fuzzy matched %s: '%s' -> '%s' (score: %.2f)",
+                    entity_type_name,
+                    name,
+                    original_name,
+                    score,
+                )
             else:
                 invalid.append(name)
                 # Find partial matches for suggestions
-                partial_matches = [n for n in all_names if name_lower in n.lower() or n.lower() in name_lower]
+                partial_matches = [
+                    n for n in all_names if name_lower in n.lower() or n.lower() in name_lower
+                ]
                 if partial_matches:
                     suggestions[name] = partial_matches[:3]
                 logger.warning("Invalid %s name: '%s'. No match found.", entity_type_name, name)
@@ -111,11 +121,15 @@ def _validate_entity_names_generic(
     if not invalid:
         message = "All %d %s(s) validated successfully." % (len(valid), entity_type_name)
     else:
-        message = "Validated %d %s(s). Could not find: %s." % (len(valid), entity_type_name, ", ".join(invalid))
+        message = "Validated %d %s(s). Could not find: %s." % (
+            len(valid),
+            entity_type_name,
+            ", ".join(invalid),
+        )
         if suggestions:
-            message += " Did you mean: " + "; ".join([
-                "'%s' -> %s" % (k, v) for k, v in suggestions.items()
-            ])
+            message += " Did you mean: " + "; ".join(
+                ["'%s' -> %s" % (k, v) for k, v in suggestions.items()]
+            )
 
     return {
         "valid": valid,
@@ -123,7 +137,7 @@ def _validate_entity_names_generic(
     }
 
 
-def _extract_advisor_name(advisor: Dict[str, Any]) -> Optional[str]:
+def _extract_advisor_name(advisor: dict[str, Any]) -> str | None:
     """Extract advisor name from advisor dict."""
     first_name = advisor.get("firstName", "") or ""
     last_name = advisor.get("lastName", "") or ""
@@ -132,15 +146,15 @@ def _extract_advisor_name(advisor: Dict[str, Any]) -> Optional[str]:
     return name if name else None
 
 
-def _extract_advisor_uuid(advisor: Dict[str, Any]) -> Optional[str]:
+def _extract_advisor_uuid(advisor: dict[str, Any]) -> str | None:
     """Extract advisor UUID from advisor dict."""
     return advisor.get("uuid", "")
 
 
 def validate_advisor_names(
-    advisor_names: List[str],
-    cached_data: Dict[str, Any],
-) -> Dict[str, Any]:
+    advisor_names: list[str],
+    cached_data: dict[str, Any],
+) -> dict[str, Any]:
     """Validate advisor names against cached data.
 
     Args:
@@ -161,7 +175,7 @@ def validate_advisor_names(
         uuid = _extract_advisor_uuid(advisor)
         if name and uuid:
             name_uuid_pairs.append((name, uuid))
-    
+
     return _validate_entity_names_generic(
         name_uuid_pairs=name_uuid_pairs,
         entity_type_name="advisor",
@@ -169,27 +183,20 @@ def validate_advisor_names(
     )
 
 
-def _extract_transport_name(option: Dict[str, Any]) -> Optional[str]:
+def _extract_transport_name(option: dict[str, Any]) -> str | None:
     """Extract transport option name from option dict."""
-    return (
-        option.get("customName", "") or
-        option.get("optionName", "") or
-        None
-    )
+    return option.get("customName", "") or option.get("optionName", "") or None
 
 
-def _extract_transport_uuid(option: Dict[str, Any]) -> Optional[str]:
+def _extract_transport_uuid(option: dict[str, Any]) -> str | None:
     """Extract transport option UUID from option dict."""
-    return (
-        option.get("transportOptionUuid", "") or
-        None
-    )
+    return option.get("transportOptionUuid", "") or None
 
 
 def validate_transport_option_names(
-    transport_names: List[str],
-    cached_data: Dict[str, Any],
-) -> Dict[str, Any]:
+    transport_names: list[str],
+    cached_data: dict[str, Any],
+) -> dict[str, Any]:
     """Validate transport option names against cached data.
 
     Args:
@@ -206,7 +213,7 @@ def validate_transport_option_names(
         uuid = _extract_transport_uuid(option)
         if name and uuid:
             name_uuid_pairs.append((name, uuid))
-    
+
     return _validate_entity_names_generic(
         name_uuid_pairs=name_uuid_pairs,
         entity_type_name="transport option",
@@ -214,20 +221,20 @@ def validate_transport_option_names(
     )
 
 
-def _extract_team_name(team: Dict[str, Any]) -> Optional[str]:
+def _extract_team_name(team: dict[str, Any]) -> str | None:
     """Extract team name from team dict."""
     return team.get("name", "") or team.get("teamName", "") or None
 
 
-def _extract_team_uuid(team: Dict[str, Any]) -> Optional[str]:
+def _extract_team_uuid(team: dict[str, Any]) -> str | None:
     """Extract team UUID from team dict."""
     return team.get("uuid", "") or team.get("teamUUID", "") or None
 
 
 def validate_team_names(
-    team_names: List[str],
-    cached_data: Dict[str, Any],
-) -> Dict[str, Any]:
+    team_names: list[str],
+    cached_data: dict[str, Any],
+) -> dict[str, Any]:
     """Validate team names against cached data.
 
     Args:
@@ -244,7 +251,7 @@ def validate_team_names(
         uuid = _extract_team_uuid(team)
         if name and uuid:
             name_uuid_pairs.append((name, uuid))
-    
+
     return _validate_entity_names_generic(
         name_uuid_pairs=name_uuid_pairs,
         entity_type_name="team",
@@ -254,9 +261,9 @@ def validate_team_names(
 
 def validate_entities(
     entity_type: str,
-    entity_names: List[str],
-    cached_data: Dict[str, Any],
-) -> Dict[str, Any]:
+    entity_names: list[str],
+    cached_data: dict[str, Any],
+) -> dict[str, Any]:
     """Generic entity validation dispatcher.
 
     Args:
@@ -278,5 +285,6 @@ def validate_entities(
     else:
         return {
             "valid": [],
-            "message": "Unknown entity type: %s. Valid types: advisor, transport, team" % entity_type,
+            "message": "Unknown entity type: %s. Valid types: advisor, transport, team"
+            % entity_type,
         }

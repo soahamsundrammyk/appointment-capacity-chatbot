@@ -1,7 +1,7 @@
 """HTTP client for kmanage API endpoints."""
 
 import logging
-from typing import Any, Dict, Optional
+from typing import Any
 
 import httpx
 
@@ -12,13 +12,13 @@ logger = logging.getLogger(__name__)
 
 class KManageAPIClient:
     """Client for calling kmanage API endpoints.
-    
+
     Usage:
         async with KManageAPIClient() as client:
             result = await client.get_session_info(...)
     """
-    
-    def __init__(self, config: Optional[KManageAPIConfig] = None):
+
+    def __init__(self, config: KManageAPIConfig | None = None):
         """Initialize the API client."""
         self.config = config or KManageAPIConfig()
         self._client: httpx.AsyncClient = httpx.AsyncClient(timeout=float(self.config.timeout))
@@ -30,8 +30,8 @@ class KManageAPIClient:
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         """Async context manager exit."""
         await self.close()
-    
-    async def get_session_info(self, mkid: str) -> Optional[Dict[str, Any]]:
+
+    async def get_session_info(self, mkid: str) -> dict[str, Any] | None:
         """
         Validate mkid by calling kmanage getSessionInfo endpoint.
 
@@ -76,7 +76,7 @@ class KManageAPIClient:
         except Exception as e:
             logger.exception(f"Error validating mkid: {e}")
             return None
-    
+
     async def close(self):
         """Close the HTTP client."""
         await self._client.aclose()

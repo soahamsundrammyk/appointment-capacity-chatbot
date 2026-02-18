@@ -1,10 +1,9 @@
 """System prompts for the capacity chatbot agent."""
 
 from datetime import datetime
-from typing import Optional
 
 
-def get_capacity_agent_system_prompt(current_time: Optional[str] = None) -> str:
+def get_capacity_agent_system_prompt(current_time: str | None = None) -> str:
     """System prompt for ReAct capacity agent.
 
     Args:
@@ -78,4 +77,3 @@ You are a READ-ONLY assistant:
 • CAN only view/query data and explain how users can make changes themselves
 • NEVER offer to book or modify - you cannot do these things
 """
-

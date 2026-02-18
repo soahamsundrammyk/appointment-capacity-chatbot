@@ -2,13 +2,14 @@
 
 import logging
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 from langchain_core.runnables import RunnableConfig
 from langchain_core.tools import tool
 
 from capacity_chatbot.clients.kappointment_client import KAppointmentAPIClient
 from capacity_chatbot.config.api_config import KAppointmentAPIConfig
+from capacity_chatbot.model.requests import EntityFilterRequest
 from capacity_chatbot.tools.validation import (
     validate_advisor_names,
     validate_team_names,
@@ -16,7 +17,6 @@ from capacity_chatbot.tools.validation import (
 )
 from capacity_chatbot.utils.state_extractor import extract_state
 from capacity_chatbot.utils.uuid_mapper import UUIDMapper
-from capacity_chatbot.model.requests import EntityFilterRequest
 
 logger = logging.getLogger(__name__)
 
@@ -28,13 +28,13 @@ logger = logging.getLogger(__name__)
 
 @tool
 async def get_first_available_slot_tool(
-    advisor_names: Optional[List[str]] = None,
-    team_names: Optional[List[str]] = None,
-    transport_option_names: Optional[List[str]] = None,
-    dates: Optional[List[str]] = None,
-    start_time: Optional[str] = None,
-    end_time: Optional[str] = None,
-    opcodes: Optional[List[str]] = None,
+    advisor_names: list[str] | None = None,
+    team_names: list[str] | None = None,
+    transport_option_names: list[str] | None = None,
+    dates: list[str] | None = None,
+    start_time: str | None = None,
+    end_time: str | None = None,
+    opcodes: list[str] | None = None,
     config: RunnableConfig = None,
 ) -> str:
     """Find the first available appointment slot.
@@ -89,11 +89,11 @@ async def get_first_available_slot_tool(
 
 
 def _validate_entities(
-    advisor_names: Optional[List[str]],
-    team_names: Optional[List[str]],
-    transport_option_names: Optional[List[str]],
-    cached_data: Dict[str, Any],
-) -> Tuple[Dict[str, List[str]], Optional[str]]:
+    advisor_names: list[str] | None,
+    team_names: list[str] | None,
+    transport_option_names: list[str] | None,
+    cached_data: dict[str, Any],
+) -> tuple[dict[str, list[str]], str | None]:
     """Validate entity names and return UUIDs."""
     uuids = {"advisor": [], "team": [], "transport": []}
     errors = []
@@ -130,8 +130,8 @@ def _validate_entities(
 async def _fetch_first_available_slot(
     department_uuid: str,
     request: EntityFilterRequest,
-    cached_data: Dict[str, Any],
-) -> Dict[str, Any]:
+    cached_data: dict[str, Any],
+) -> dict[str, Any]:
     """Fetch first available slot from API."""
     uuid_mapper = UUIDMapper(cached_data) if cached_data else None
 
@@ -161,12 +161,12 @@ async def _fetch_first_available_slot(
 
 
 def _build_slot_request(
-    uuids: Dict[str, List[str]],
-    dates: Optional[List[str]],
-    start_time: Optional[str],
-    end_time: Optional[str],
-    opcodes: Optional[List[str]],
-) -> Dict[str, Any]:
+    uuids: dict[str, list[str]],
+    dates: list[str] | None,
+    start_time: str | None,
+    end_time: str | None,
+    opcodes: list[str] | None,
+) -> dict[str, Any]:
     """Build API request payload."""
     selected_attributes = {"dealerAssociateUuidList": uuids["advisor"]}
 
@@ -180,6 +180,7 @@ def _build_slot_request(
     # Parse natural language dates - API requires exactly ONE date
     if dates:
         from capacity_chatbot.utils.date_parser import parse_date_query
+
         parsed = []
         for d in dates:
             parsed.extend(parse_date_query(d))
@@ -202,9 +203,9 @@ def _build_slot_request(
 
 
 def _format_slot_response(
-    result: Dict[str, Any],
-    uuid_mapper: Optional[UUIDMapper],
-    request_context: Dict[str, Any],
+    result: dict[str, Any],
+    uuid_mapper: UUIDMapper | None,
+    request_context: dict[str, Any],
 ) -> str:
     """Format first available slot response."""
     error = result.get("error")
@@ -237,7 +238,9 @@ def _format_slot_response(
     parts = []
 
     # Search criteria
-    criteria = _build_search_criteria(requested_transport, requested_advisors, requested_teams, requested_opcodes)
+    criteria = _build_search_criteria(
+        requested_transport, requested_advisors, requested_teams, requested_opcodes
+    )
     parts.append(f"**Search Criteria:** {criteria}")
     parts.append("")
 
@@ -260,7 +263,9 @@ def _format_slot_response(
     # No preference explanation
     if is_no_preference:
         parts.append("")
-        parts.append("ℹ️ _No specific advisor was requested. The system selected the advisor with the earliest available slot._")
+        parts.append(
+            "ℹ️ _No specific advisor was requested. The system selected the advisor with the earliest available slot._"
+        )
 
     # Warnings
     warnings = result.get("warnings", [])
@@ -277,7 +282,9 @@ def _format_slot_response(
     return "\n".join(parts)
 
 
-def _get_entity_name(result: Dict[str, Any], key_prefix: str, uuid_mapper: Optional[UUIDMapper]) -> str:
+def _get_entity_name(
+    result: dict[str, Any], key_prefix: str, uuid_mapper: UUIDMapper | None
+) -> str:
     """Get entity name from result, using UUID mapper if available."""
     uuid = result.get(f"{key_prefix}Uuid")
     if uuid and uuid_mapper:
@@ -287,7 +294,7 @@ def _get_entity_name(result: Dict[str, Any], key_prefix: str, uuid_mapper: Optio
     return result.get(f"{key_prefix}Name", "Available Advisor")
 
 
-def _get_transport_name(result: Dict[str, Any], uuid_mapper: Optional[UUIDMapper]) -> Optional[str]:
+def _get_transport_name(result: dict[str, Any], uuid_mapper: UUIDMapper | None) -> str | None:
     """Get transport option name from result."""
     uuid = result.get("transportOptionUuid")
     if uuid and uuid_mapper:
@@ -297,7 +304,7 @@ def _get_transport_name(result: Dict[str, Any], uuid_mapper: Optional[UUIDMapper
     return result.get("transportOptionName")
 
 
-def _get_team_name(result: Dict[str, Any], uuid_mapper: Optional[UUIDMapper]) -> Optional[str]:
+def _get_team_name(result: dict[str, Any], uuid_mapper: UUIDMapper | None) -> str | None:
     """Get team name from result."""
     uuid = result.get("teamUuid")
     if uuid and uuid_mapper:
@@ -306,10 +313,10 @@ def _get_team_name(result: Dict[str, Any], uuid_mapper: Optional[UUIDMapper]) ->
 
 
 def _build_search_criteria(
-    transport: List[str],
-    advisors: List[str],
-    teams: List[str],
-    opcodes: List[str],
+    transport: list[str],
+    advisors: list[str],
+    teams: list[str],
+    opcodes: list[str],
 ) -> str:
     """Build search criteria string."""
     criteria = []
@@ -325,7 +332,7 @@ def _build_search_criteria(
     return " | ".join(criteria) if criteria else "All available slots (no specific filters)"
 
 
-def _build_suggestions(is_no_preference: bool, transport: List[str], opcodes: List[str]) -> str:
+def _build_suggestions(is_no_preference: bool, transport: list[str], opcodes: list[str]) -> str:
     """Build follow-up suggestions string."""
     suggestions = []
     if is_no_preference:

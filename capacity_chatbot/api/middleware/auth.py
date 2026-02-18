@@ -2,7 +2,7 @@
 
 import logging
 import os
-from typing import Any, Dict, Optional
+from typing import Any
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -17,8 +17,8 @@ security = HTTPBearer(auto_error=False)
 
 
 async def get_authenticated_session(
-    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
-) -> Dict[str, Any]:
+    credentials: HTTPAuthorizationCredentials | None = Depends(security),
+) -> dict[str, Any]:
     """
     To extract and validate mkid from Authorization header.
 
@@ -29,7 +29,7 @@ async def get_authenticated_session(
         HTTPException(401): If mkid is missing or invalid
     """
     config = KManageAPIConfig()
-    
+
     # Feature flag to disable auth (for local development)
     auth_enabled = os.getenv("ENABLE_MKID_AUTH", "true").lower() == "true"
 
@@ -44,7 +44,7 @@ async def get_authenticated_session(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Missing mkid. Provide Authorization: Bearer <mkid>",
         )
-    
+
     mkid = credentials.credentials
 
     # Validate mkid with kmanage
@@ -57,6 +57,6 @@ async def get_authenticated_session(
             detail="Invalid or expired mkid. Please refresh your session.",
         )
 
-    user_uuid = session_info.get('userUuid')
+    user_uuid = session_info.get("userUuid")
     logger.info("Authenticated user: %s", user_uuid)
     return session_info

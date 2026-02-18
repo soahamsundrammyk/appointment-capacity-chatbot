@@ -18,11 +18,7 @@ logger = logging.getLogger(__name__)
 
 def build_graph() -> StateGraph:
     """Build the LangGraph state graph structure (without compilation)."""
-    builder = StateGraph(
-        CapacityChatbotState,
-        input_schema=InputState,
-        output_schema=OutputState
-    )
+    builder = StateGraph(CapacityChatbotState, input_schema=InputState, output_schema=OutputState)
 
     builder.add_node("capacity_agent", capacity_agent)
     builder.add_edge("__start__", "capacity_agent")
@@ -41,8 +37,8 @@ def _add_connection_timeout(conn_string: str) -> str:
 
 async def _create_postgres_pool(conn_string: str):
     """Create and open async PostgreSQL connection pool."""
-    from psycopg_pool import AsyncConnectionPool
     from psycopg.rows import dict_row
+    from psycopg_pool import AsyncConnectionPool
 
     conn_params = _add_connection_timeout(conn_string)
     pool = AsyncConnectionPool(

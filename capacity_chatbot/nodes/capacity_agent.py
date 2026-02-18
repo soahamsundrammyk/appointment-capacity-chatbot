@@ -3,7 +3,7 @@
 import logging
 import os
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any
 
 from langchain_anthropic import ChatAnthropic
 from langchain_core.messages import AIMessage, HumanMessage
@@ -21,7 +21,7 @@ RECURSION_LIMIT = 12
 ERROR_MESSAGE = "I apologize, but something went wrong. Please contact the dealership directly and the team will help you out."
 
 # Cached model instance (loaded once, reused across invocations)
-_cached_model: Optional[ChatAnthropic] = None
+_cached_model: ChatAnthropic | None = None
 
 
 def _get_model_name() -> str:
@@ -29,7 +29,7 @@ def _get_model_name() -> str:
     return os.getenv("MODEL", "claude-sonnet-4-5-20250929")
 
 
-def _create_agent_config(state: CapacityChatbotState, config: Optional[RunnableConfig]) -> Dict:
+def _create_agent_config(state: CapacityChatbotState, config: RunnableConfig | None) -> dict:
     """Create config dict for the agent with state and LangSmith metadata."""
     safe_config = {}
 
@@ -60,7 +60,7 @@ def _create_agent_config(state: CapacityChatbotState, config: Optional[RunnableC
 def _load_model() -> ChatAnthropic:
     """Load Claude Sonnet model from Anthropic (cached, loaded once)."""
     global _cached_model
-    
+
     if _cached_model is None:
         model_name = _get_model_name()
         api_key = os.getenv("ANTHROPIC_API_KEY")
@@ -70,14 +70,14 @@ def _load_model() -> ChatAnthropic:
 
         logger.info("Loading Anthropic model: %s", model_name)
         _cached_model = ChatAnthropic(model=model_name, temperature=0, api_key=api_key)
-    
+
     return _cached_model
 
 
 async def capacity_agent(
     state: CapacityChatbotState,
-    config: Optional[RunnableConfig] = None,
-) -> Dict[str, Any]:
+    config: RunnableConfig | None = None,
+) -> dict[str, Any]:
     """ReAct capacity agent that uses tools to answer capacity-related queries."""
     logger.info("Capacity agent invoked")
 
@@ -91,7 +91,11 @@ async def capacity_agent(
         logger.error(error_msg)
         return {
             "assistant_message": "I need a department UUID to help you. Please ensure you're connected through the appointment UI.",
-            "messages": [AIMessage(content="I need a department UUID to help you. Please ensure you're connected through the appointment UI.")],
+            "messages": [
+                AIMessage(
+                    content="I need a department UUID to help you. Please ensure you're connected through the appointment UI."
+                )
+            ],
             "errors": [error_msg],
         }
 
@@ -120,7 +124,7 @@ async def capacity_agent(
         return {
             "assistant_message": final_message,
             "messages": [AIMessage(content=final_message)],
-            "response_message": final_message, 
+            "response_message": final_message,
         }
 
     except Exception as e:
