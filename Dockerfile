@@ -14,7 +14,7 @@ RUN apt-get update && apt-get install -y \
 
 # Copy project files
 COPY pyproject.toml ./
-COPY src/ ./src/
+COPY capacity_chatbot/ ./capacity_chatbot/
 
 # Install UV package manager for faster dependency installation
 RUN pip install uv
@@ -27,7 +27,7 @@ EXPOSE 3334
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
-ENV PYTHONPATH=/app/src
+ENV PYTHONPATH=/app
 ENV PORT=3334
 ENV MOUNT_PREFIX=/capacity-chatbot
 
