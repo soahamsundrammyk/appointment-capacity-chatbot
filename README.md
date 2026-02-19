@@ -42,16 +42,27 @@ Service runs at `http://localhost:3334`
       └──── Provides: department_uuid, dealer_uuid, mkid, cached_data
 ```
 
+## API Endpoints
+
+When the app is mounted at `MOUNT_PREFIX` (default `/capacity-chatbot`):
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `{MOUNT_PREFIX}/ok` | Health check |
+| POST | `{MOUNT_PREFIX}/threads/{thread_id}/runs/stream` | Stream a chat run (SSE). Requires valid session (e.g. Bearer token with mkid when `ENABLE_MKID_AUTH` is true). |
+
+Request body for the stream endpoint: `RunRequest` with `input` (messages, optional `department_uuid`, `dealer_uuid`, `cached_data`) and optional `stream_mode`.
+
 ## UI Client Integration
 
-The chatbot **requires** the following from the UI client in each request:
+The chatbot uses the following from the UI client (in the request body and/or from auth session):
 
 | Field | Description |
 |-------|-------------|
-| `department_uuid` | Department UUID for API calls |
-| `dealer_uuid` | Dealer UUID for opcode search |
-| `mkid` | Authentication cookie |
-| `cached_data` | Transport options, advisors, teams |
+| `department_uuid` | Department UUID for API calls (body or session) |
+| `dealer_uuid` | Dealer UUID for opcode search (body or session) |
+| `mkid` | MyKaarma ID; from request body or from Bearer token when auth is enabled |
+| `cached_data` | Transport options, advisors, teams (from request body) |
 
 ## Project Structure
 
@@ -69,8 +80,7 @@ capacity_chatbot/
 ├── clients/              # External API clients
 │   ├── kappointment_client.py  # KAppointment API client
 │   └── kmanage_client.py       # KManage API client (for auth)
-├── services/             # Business logic layer (planned - currently empty)
-├── tools/                # LangChain tool wrappers (thin layer)
+├── tools/                # LangChain tool wrappers
 │   ├── capacity.py
 │   ├── rules.py
 │   ├── opcode.py
@@ -83,39 +93,49 @@ capacity_chatbot/
 ├── knowledge/            # Knowledge base (Q&A database)
 │   └── knowledge_store.py
 ├── enums/                # Domain constants and type definitions
-│   └── enums.py          # Enumerations (EntityType, DayName, etc.)
+│   └── enums.py          # Enumerations (DayName, FilterField, etc.)
 ├── model/                # Data models
 │   └── requests.py       # Request/Response models (RunInput, RunRequest)
 └── utils/                # Pure utility functions
     ├── date_parser.py
-    └── uuid_mapper.py
+    ├── uuid_mapper.py
+    ├── state_extractor.py
+    └── test_data.py      # Test/sample data helpers for local dev
 ```
 
 ## Environment Variables
 
-| Variable | Required | Description | Default |
-|----------|----------|-------------|---------|
-| `ANTHROPIC_API_KEY` | Yes | Claude API key | - |
-| `LANGSMITH_API_KEY` | Yes | For persistence | - |
-| `KAPPOINTMENT_API_BASE_URL` | No | KAppointment API base URL (includes `/appointment/v2` path) | `https://srishti244.mykaarma.dev/appointment/v2` |
-| `KMANAGE_API_URL` | No | KManage API URL for authentication | `https://srishti244.mykaarma.dev/manage/v2` |
-| `APPOINTMENT_CAPACITY_CHATBOT_USERNAME` | Yes | Service subscriber username for API auth | - |
-| `APPOINTMENT_CAPACITY_CHATBOT_PASSWORD` | Yes | Service subscriber password for API auth | - |
+### Required
 
-**Note**: In production/QA/GVM, these environment variables are set via Kubernetes ConfigMaps and Secrets, not in `.env` files. 
+| Variable | Description |
+|----------|-------------|
+| `ANTHROPIC_API_KEY` | Claude API key |
+| `LANGSMITH_API_KEY` | LangSmith persistence and monitoring |
+| `APPOINTMENT_CAPACITY_CHATBOT_USERNAME` | Service subscriber username for KAppointment/KManage API auth |
+| `APPOINTMENT_CAPACITY_CHATBOT_PASSWORD` | Service subscriber password for API auth |
 
-### Testing Configuration (Local/LangSmith Only)
+### Optional (API and backends)
 
-For local testing and LangSmith integration, you can set these optional environment variables:
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `KAPPOINTMENT_API_BASE_URL` | KAppointment API base URL (includes `/appointment/v2` path) | `https://srishti244.mykaarma.dev/appointment/v2` |
+| `KMANAGE_API_URL` | KManage API URL for authentication | `https://srishti244.mykaarma.dev/manage/v2` |
+| `PORT` | Server port when running via `python -m capacity_chatbot.api.routes` | `3334` |
+| `MOUNT_PREFIX` | URL prefix for routes (e.g. health at `{MOUNT_PREFIX}/ok`) | `/capacity-chatbot` |
+| `ENABLE_MKID_AUTH` | Enable Bearer-token (mkid) auth via KManage; set to `false` to skip auth | `true` |
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `TEST_DEALER_UUID` | No | Dealer UUID for testing (fallback if UI client doesn't provide) |
-| `TEST_DEPARTMENT_UUID` | No | Department UUID for testing (fallback if UI client doesn't provide) |
-| `TEST_MKID` | No | MKID for testing (fallback if UI client doesn't provide) |
-| `TEST_DATA_PATH` | No | Path to JSON file with sample cached data (advisors, teams, transport options) |
+**Note**: In production/QA/GVM, these are set via Kubernetes ConfigMaps and Secrets, not `.env` files.
 
-**⚠️ Note**: These test variables are ONLY used when the UI client doesn't provide values. In production, all values come from the UI client. See `ENV_SETUP.md` for detailed setup instructions.
+### Testing (local / LangSmith)
+
+Used only when the UI client does not send values; in production, context comes from the UI client.
+
+| Variable | Description |
+|----------|-------------|
+| `TEST_DEALER_UUID` | Dealer UUID fallback for testing |
+| `TEST_DEPARTMENT_UUID` | Department UUID fallback for testing |
+| `TEST_MKID` | MKID fallback for testing |
+| `TEST_DATA_PATH` | Path to JSON file with sample cached data (advisors, teams, transport options) |
 
 ## Development
 
@@ -123,7 +143,7 @@ For local testing and LangSmith integration, you can set these optional environm
 # Run with auto-reload
 langgraph dev
 
-# Run tests
+# Run tests (when added)
 pytest tests/
 ```
 
