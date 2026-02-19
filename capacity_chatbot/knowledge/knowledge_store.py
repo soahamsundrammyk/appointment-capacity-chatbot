@@ -1,9 +1,5 @@
 """Knowledge base for capacity chatbot - stores common questions and documentation."""
 
-# =============================================================================
-# Constants
-# =============================================================================
-
 # Minimum word length for matching (filters out short words like "a", "an", "is")
 MIN_WORD_LENGTH = 2
 
