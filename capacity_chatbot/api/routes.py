@@ -200,6 +200,13 @@ async def create_run_stream(
 async def startup_event():
     """Initialize the graph on startup."""
     logger.info("Starting Capacity Chatbot API server...")
+
+    # Log resolved config for debugging
+    from capacity_chatbot.config.api_config import KAppointmentAPIConfig
+    config = KAppointmentAPIConfig()
+    logger.info(f"KAPPOINTMENT_API_BASE_URL resolved to: {config.base_url}")
+    logger.info(f"Basic auth username: {config.basic_auth_username}")
+
     try:
         await get_graph()
         logger.info("Graph initialized successfully")

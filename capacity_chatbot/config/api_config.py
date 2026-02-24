@@ -40,7 +40,7 @@ class KAppointmentAPIConfig(BaseAPIConfig):
     def __post_init__(self):
         if self.base_url is None:
             self.base_url = os.environ.get(
-                "KAPPOINTMENT_API_BASE_URL", "https://srishti244.mykaarma.dev/appointment/v2"
+                "KAPPOINTMENT_API_BASE_URL", "https://app.mykaarma.com/appointment/v2"
             ).rstrip("/")
 
         if self.mkid is None:
