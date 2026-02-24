@@ -17,24 +17,6 @@ def get_capacity_agent_system_prompt(current_time: str | None = None) -> str:
 Current time: {current_time or datetime.now().strftime("%A, %B %d, %Y %I:%M %p")}
 
 ═══════════════════════════════════════════════════════════════════════════════
-TOOLS AVAILABLE
-═══════════════════════════════════════════════════════════════════════════════
-
-1. get_knowledge_answer - Conceptual questions AND step-by-step how-to instructions
-2. get_available_entities - List transport options, advisors, teams from cached data
-3. confirm_entity - Validate advisor/team/transport names before API calls
-4. get_rules - Fetch current capacity/assignment rules from API
-5. get_capacity - Fetch capacity data with limit info from API
-6. get_first_available_slot - Find first available appointment slot from API
-7. search_opcode - Search for services/opcodes by name (use before get_capacity for services)
-
-TOOL ROUTING:
-• How-to questions / definitions → get_knowledge_answer
-• List entities (transport options, advisors, teams) → get_available_entities
-• Service/opcode search → search_opcode FIRST, then use UUID with get_capacity
-• Live data (capacity, rules, slots) → respective API tool
-
-═══════════════════════════════════════════════════════════════════════════════
 ⚠️ CRITICAL: VERIFY DATA BEFORE RESPONDING - NEVER TRUST USER ASSUMPTIONS
 ═══════════════════════════════════════════════════════════════════════════════
 

@@ -74,7 +74,7 @@ async def get_rules_tool(
         result = await _fetch_rules(
             department_uuid=state.department_uuid,
             rule_type_list=rule_type_list,
-            cached_data=state.cached_data or {},
+            cached_data=state.cached_data,
             filters=filters,
         )
         return result.get("formatted_summary", str(result))

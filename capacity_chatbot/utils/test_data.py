@@ -30,17 +30,19 @@ def get_cached_data_from_env() -> dict[str, Any] | None:
 
 
 def ensure_cached_data(state: Any) -> None:
-    """Ensure cached_data is populated from frontend or TEST_DATA_PATH env var."""
-    if state.cached_data:
+    """Ensure advisors, transport_options, teams are populated from frontend or TEST_DATA_PATH env var."""
+    if state.advisors or state.transport_options or state.teams:
         return
 
     env_data = get_cached_data_from_env()
     if env_data:
-        state.cached_data = env_data
+        state.advisors = env_data.get("advisors", [])
+        state.transport_options = env_data.get("transport_options", [])
+        state.teams = env_data.get("teams", [])
         logger.info("Loaded cached data from TEST_DATA_PATH")
         return
 
-    logger.warning("No cached_data available. Entity tools may not work correctly.")
+    logger.warning("No cached data available. Entity tools may not work correctly.")
 
 
 def ensure_state_uuids(state: Any) -> None:

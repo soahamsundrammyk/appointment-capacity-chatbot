@@ -86,8 +86,7 @@ capacity_chatbot/
 │   ├── opcode.py
 │   ├── first_available_slot.py
 │   ├── entities.py
-│   ├── knowledge.py
-│   └── validation.py
+│   └── knowledge.py
 ├── nodes/                # Graph nodes
 │   └── capacity_agent.py # ReAct agent node
 ├── knowledge/            # Knowledge base (Q&A database)
@@ -100,6 +99,7 @@ capacity_chatbot/
     ├── date_parser.py
     ├── uuid_mapper.py
     ├── state_extractor.py
+    ├── validation.py     # Entity name validation (used by tools)
     └── test_data.py      # Test/sample data helpers for local dev
 ```
 
@@ -123,6 +123,8 @@ capacity_chatbot/
 | `PORT` | Server port when running via `python -m capacity_chatbot.api.routes` | `3334` |
 | `MOUNT_PREFIX` | URL prefix for routes (e.g. health at `{MOUNT_PREFIX}/ok`) | `/capacity-chatbot` |
 | `ENABLE_MKID_AUTH` | Enable Bearer-token (mkid) auth via KManage; set to `false` to skip auth | `true` |
+| `MODEL` | Primary Claude model for the agent (e.g. `claude-sonnet-4-5-20250929`) | `claude-sonnet-4-5-20250929` |
+| `FALLBACK_MODEL` | Claude model used when the primary times out or errors | `claude-3-5-haiku-20241022` |
 
 **Note**: In production/QA/GVM, these are set via Kubernetes ConfigMaps and Secrets, not `.env` files.
 

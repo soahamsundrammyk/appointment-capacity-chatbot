@@ -17,7 +17,7 @@ from capacity_chatbot.enums import (
     SourceType,
 )
 from capacity_chatbot.model.requests import EntityFilterRequest, GetCapacityRequest
-from capacity_chatbot.tools.validation import (
+from capacity_chatbot.utils.validation import (
     _extract_advisor_name,
     _extract_team_name,
     _extract_transport_name,
@@ -96,12 +96,11 @@ async def get_capacity_tool(
     if error:
         return error
 
-    cached_data = state.cached_data or {}
-    if not cached_data:
+    if not (state.advisors or state.transport_options or state.teams):
         from capacity_chatbot.utils.test_data import ensure_cached_data
 
         ensure_cached_data(state)
-        cached_data = state.cached_data or {}
+    cached_data = state.cached_data
 
     # Create request model
     request = EntityFilterRequest(

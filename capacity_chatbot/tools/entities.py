@@ -7,7 +7,7 @@ from typing import Any
 from langchain_core.runnables import RunnableConfig
 from langchain_core.tools import tool
 
-from capacity_chatbot.tools.validation import (
+from capacity_chatbot.utils.validation import (
     _extract_advisor_name,
     _extract_transport_name,
     validate_entities,
@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 
 def _get_cached_data(config: RunnableConfig) -> dict[str, Any] | None:
-    """Get cached data from state, with fallback to test data if needed.
+    """Get cached data from state (advisors, transport_options, teams), with fallback to test data if needed.
 
     Returns:
         Cached data dict or None if unavailable
@@ -28,14 +28,15 @@ def _get_cached_data(config: RunnableConfig) -> dict[str, Any] | None:
     if error:
         return None
 
-    cached_data = state.cached_data or {}
-    if not cached_data:
+    if not (state.advisors or state.transport_options or state.teams):
         from capacity_chatbot.utils.test_data import ensure_cached_data
 
         ensure_cached_data(state)
-        cached_data = state.cached_data or {}
 
-    return cached_data or None
+    data = state.cached_data
+    if not (data.get("advisors") or data.get("transport_options") or data.get("teams")):
+        return None
+    return data
 
 
 def _format_simple_entity_list(

@@ -1,5 +1,6 @@
 """Capacity agent node using ReAct architecture."""
 
+import asyncio
 import logging
 import os
 from datetime import datetime
@@ -20,13 +21,26 @@ logger = logging.getLogger(__name__)
 RECURSION_LIMIT = 12
 ERROR_MESSAGE = "I apologize, but something went wrong. Please contact the dealership directly and the team will help you out."
 
-# Cached model instance (loaded once, reused across invocations)
+# Cached primary model instance (loaded once, reused across invocations)
 _cached_model: ChatAnthropic | None = None
 
 
 def _get_model_name() -> str:
-    """Get model name from environment variable."""
+    """Get primary model name from environment variable."""
     return os.getenv("MODEL", "claude-sonnet-4-5-20250929")
+
+
+def _get_fallback_model_name() -> str:
+    """Get fallback model name (env or default Haiku). Used when primary times out or errors."""
+    return os.getenv("FALLBACK_MODEL", "claude-3-5-haiku-20241022")
+
+
+def _build_model(model_name: str) -> ChatAnthropic:
+    """Build a ChatAnthropic instance for the given model name (no caching)."""
+    api_key = os.getenv("ANTHROPIC_API_KEY")
+    if not api_key:
+        raise ValueError("ANTHROPIC_API_KEY environment variable is required")
+    return ChatAnthropic(model=model_name, temperature=0, api_key=api_key)
 
 
 def _create_agent_config(state: CapacityChatbotState, config: RunnableConfig | None) -> dict:
@@ -58,19 +72,12 @@ def _create_agent_config(state: CapacityChatbotState, config: RunnableConfig | N
 
 
 def _load_model() -> ChatAnthropic:
-    """Load Claude Sonnet model from Anthropic (cached, loaded once)."""
+    """Load primary model from Anthropic (cached, loaded once)."""
     global _cached_model
-
     if _cached_model is None:
         model_name = _get_model_name()
-        api_key = os.getenv("ANTHROPIC_API_KEY")
-
-        if not api_key:
-            raise ValueError("ANTHROPIC_API_KEY environment variable is required")
-
         logger.info("Loading Anthropic model: %s", model_name)
-        _cached_model = ChatAnthropic(model=model_name, temperature=0, api_key=api_key)
-
+        _cached_model = _build_model(model_name)
     return _cached_model
 
 
@@ -109,29 +116,46 @@ async def capacity_agent(
             "errors": [error_msg],
         }
 
+    current_time = datetime.now().strftime("%A, %B %d, %Y %I:%M %p")
+    system_prompt = get_capacity_agent_system_prompt(current_time=current_time)
+    agent_input = {"messages": list(state.messages)}
+    agent_config = _create_agent_config(state, config)
+
+    async def _run_agent(model: ChatAnthropic):
+        agent = create_react_agent(model, tools=CAPACITY_TOOLS, prompt=system_prompt)
+        return await agent.ainvoke(agent_input, config=agent_config)
+
     try:
         model = _load_model()
-        current_time = datetime.now().strftime("%A, %B %d, %Y %I:%M %p")
-        system_prompt = get_capacity_agent_system_prompt(current_time=current_time)
-
-        agent = create_react_agent(model, tools=CAPACITY_TOOLS, prompt=system_prompt)
-        agent_input = {"messages": list(state.messages)}
-        agent_config = _create_agent_config(state, config)
-
-        result = await agent.ainvoke(agent_input, config=agent_config)
+        result = await _run_agent(model)
         final_message = result["messages"][-1].content
-
         return {
             "assistant_message": final_message,
             "messages": [AIMessage(content=final_message)],
             "response_message": final_message,
         }
-
-    except Exception as e:
-        logger.error("Capacity agent error: %s", e, exc_info=True)
-        return {
-            "assistant_message": ERROR_MESSAGE,
-            "messages": [AIMessage(content=ERROR_MESSAGE)],
-            "response_message": ERROR_MESSAGE,
-            "errors": [str(e)],
-        }
+    except (Exception, asyncio.TimeoutError) as e:
+        fallback_name = _get_fallback_model_name()
+        logger.warning(
+            "Primary model failed (%s), retrying with fallback: %s",
+            e,
+            fallback_name,
+            exc_info=True,
+        )
+        try:
+            fallback_model = _build_model(fallback_name)
+            result = await _run_agent(fallback_model)
+            final_message = result["messages"][-1].content
+            return {
+                "assistant_message": final_message,
+                "messages": [AIMessage(content=final_message)],
+                "response_message": final_message,
+            }
+        except Exception as fallback_e:
+            logger.error("Fallback model also failed: %s", fallback_e, exc_info=True)
+            return {
+                "assistant_message": ERROR_MESSAGE,
+                "messages": [AIMessage(content=ERROR_MESSAGE)],
+                "response_message": ERROR_MESSAGE,
+                "errors": [str(fallback_e)],
+            }

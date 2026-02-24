@@ -9,7 +9,6 @@ import os
 from typing import Any
 
 from fastapi import Depends, FastAPI
-from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from langchain_core.messages import AIMessage, HumanMessage
 
@@ -32,15 +31,6 @@ app = FastAPI(
     title="Capacity Chatbot API",
     description="AI-powered chatbot for capacity-related questions",
     version="1.0.0",
-)
-
-# CORS middleware
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
 )
 
 
@@ -92,8 +82,11 @@ def build_graph_input(
         "department_uuid": input_data.get("department_uuid") or session.get("departmentUuid", ""),
         "dealer_uuid": input_data.get("dealer_uuid") or session.get("dealerUuid", ""),
     }
-    if input_data.get("cached_data"):
-        updated_context["cached_data"] = input_data["cached_data"]
+    cd = input_data.get("cached_data") or {}
+    if cd:
+        updated_context["advisors"] = cd.get("advisors", [])
+        updated_context["transport_options"] = cd.get("transport_options", [])
+        updated_context["teams"] = cd.get("teams", [])
 
     if state.values and state.values.get("messages"):
         # Append to existing conversation

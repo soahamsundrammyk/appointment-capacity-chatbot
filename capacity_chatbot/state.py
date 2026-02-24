@@ -17,7 +17,18 @@ class InputState:
     messages: Annotated[Sequence[AnyMessage], add_messages] = field(default_factory=list)
     department_uuid: str = ""
     dealer_uuid: str = ""
-    cached_data: dict[str, Any] | None = None
+    advisors: list[dict[str, Any]] = field(default_factory=list)
+    transport_options: list[dict[str, Any]] = field(default_factory=list)
+    teams: list[dict[str, Any]] = field(default_factory=list)
+
+    @property
+    def cached_data(self) -> dict[str, Any]:
+        """Build legacy cached_data dict for UUIDMapper/validation. Read-only."""
+        return {
+            "advisors": self.advisors,
+            "transport_options": self.transport_options,
+            "teams": self.teams,
+        }
 
 
 @dataclass

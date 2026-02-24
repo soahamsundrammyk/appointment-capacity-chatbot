@@ -10,7 +10,7 @@ from langchain_core.tools import tool
 from capacity_chatbot.clients.kappointment_client import KAppointmentAPIClient
 from capacity_chatbot.config.api_config import KAppointmentAPIConfig
 from capacity_chatbot.model.requests import EntityFilterRequest
-from capacity_chatbot.tools.validation import (
+from capacity_chatbot.utils.validation import (
     validate_advisor_names,
     validate_team_names,
     validate_transport_option_names,
@@ -53,7 +53,7 @@ async def get_first_available_slot_tool(
     if error:
         return error
 
-    cached_data = state.cached_data or {}
+    cached_data = state.cached_data
 
     # Create request model
     request = EntityFilterRequest(
