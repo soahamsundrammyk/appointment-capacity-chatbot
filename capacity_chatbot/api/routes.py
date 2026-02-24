@@ -41,6 +41,14 @@ async def health_check():
 
 
 root_app = FastAPI(title="Capacity Chatbot")
+
+
+@root_app.get("/ok")
+async def root_health_check():
+    """Health check on root app for K8s probes that hit /ok directly."""
+    return {"status": "ok"}
+
+
 root_app.mount(MOUNT_PREFIX, app)
 
 
