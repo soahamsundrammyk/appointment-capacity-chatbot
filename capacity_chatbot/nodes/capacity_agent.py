@@ -7,7 +7,7 @@ from datetime import datetime
 from typing import Any
 
 from langchain_anthropic import ChatAnthropic
-from langchain_core.messages import AIMessage, HumanMessage
+from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 from langchain_core.runnables import RunnableConfig
 from langgraph.prebuilt import create_react_agent
 
@@ -21,6 +21,11 @@ logger = logging.getLogger(__name__)
 RECURSION_LIMIT = 12
 ERROR_MESSAGE = "I apologize, but something went wrong. Please contact the dealership directly and the team will help you out."
 
+# Cap messages sent to the model each turn to avoid unbounded growth (P0 production fix).
+# Each turn can add 5–7 messages (human + AI tool_calls + ToolMessage + … + final AI).
+# Without a cap: token cost and latency grow per turn and can hit context window limit.
+DEFAULT_MAX_AGENT_MESSAGES = 24  # ~8–12 conversation turns of context
+
 # Cached primary model instance (loaded once, reused across invocations)
 _cached_model: ChatAnthropic | None = None
 
@@ -33,6 +38,47 @@ def _get_model_name() -> str:
 def _get_fallback_model_name() -> str:
     """Get fallback model name (env or default Haiku). Used when primary times out or errors."""
     return os.getenv("FALLBACK_MODEL", "claude-3-5-haiku-20241022")
+
+
+def _get_max_agent_messages() -> int:
+    """Max messages to send to the model per turn (sliding window). Prevents unbounded history."""
+    raw = os.getenv("AGENT_MAX_MESSAGES", str(DEFAULT_MAX_AGENT_MESSAGES))
+    try:
+        n = int(raw)
+        return max(6, min(n, 200))  # clamp to [6, 200]
+    except ValueError:
+        return DEFAULT_MAX_AGENT_MESSAGES
+
+
+def _trim_messages_for_agent(messages: list, max_messages: int) -> list:
+    """Keep all human messages and final AI replies; drop tool calls and ToolMessages. Then apply cap."""
+    filtered: list = []
+    for msg in messages:
+        if isinstance(msg, HumanMessage):
+            filtered.append(msg)
+        elif isinstance(msg, ToolMessage):
+            continue  # drop tool call results
+        elif isinstance(msg, AIMessage):
+            tool_calls = getattr(msg, "tool_calls", None) or []
+            if tool_calls:
+                continue  # drop AI messages that are only/mostly tool_calls
+            if msg.content:
+                filtered.append(msg)
+            # else skip empty AI message
+        else:
+            filtered.append(msg)  # keep other message types (e.g. system) if any
+    if len(filtered) <= max_messages:
+        result = list(filtered)
+    else:
+        result = list(filtered[-max_messages:])
+        logger.info(
+            "Trimmed message history: %d (from %d raw) -> %d messages (AGENT_MAX_MESSAGES=%d)",
+            len(filtered),
+            len(messages),
+            len(result),
+            max_messages,
+        )
+    return result
 
 
 def _build_model(model_name: str) -> ChatAnthropic:
@@ -118,7 +164,9 @@ async def capacity_agent(
 
     current_time = datetime.now().strftime("%A, %B %d, %Y %I:%M %p")
     system_prompt = get_capacity_agent_system_prompt(current_time=current_time)
-    agent_input = {"messages": list(state.messages)}
+    max_messages = _get_max_agent_messages()
+    messages_for_agent = _trim_messages_for_agent(state.messages, max_messages)
+    agent_input = {"messages": messages_for_agent}
     agent_config = _create_agent_config(state, config)
 
     async def _run_agent(model: ChatAnthropic):
