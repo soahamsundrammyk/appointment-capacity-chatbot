@@ -73,7 +73,6 @@ pipeline {
               if (pushOutput.contains('ERROR')){
                 error "Docker build failed with Error in build and Push"
               }
-              sh "docker pull ${DOCKER_REGISTRY}/${IMAGE_NAME}:${VERSION}"
             }
           }
         }
