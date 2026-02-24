@@ -43,6 +43,10 @@ class KAppointmentAPIConfig(BaseAPIConfig):
                 "KAPPOINTMENT_API_BASE_URL", "https://app.mykaarma.com/appointment/v2"
             ).rstrip("/")
 
+        # Ensure base_url includes the /appointment/v2 API path
+        if not self.base_url.endswith("/appointment/v2"):
+            self.base_url = self.base_url.rstrip("/") + "/appointment/v2"
+
         if self.mkid is None:
             self.mkid = os.environ.get("MYKAARMA_MKID")
 
