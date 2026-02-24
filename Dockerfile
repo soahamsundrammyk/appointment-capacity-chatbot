@@ -37,5 +37,5 @@ ENV LANGCHAIN_PROJECT=capacity-chatbot
 
 # Start FastAPI server with uvicorn
 # Using custom API server for PostgreSQL persistence support
-CMD ["uvicorn", "capacity_chatbot.api:app", "--host", "0.0.0.0", "--port", "3334"]
+CMD ["uvicorn", "capacity_chatbot.api:root_app", "--host", "0.0.0.0", "--port", "3334"]
 
