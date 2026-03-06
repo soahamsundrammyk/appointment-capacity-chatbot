@@ -386,7 +386,7 @@ def _build_assignment_sentence(
         operator = clause.get("operator", "IN")
 
         if uuid_mapper and not clause.get("verboseValues"):
-            values = _resolve_uuids(field, values, uuid_mapper)
+            values = resolve_uuids_by_field(field, values, uuid_mapper)
 
         names = ", ".join(str(v) for v in values) if values else ""
         field_name = FieldDisplayName.get(field)
@@ -404,7 +404,7 @@ def _build_assignment_sentence(
         operator = clause.get("operator", "IN")
 
         if uuid_mapper and not clause.get("verboseValues"):
-            values = _resolve_uuids(field, values, uuid_mapper)
+            values = resolve_uuids_by_field(field, values, uuid_mapper)
 
         names = ", ".join(str(v) for v in values) if values else ""
         field_name = FieldDisplayName.get(field)
