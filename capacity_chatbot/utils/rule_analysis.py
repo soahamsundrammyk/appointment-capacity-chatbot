@@ -177,12 +177,68 @@ def _detect_capacity_conflicts(rules: list[dict[str, Any]]) -> list[dict[str, An
     return conflicts
 
 
+def _get_then_frequencies(rule: dict[str, Any]) -> set[str]:
+    """Extract frequency types from a rule's thenClauses."""
+    freqs = set()
+    for clause in rule.get("thenClauses") or []:
+        freq = clause.get("frequency", "").upper()
+        if freq:
+            freqs.add(freq)
+    return freqs
+
+
+def _conditions_are_mutually_exclusive(
+    rule1: dict[str, Any], rule2: dict[str, Any]
+) -> bool:
+    """Check if two rules' ifClauses are mutually exclusive (can never match the same input).
+
+    Returns True when any shared field has IN vs NOT_IN with the IN values fully
+    contained in the NOT_IN values — meaning no input can satisfy both rules.
+    """
+    clauses1 = {c.get("field", ""): c for c in (rule1.get("ifClauses") or [])}
+    clauses2 = {c.get("field", ""): c for c in (rule2.get("ifClauses") or [])}
+
+    common_fields = set(clauses1.keys()) & set(clauses2.keys())
+    for field in common_fields:
+        c1 = clauses1[field]
+        c2 = clauses2[field]
+        op1 = c1.get("operator", "IN").upper()
+        op2 = c2.get("operator", "IN").upper()
+        vals1 = set(c1.get("values", []))
+        vals2 = set(c2.get("values", []))
+
+        # IN + NOT_IN on same field with same/subset values → mutually exclusive
+        if op1 == "IN" and op2 == "NOT_IN" and vals1 <= vals2:
+            return True
+        if op1 == "NOT_IN" and op2 == "IN" and vals2 <= vals1:
+            return True
+        # IN + IN with zero overlap → mutually exclusive
+        if op1 == "IN" and op2 == "IN" and not (vals1 & vals2):
+            return True
+        # Comparison operators (e.g., >3 vs <=3) → mutually exclusive
+        if frozenset({op1, op2}) in _COMPLEMENTARY_OPS and vals1 == vals2:
+            return True
+
+    return False
+
+
 def _check_capacity_pair(
     rule1: dict[str, Any], rule2: dict[str, Any]
 ) -> dict[str, Any] | None:
     """Check if two capacity rules for the same entity have conflicting time slots."""
     # Same THEN action = not a conflict (possibly redundant but not harmful)
     if _normalize_then_clauses(rule1) == _normalize_then_clauses(rule2):
+        return None
+
+    # Mutually exclusive conditions (e.g., IN [X] vs NOT_IN [X]) → not a conflict
+    if _conditions_are_mutually_exclusive(rule1, rule2):
+        return None
+
+    # Different frequency types (e.g., DAY_WISE vs PER_SLOT) → different constraint
+    # levels that coexist, not conflict
+    freqs1 = _get_then_frequencies(rule1)
+    freqs2 = _get_then_frequencies(rule2)
+    if freqs1 and freqs2 and not (freqs1 & freqs2):
         return None
 
     slots1 = _get_day_slots_map(rule1)
@@ -193,23 +249,38 @@ def _check_capacity_pair(
         return None
 
     overlapping_days = []
+    overlap_slots_by_day: dict[str, set[str] | None] = {}
     for day in common_days:
         s1 = slots1[day]
         s2 = slots2[day]
         if s1 is None or s2 is None:
             # At least one is "all day" → overlap
             overlapping_days.append(day)
+            overlap_slots_by_day[day] = None  # all day
         elif s1 & s2:
             overlapping_days.append(day)
+            overlap_slots_by_day[day] = s1 & s2
 
     if not overlapping_days:
         return None  # Same days but non-overlapping time slots → complementary
+
+    # Collect unique overlapping time slots across all days
+    overlap_slots: set[str] = set()
+    all_day_overlap = False
+    for day in overlapping_days:
+        day_slots = overlap_slots_by_day.get(day)
+        if day_slots is None:
+            all_day_overlap = True
+        else:
+            overlap_slots.update(day_slots)
 
     return {
         "type": "CAPACITY",
         "rule1_name": rule1.get("ruleName", "Unnamed"),
         "rule2_name": rule2.get("ruleName", "Unnamed"),
         "overlap_days": sorted(overlapping_days),
+        "overlap_slots": sorted(overlap_slots),
+        "all_day_overlap": all_day_overlap,
         "rule1_action": summarize_then(rule1),
         "rule2_action": summarize_then(rule2),
     }
@@ -268,15 +339,25 @@ def _detect_assignment_conflicts(rules: list[dict[str, Any]]) -> list[dict[str, 
     return conflicts
 
 
+# Pairs of comparison operators that are mutually exclusive on the same value
+_COMPLEMENTARY_OPS: set[frozenset[str]] = {
+    frozenset({"GREATER_THAN", "LESS_THAN_OR_EQUALS"}),
+    frozenset({"LESS_THAN", "GREATER_THAN_OR_EQUALS"}),
+    frozenset({"GREATER_THAN", "LESS_THAN"}),
+}
+
+
 def _assignment_conditions_overlap(
     rule1: dict[str, Any], rule2: dict[str, Any]
 ) -> bool:
     """Check if two assignment rules' conditions can match the same input.
 
-    Respects IN vs NOT_IN operators:
+    Handles:
     - IN + IN with overlapping values → overlap
     - IN + NOT_IN where all IN values are excluded → mutually exclusive (no overlap)
-    - NOT_IN + NOT_IN → overlap possible (both match inputs outside their lists)
+    - NOT_IN + NOT_IN → overlap possible (can't determine without full value space)
+    - Comparison operators (GREATER_THAN vs LESS_THAN_OR_EQUALS, etc.) on same
+      field with same value → mutually exclusive
     """
     clauses1 = {c.get("field", ""): c for c in (rule1.get("ifClauses") or [])}
     clauses2 = {c.get("field", ""): c for c in (rule2.get("ifClauses") or [])}
@@ -298,6 +379,7 @@ def _assignment_conditions_overlap(
         vals1 = set(c1.get("values", []))
         vals2 = set(c2.get("values", []))
 
+        # IN/NOT_IN checks
         if op1 == "IN" and op2 == "IN":
             if not (vals1 & vals2):
                 return False  # No value overlap → mutually exclusive
@@ -306,6 +388,11 @@ def _assignment_conditions_overlap(
             not_in_vals = vals2 if op1 == "IN" else vals1
             if in_vals <= not_in_vals:
                 return False  # All IN values are excluded by NOT_IN → mutually exclusive
+
+        # Comparison operator checks (e.g., >3 vs <=3)
+        elif frozenset({op1, op2}) in _COMPLEMENTARY_OPS and vals1 == vals2:
+            return False  # Complementary comparisons on same value → mutually exclusive
+
         # NOT_IN + NOT_IN: assume overlap (can't determine without full value space)
 
     return True
@@ -317,11 +404,31 @@ def _has_different_actions(rule1: dict[str, Any], rule2: dict[str, Any]) -> bool
 
 
 def summarize_then(rule: dict[str, Any]) -> str:
-    """Summarize a rule's THEN action."""
+    """Summarize a rule's THEN action in human-readable form."""
     parts = []
     for clause in rule.get("thenClauses") or []:
         field = clause.get("field", "")
-        values = clause.get("verboseValues", []) or clause.get("values", [])
-        name = FieldDisplayName.get(field)
-        parts.append("%s: %s" % (name, ", ".join(str(v) for v in values[:MAX_SUMMARY_VALUES])))
+        raw_values = clause.get("values", [])
+        frequency = clause.get("frequency", "")
+
+        # For capacity fields, produce a clear limit description
+        if field.upper() in ("CAPACITY", "MAX_CAPACITY", "APPOINTMENT_CAPACITY"):
+            limit = raw_values[0] if raw_values else "0"
+            freq_text = ""
+            if "SLOT" in frequency.upper():
+                freq_text = "/slot"
+            elif "DAY" in frequency.upper():
+                freq_text = "/day"
+
+            if str(limit) == "0":
+                parts.append("blocked (limit 0%s)" % freq_text)
+            else:
+                parts.append("limit %s%s" % (limit, freq_text))
+        else:
+            # For non-capacity fields, use verbose values
+            values = clause.get("verboseValues", []) or raw_values
+            name = FieldDisplayName.get(field)
+            parts.append(
+                "%s: %s" % (name, ", ".join(str(v) for v in values[:MAX_SUMMARY_VALUES]))
+            )
     return "; ".join(parts) if parts else "No action"

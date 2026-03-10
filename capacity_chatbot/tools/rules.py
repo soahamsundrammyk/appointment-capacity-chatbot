@@ -195,15 +195,39 @@ def _format_rules_response(
         result += "\n⚠️ CONFLICTS DETECTED (%d):" % len(conflicts)
         for c in conflicts:
             if c["type"] == "CAPACITY":
+                # Show specific overlapping slots for clarity
+                overlap_slots = c.get("overlap_slots", [])
+                all_day = c.get("all_day_overlap", False)
+                if all_day:
+                    slot_detail = "all time slots"
+                elif overlap_slots:
+                    # Format times without seconds for readability
+                    readable_slots = []
+                    for s in overlap_slots:
+                        parts = s.split(":")
+                        hour = int(parts[0])
+                        minute = parts[1] if len(parts) > 1 else "00"
+                        ampm = "AM" if hour < 12 else "PM"
+                        display_hour = hour if hour <= 12 else hour - 12
+                        if display_hour == 0:
+                            display_hour = 12
+                        readable_slots.append(
+                            "%d:%s %s" % (display_hour, minute, ampm)
+                        )
+                    slot_detail = "slots: %s" % ", ".join(readable_slots)
+                else:
+                    slot_detail = "overlapping time slots"
+
                 result += (
-                    "\n- CAPACITY CONFLICT: '%s' and '%s' have overlapping time slots on %s "
-                    "with different limits (%s vs %s)"
+                    "\n- CAPACITY CONFLICT: '%s' (%s) and '%s' (%s) "
+                    "overlap on %s at %s"
                     % (
                         c["rule1_name"],
-                        c["rule2_name"],
-                        ", ".join(c["overlap_days"]),
                         c["rule1_action"],
+                        c["rule2_name"],
                         c["rule2_action"],
+                        ", ".join(c["overlap_days"]),
+                        slot_detail,
                     )
                 )
             else:
