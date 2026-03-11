@@ -1,6 +1,7 @@
 """Date parsing and formatting utilities for natural language date expressions and API responses."""
 
 import re
+from collections import defaultdict
 from datetime import date, datetime, timedelta
 from typing import Any
 
@@ -10,6 +11,19 @@ TIME_STRING_WITH_SECONDS_LENGTH = 8  # Length of "HH:MM:SS" format
 MAX_DATES_DISPLAY = 2
 MAX_TIME_SLOTS_DISPLAY = 2
 MAX_DAYS_DISPLAY = 3
+MAX_LISTED_SLOTS = 3  # Show individual times if slots <= this, otherwise show range+count
+
+# Day ordering (Monday-first for business context) and abbreviations
+DAY_ORDER = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+DAY_ABBREV = {
+    "Monday": "Mon",
+    "Tuesday": "Tue",
+    "Wednesday": "Wed",
+    "Thursday": "Thu",
+    "Friday": "Fri",
+    "Saturday": "Sat",
+    "Sunday": "Sun",
+}
 
 # Regex patterns
 DATE_PATTERN = re.compile(r"^\d{4}-\d{2}-\d{2}$")
@@ -296,6 +310,95 @@ def format_time(time_str: str) -> str:
         return time_str
 
 
+def _format_day_group(days: list[str]) -> str:
+    """Format day names, detecting consecutive ranges like Mon-Fri.
+
+    Args:
+        days: List of capitalized day names (e.g., ["Monday", "Tuesday"])
+
+    Returns:
+        Formatted string like "Mon-Fri", "Mon, Wed, Fri", or "every day"
+    """
+    if not days:
+        return ""
+
+    ordered = sorted(days, key=lambda d: DAY_ORDER.index(d) if d in DAY_ORDER else 99)
+
+    if len(ordered) == 7:
+        return "every day"
+    if len(ordered) == 1:
+        return ordered[0]
+
+    # Check if days are consecutive in DAY_ORDER
+    indices = [DAY_ORDER.index(d) for d in ordered if d in DAY_ORDER]
+    if len(indices) >= 2 and indices == list(range(indices[0], indices[0] + len(indices))):
+        return "%s-%s" % (
+            DAY_ABBREV.get(ordered[0], ordered[0]),
+            DAY_ABBREV.get(ordered[-1], ordered[-1]),
+        )
+
+    return ", ".join(ordered)
+
+
+def _summarize_time_slots(slots: list[str]) -> str:
+    """Summarize time slots for display.
+
+    Args:
+        slots: List of time strings in HH:MM:SS or HH:MM format
+
+    Returns:
+        "at 8:00 AM, 1:00 PM" for few slots, or "at 6:00 AM-6:45 PM (49 slots)" for many
+    """
+    if not slots:
+        return ""
+
+    sorted_slots = sorted(slots)
+    formatted = [format_time(s) for s in sorted_slots]
+
+    if len(formatted) <= MAX_LISTED_SLOTS:
+        return "at %s" % ", ".join(formatted)
+
+    return "at %s-%s (%d slots)" % (formatted[0], formatted[-1], len(formatted))
+
+
+def _format_day_and_time(day_time_list: list[dict[str, Any]]) -> str:
+    """Format DAY_AND_TIME applicability with per-day time slot details.
+
+    Filters out days with empty timeSlots (rule doesn't apply on those days),
+    groups days with identical time slot patterns, and includes time info.
+
+    Args:
+        day_time_list: List of {"day": "MONDAY", "timeSlots": ["08:00:00", ...]}
+
+    Returns:
+        Formatted string like "on Mon-Fri at 8:00 AM, 1:00 PM"
+        or "on Mon-Fri at 6:00 AM-6:45 PM (49 slots); Sat at 7:00 AM-3:45 PM (36 slots)"
+    """
+    # Filter out days with empty timeSlots (rule doesn't apply on those days)
+    active = [
+        (e.get("day", "").capitalize(), e.get("timeSlots", []))
+        for e in (day_time_list or [])
+        if e.get("timeSlots")
+    ]
+
+    if not active:
+        return ""
+
+    # Group days by their time slot pattern
+    groups: dict[tuple[str, ...], list[str]] = defaultdict(list)
+    for day, slots in active:
+        key = tuple(sorted(slots))
+        groups[key].append(day)
+
+    parts = []
+    for slots, days in groups.items():
+        day_str = _format_day_group(days)
+        time_str = _summarize_time_slots(list(slots))
+        parts.append("%s %s" % (day_str, time_str))
+
+    return "on %s" % "; ".join(parts)
+
+
 def format_timing(applicability: dict[str, Any]) -> str:
     """Format timing info from applicability clause to human-readable string.
 
@@ -336,7 +439,10 @@ def format_timing(applicability: dict[str, Any]) -> str:
         dates = [format_date(d) for d in date_list[:MAX_DATES_DISPLAY]]
         return "on %s" % ", ".join(dates)
 
-    elif field in ["DAY", "DAY_AND_TIME"]:
+    elif field == "DAY_AND_TIME":
+        return _format_day_and_time(day_time_list)
+
+    elif field == "DAY":
         days = [e.get("day", "").capitalize() for e in (day_time_list or []) if e.get("day")]
         if days:
             all_days = {
@@ -352,8 +458,8 @@ def format_timing(applicability: dict[str, Any]) -> str:
             if len(missing) == 1:
                 return "(except %ss)" % list(missing)[0]
             elif len(missing) > 0 and len(missing) < 3:
-                return "(except %s)" % ", ".join(missing)
-            return "on %s" % ", ".join(days[:MAX_DAYS_DISPLAY])
+                return "(except %s)" % ", ".join(sorted(missing))
+            return "on %s" % _format_day_group(days)
 
     elif field == "DATE_AND_TIME" and date_list:
         date_str = format_date(date_list[0])

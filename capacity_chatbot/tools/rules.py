@@ -10,6 +10,7 @@ from capacity_chatbot.clients.kappointment_client import KAppointmentAPIClient
 from capacity_chatbot.config.api_config import KAppointmentAPIConfig
 from capacity_chatbot.enums import FieldDisplayName, FilterField
 from capacity_chatbot.utils.date_parser import format_timing
+from capacity_chatbot.utils.rule_analysis import detect_complementary_rules, detect_conflicts
 from capacity_chatbot.utils.state_extractor import extract_state
 from capacity_chatbot.utils.uuid_mapper import UUIDMapper, resolve_uuids_by_field
 
@@ -183,20 +184,79 @@ def _format_rules_response(
     else:
         result = "Found %d active rule(s):\n%s" % (filtered_count, "\n".join(formatted))
 
-    # Check for potential conflicts in assignment rules
-    # Note: This is a simple heuristic. The LLM will analyze rule descriptions
-    # to determine if rules are truly conflicting (e.g., mutually exclusive conditions).
-    potential_conflicts = _detect_conflicts(rule_list)
-    if potential_conflicts:
-        names = [
-            "'%s' and '%s'" % (c["rule1_name"], c["rule2_name"]) for c in potential_conflicts[:2]
-        ]
-        result += (
-            "\n\n⚠️ Found %d assignment rule pair(s) with potentially overlapping conditions (%s). "
-            % (len(potential_conflicts), ", ".join(names))
+    # Pre-computed conflict and complementary analysis
+    # The LLM should RELAY these results, not make its own conflict judgments.
+    conflicts = detect_conflicts(rule_list)
+    complementary = detect_complementary_rules(rule_list)
+
+    result += "\n\n--- RULE ANALYSIS (pre-computed, do not override) ---"
+
+    if conflicts:
+        result += "\n⚠️ CONFLICTS DETECTED (%d):" % len(conflicts)
+        for c in conflicts:
+            if c["type"] == "CAPACITY":
+                # Show specific overlapping slots for clarity
+                overlap_slots = c.get("overlap_slots", [])
+                all_day = c.get("all_day_overlap", False)
+                if all_day:
+                    slot_detail = "all time slots"
+                elif overlap_slots:
+                    # Format times without seconds for readability
+                    readable_slots = []
+                    for s in overlap_slots:
+                        parts = s.split(":")
+                        hour = int(parts[0])
+                        minute = parts[1] if len(parts) > 1 else "00"
+                        ampm = "AM" if hour < 12 else "PM"
+                        display_hour = hour if hour <= 12 else hour - 12
+                        if display_hour == 0:
+                            display_hour = 12
+                        readable_slots.append(
+                            "%d:%s %s" % (display_hour, minute, ampm)
+                        )
+                    slot_detail = "slots: %s" % ", ".join(readable_slots)
+                else:
+                    slot_detail = "overlapping time slots"
+
+                result += (
+                    "\n- CAPACITY CONFLICT: '%s' (%s) and '%s' (%s) "
+                    "overlap on %s at %s"
+                    % (
+                        c["rule1_name"],
+                        c["rule1_action"],
+                        c["rule2_name"],
+                        c["rule2_action"],
+                        ", ".join(c["overlap_days"]),
+                        slot_detail,
+                    )
+                )
+            else:
+                result += (
+                    "\n- ASSIGNMENT CONFLICT: '%s' and '%s' have overlapping conditions "
+                    "but different actions (%s vs %s)"
+                    % (
+                        c["rule1_name"],
+                        c["rule2_name"],
+                        c["rule1_action"],
+                        c["rule2_action"],
+                    )
+                )
+    else:
+        result += "\n✅ No rule conflicts detected."
+
+    if complementary:
+        result += "\nℹ️ COMPLEMENTARY RULES (%d pairs - these are NOT conflicts):" % len(
+            complementary
         )
-        result += "Please review these rules to ensure they don't conflict (e.g., mutually exclusive conditions like '> 3' and '<= 3' are fine)."
-    elif filters and ("opcode_name" in filters or filters.get("entity_type") == "opcode"):
+        for c in complementary:
+            result += "\n- '%s' and '%s' cover different time slots for the same entity (no conflict)" % (
+                c["rule1_name"],
+                c["rule2_name"],
+            )
+
+    result += "\n--- END ANALYSIS ---"
+
+    if filters and ("opcode_name" in filters or filters.get("entity_type") == "opcode"):
         result += (
             "\n\nIf you want to check daily limits for a specific opcode, please share the name."
         )
@@ -420,69 +480,3 @@ def _build_assignment_sentence(
     return "IF %s %s" % (if_text, then_text)
 
 
-def _detect_conflicts(rules: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Detect conflicting assignment rules."""
-    conflicts = []
-    assignment_rules = [r for r in rules if r.get("ruleType") == "ASSIGNMENT"]
-
-    for i, rule1 in enumerate(assignment_rules):
-        for rule2 in assignment_rules[i + 1 :]:
-            overlap = _check_condition_overlap(rule1, rule2)
-            if overlap and _has_different_actions(rule1, rule2):
-                conflicts.append(
-                    {
-                        "rule1_name": rule1.get("ruleName", "Unnamed"),
-                        "rule2_name": rule2.get("ruleName", "Unnamed"),
-                        "overlap_field": overlap["field"],
-                        "rule1_action": _summarize_then(rule1),
-                        "rule2_action": _summarize_then(rule2),
-                    }
-                )
-
-    return conflicts
-
-
-def _check_condition_overlap(rule1: dict[str, Any], rule2: dict[str, Any]) -> dict[str, Any] | None:
-    """Check if two rules' conditions can match the same input.
-
-    This is a simple heuristic that checks for same field and overlapping values.
-    The LLM will analyze the actual rule descriptions to determine if they're truly conflicting
-    (e.g., mutually exclusive conditions like > 3 and <= 3 are fine).
-    """
-    cond1 = {c.get("field", ""): set(c.get("values", [])) for c in (rule1.get("ifClauses") or [])}
-    cond2 = {c.get("field", ""): set(c.get("values", [])) for c in (rule2.get("ifClauses") or [])}
-
-    # Find overlapping fields
-    for field in set(cond1.keys()) & set(cond2.keys()):
-        intersection = cond1[field] & cond2[field]
-        if intersection:
-            return {"field": field, "values": list(intersection)[:MAX_INTERSECTION_VALUES]}
-
-    # If one has no conditions, it matches everything
-    if not cond1 or not cond2:
-        return {"field": "ALL", "values": ["any input"]}
-
-    return None
-
-
-def _has_different_actions(rule1: dict[str, Any], rule2: dict[str, Any]) -> bool:
-    """Check if two rules have different THEN actions."""
-
-    def normalize(clauses):
-        parts = [
-            "%s:%s" % (c.get("field", ""), sorted(c.get("values", []))) for c in (clauses or [])
-        ]
-        return "|".join(sorted(parts))
-
-    return normalize(rule1.get("thenClauses", [])) != normalize(rule2.get("thenClauses", []))
-
-
-def _summarize_then(rule: dict[str, Any]) -> str:
-    """Summarize a rule's THEN action."""
-    parts = []
-    for clause in rule.get("thenClauses") or []:
-        field = clause.get("field", "")
-        values = _get_clause_values(clause)
-        name = FieldDisplayName.get(field)
-        parts.append("%s: %s" % (name, ", ".join(str(v) for v in values[:MAX_SUMMARY_VALUES])))
-    return "; ".join(parts) if parts else "No action"
