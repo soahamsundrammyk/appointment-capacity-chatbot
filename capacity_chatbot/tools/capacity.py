@@ -12,6 +12,7 @@ from capacity_chatbot.config.api_config import KAppointmentAPIConfig
 from capacity_chatbot.enums import (
     ApplicabilityRuleField,
     CapacityType,
+    FieldDisplayName,
     LimitingFactor,
     RuleMatchingCriteria,
     SourceType,
@@ -314,7 +315,9 @@ def _build_entity_map(
     """Build API entity map and field combinations."""
     # Always include SOURCE to prevent API validation error
     entity_map = {"SOURCE": [source] if source else ["DealerApp", "Web"]}
-    field_combinations = [["SOURCE"]]
+    field_combinations: list[list[str]] = []
+    _append_field_combination(field_combinations, ["SOURCE"])
+    non_source_fields: list[str] = []
 
     # Map of uuid_key -> (entity_map_key, field_combination_key)
     entity_mappings = [
@@ -326,13 +329,34 @@ def _build_entity_map(
     for uuid_key, entity_key in entity_mappings:
         if uuids[uuid_key]:
             entity_map[entity_key] = uuids[uuid_key]
-            field_combinations.append([entity_key])
+            _append_field_combination(field_combinations, [entity_key])
+            non_source_fields.append(entity_key)
 
     if opcodes:
         entity_map["OPERATION_UUID"] = opcodes
-        field_combinations.append(["OPERATION_UUID"])
+        _append_field_combination(field_combinations, ["OPERATION_UUID"])
+        non_source_fields.append("OPERATION_UUID")
+
+    # Request intersection-level capacity when multiple non-source filters are used.
+    if len(non_source_fields) > 1:
+        _append_field_combination(field_combinations, non_source_fields)
 
     return entity_map, field_combinations
+
+
+def _append_field_combination(
+    field_combinations: list[list[str]],
+    combination: list[str],
+) -> None:
+    """Append a field combination if not already present."""
+    normalized = _dedupe_preserve_order(combination)
+    if normalized and normalized not in field_combinations:
+        field_combinations.append(normalized)
+
+
+def _dedupe_preserve_order(values: list[str]) -> list[str]:
+    """De-duplicate while preserving first-seen ordering."""
+    return list(dict.fromkeys(values))
 
 
 # =============================================================================
@@ -354,12 +378,12 @@ async def _fetch_capacity(
 
     request_payload = {
         "applicabilityRuleField": applicability_field,
-        "applicabilityFieldValues": list(set(request.dates)),
+        "applicabilityFieldValues": _dedupe_preserve_order(request.dates),
         "capacityTypeSet": [CapacityType.APPOINTMENT_COUNT.value],
         "ruleMatchingCriteria": RuleMatchingCriteria.EXACTLY_MATCHES.value,
         "includeLimitInfo": True,
-        "entityMap": {k: list(set(v)) for k, v in request.entity_map.items()},
-        "fieldCombinations": [list(set(c)) for c in request.field_combinations],
+        "entityMap": {k: _dedupe_preserve_order(v) for k, v in request.entity_map.items()},
+        "fieldCombinations": [_dedupe_preserve_order(c) for c in request.field_combinations],
     }
 
     if request.start_time:
@@ -436,8 +460,9 @@ def _extract_capacity_entries(
     entries = []
     limiting_factors = []
 
-    user_entity_types = set(entity_map.keys()) if entity_map else set()
-    has_non_source_filters = bool(user_entity_types - {"SOURCE"})
+    requested_non_source_types = _get_requested_non_source_entity_types(entity_map)
+    has_non_source_filters = bool(requested_non_source_types)
+    show_combined_and_separate = len(requested_non_source_types) > 1
 
     for _, date_map in capacity_map.items():
         for date_key, entity_data in date_map.items():
@@ -456,11 +481,37 @@ def _extract_capacity_entries(
                 if combo_key.startswith("SOURCE=") and has_non_source_filters:
                     continue
 
-                # Check if entry matches requested entities
-                if not _entry_matches_filter(combo_key, entity_map, has_non_source_filters):
-                    continue
+                if show_combined_and_separate:
+                    combo_fields = _parse_combo_key_fields(combo_key)
+                    matched_requested_types = _get_matched_requested_types(
+                        combo_fields, entity_map, requested_non_source_types
+                    )
+                    if not matched_requested_types:
+                        continue
 
-                entity_display = _build_entity_display_name(combo_key, uuid_mapper)
+                    is_full_intersection = (
+                        len(matched_requested_types) == len(requested_non_source_types)
+                    )
+                    is_single_dimension = len(combo_fields) == 1 and len(matched_requested_types) == 1
+
+                    # For multi-filter queries, show:
+                    # 1) full intersection row, and
+                    # 2) single-dimension context rows per requested field.
+                    if not (is_full_intersection or is_single_dimension):
+                        continue
+
+                    entity_display = _build_scoped_entity_display(
+                        combo_key=combo_key,
+                        uuid_mapper=uuid_mapper,
+                        matched_requested_types=matched_requested_types,
+                        requested_non_source_types=requested_non_source_types,
+                    )
+                else:
+                    # Single-filter (or source-only) queries keep existing behavior.
+                    if not _entry_matches_filter(combo_key, entity_map, has_non_source_filters):
+                        continue
+                    entity_display = _build_entity_display_name(combo_key, uuid_mapper)
+
                 entries.append((date_key, entity_display, cap_data, combo_key))
 
                 # Collect limiting factor
@@ -472,6 +523,78 @@ def _extract_capacity_entries(
     return entries, limiting_factors
 
 
+def _get_requested_non_source_entity_types(
+    entity_map: dict[str, list[str]] | None,
+) -> list[str]:
+    """Get requested non-source entity types in deterministic display order."""
+    if not entity_map:
+        return []
+
+    requested = [
+        entity_type
+        for entity_type, requested_values in entity_map.items()
+        if entity_type != "SOURCE" and requested_values
+    ]
+    return _sort_entity_types_for_display(requested)
+
+
+def _sort_entity_types_for_display(entity_types: list[str]) -> list[str]:
+    """Sort entity types for stable display labels."""
+    order = {
+        "DEALER_ASSOCIATE_UUID": 0,
+        "TEAM_UUID": 1,
+        "TRANSPORT_OPTION_UUID": 2,
+        "OPERATION_UUID": 3,
+    }
+    return sorted(entity_types, key=lambda entity_type: (order.get(entity_type, 99), entity_type))
+
+
+def _get_matched_requested_types(
+    combo_fields: dict[str, list[str]],
+    entity_map: dict[str, list[str]] | None,
+    requested_non_source_types: list[str],
+) -> list[str]:
+    """Return requested entity types present in combo key and matching requested values."""
+    if not entity_map:
+        return []
+
+    matched = []
+    for entity_type in requested_non_source_types:
+        requested_values = set(entity_map.get(entity_type, []))
+        combo_values = set(combo_fields.get(entity_type, []))
+        if requested_values.intersection(combo_values):
+            matched.append(entity_type)
+
+    return matched
+
+
+def _build_scoped_entity_display(
+    combo_key: str,
+    uuid_mapper: UUIDMapper | None,
+    matched_requested_types: list[str],
+    requested_non_source_types: list[str],
+) -> str:
+    """Build entity display with scope labels for multi-filter queries."""
+    entity_display = _build_entity_display_name(combo_key, uuid_mapper)
+
+    if len(requested_non_source_types) <= 1:
+        return entity_display
+
+    if len(matched_requested_types) == len(requested_non_source_types):
+        combined_fields = " + ".join(FieldDisplayName.get(field) for field in requested_non_source_types)
+        scope_label = "Combined (%s)" % combined_fields
+    elif len(matched_requested_types) == 1:
+        scope_label = "%s Only" % FieldDisplayName.get(matched_requested_types[0])
+    else:
+        scope_label = ""
+
+    if scope_label and entity_display:
+        return "%s: %s" % (scope_label, entity_display)
+    if scope_label:
+        return scope_label
+    return entity_display
+
+
 def _entry_matches_filter(
     combo_key: str,
     entity_map: dict[str, list[str]] | None,
@@ -481,13 +604,45 @@ def _entry_matches_filter(
     if not entity_map:
         return True
 
-    for etype, uuids in entity_map.items():
-        if etype == "SOURCE" and has_non_source_filters:
+    combo_fields = _parse_combo_key_fields(combo_key)
+    required_entity_types = []
+
+    for entity_type, requested_values in entity_map.items():
+        if not requested_values:
             continue
-        for uuid in uuids or []:
-            if "%s=%s" % (etype, uuid) in combo_key:
-                return True
-    return False
+        if entity_type == "SOURCE" and has_non_source_filters:
+            continue
+        required_entity_types.append(entity_type)
+
+    if not required_entity_types:
+        return False
+
+    for entity_type in required_entity_types:
+        requested_values = set(entity_map.get(entity_type, []))
+        combo_values = set(combo_fields.get(entity_type, []))
+        if not requested_values.intersection(combo_values):
+            return False
+
+    return True
+
+
+def _parse_combo_key_fields(combo_key: str) -> dict[str, list[str]]:
+    """Parse combo key string into entity->values map."""
+    combo_fields: dict[str, list[str]] = {}
+
+    for part in combo_key.split(","):
+        if "=" not in part:
+            continue
+        key, value = part.split("=", 1)
+        key = key.strip()
+        value = value.strip()
+        if not key or not value:
+            continue
+        combo_fields.setdefault(key, [])
+        if value not in combo_fields[key]:
+            combo_fields[key].append(value)
+
+    return combo_fields
 
 
 def _build_entity_display_name(combo_key: str, uuid_mapper: UUIDMapper | None) -> str:
@@ -495,26 +650,22 @@ def _build_entity_display_name(combo_key: str, uuid_mapper: UUIDMapper | None) -
     if not uuid_mapper:
         return ""
 
-    # Map of entity type prefix -> (uuid_map, separator)
+    combo_fields = _parse_combo_key_fields(combo_key)
+
     entity_maps = [
-        ("DEALER_ASSOCIATE_UUID=", uuid_mapper.advisor_map, ""),
-        ("TEAM_UUID=", uuid_mapper.team_map, " (%s)"),
-        ("TRANSPORT_OPTION_UUID=", uuid_mapper.transport_map, " - %s"),
+        ("DEALER_ASSOCIATE_UUID", uuid_mapper.advisor_map),
+        ("TEAM_UUID", uuid_mapper.team_map),
+        ("TRANSPORT_OPTION_UUID", uuid_mapper.transport_map),
     ]
 
-    display = ""
-    for prefix, uuid_map, separator in entity_maps:
-        for uuid, name in uuid_map.items():
-            if "%s%s" % (prefix, uuid) in combo_key:
-                if not display:
-                    display = name
-                else:
-                    display = display + separator % name
-                break
-        if display:
-            break
+    display_parts: list[str] = []
+    for entity_type, uuid_map in entity_maps:
+        for uuid in combo_fields.get(entity_type, []):
+            name = uuid_map.get(uuid)
+            if name:
+                display_parts.append(name)
 
-    return display
+    return " - ".join(display_parts)
 
 
 def _calculate_capacity_metrics(cap_data: dict[str, Any]) -> tuple[int, float, int, bool]:
@@ -548,6 +699,7 @@ def _format_as_table(entries: list[tuple], limiting_factors: list[tuple]) -> str
         date_entries = [e for e in entries if e[0] == date_key]
 
         if has_entities:
+            date_entries = sorted(date_entries, key=_entry_display_sort_key)
             parts.append("**%s**\n" % date_key)
             parts.append("| Entity | Booked | Available | Total |")
             parts.append("|--------|--------|-----------|-------|")
@@ -582,6 +734,16 @@ def _format_as_table(entries: list[tuple], limiting_factors: list[tuple]) -> str
         parts.append("\nWould you like me to explain how to increase any of these?")
 
     return "\n".join(parts)
+
+
+def _entry_display_sort_key(entry: tuple) -> tuple[int, str]:
+    """Sort entries to show combined row first, then single-dimension rows."""
+    entity = entry[1] or ""
+    if entity.startswith("Combined "):
+        return (0, entity)
+    if " Only" in entity:
+        return (1, entity)
+    return (2, entity)
 
 
 def _format_conversational(entries: list[tuple], limiting_factors: list[tuple]) -> str:
