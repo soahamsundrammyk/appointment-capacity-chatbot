@@ -166,6 +166,26 @@ async def run_graph_stream(
             final_values = {"messages": [serialize_message(m) for m in final_messages]}
             yield f"event: values\ndata: {json.dumps(final_values)}\n\n"
 
+        # Save thread metadata for chat history
+        try:
+            from capacity_chatbot.graph import get_postgres_pool
+            from capacity_chatbot.chat_history import save_thread_metadata
+
+            pool = await get_postgres_pool()
+            if pool:
+                all_messages = input_data.get("messages", [])
+                first_msg = all_messages[0].get("content", "")[:200] if all_messages else ""
+                total = len(final_messages) if final_messages else 0
+                await save_thread_metadata(
+                    pool, thread_id,
+                    session_info.get("userUuid", ""),
+                    session_info.get("dealerUuid", ""),
+                    session_info.get("departmentUuid", ""),
+                    first_msg, total,
+                )
+        except Exception as e:
+            logger.warning("Failed to save chat history metadata: %s", e)
+
         yield f"event: end\ndata: {json.dumps({'status': 'done'})}\n\n"
 
     except Exception as e:
@@ -196,6 +216,59 @@ async def create_run_stream(
     )
 
 
+@app.get("/threads")
+async def list_threads(
+    session: dict[str, Any] = Depends(get_authenticated_session),
+):
+    """List conversation threads for the authenticated user."""
+    from capacity_chatbot.graph import get_postgres_pool
+    from capacity_chatbot.chat_history import get_threads_for_user
+
+    pool = await get_postgres_pool()
+    if not pool:
+        return {"threads": []}
+
+    user_uuid = session.get("userUuid", "")
+    threads = await get_threads_for_user(pool, user_uuid)
+    return {"threads": threads}
+
+
+@app.get("/threads/{thread_id}/history")
+async def get_thread_history(
+    thread_id: str,
+    session: dict[str, Any] = Depends(get_authenticated_session),
+):
+    """Get all messages for a conversation thread."""
+    graph = await get_graph()
+    config = {"configurable": {"thread_id": thread_id}}
+
+    try:
+        state = await graph.aget_state(config)
+        if not state.values or not state.values.get("messages"):
+            return {"messages": []}
+
+        messages = []
+        for msg in state.values["messages"]:
+            if hasattr(msg, "type") and msg.type in ("human", "ai"):
+                content = msg.content
+                # Handle Claude's array content format
+                if isinstance(content, list):
+                    content = "".join(
+                        item.get("text", "") if isinstance(item, dict) else str(item)
+                        for item in content
+                    )
+                if content:  # Skip empty messages
+                    messages.append({
+                        "type": msg.type,
+                        "content": content,
+                    })
+
+        return {"messages": messages}
+    except Exception as e:
+        logger.exception("Failed to get thread history: %s", e)
+        return {"messages": []}
+
+
 @app.on_event("startup")
 async def startup_event():
     """Initialize the graph on startup."""
@@ -210,6 +283,14 @@ async def startup_event():
     try:
         await get_graph()
         logger.info("Graph initialized successfully")
+
+        # Initialize chat history table
+        from capacity_chatbot.graph import get_postgres_pool
+        from capacity_chatbot.chat_history import ensure_chat_history_table
+        pool = await get_postgres_pool()
+        if pool:
+            await ensure_chat_history_table(pool)
+            logger.info("Chat history table initialized")
     except Exception as e:
         logger.error(f"Failed to initialize graph: {e}")
 
