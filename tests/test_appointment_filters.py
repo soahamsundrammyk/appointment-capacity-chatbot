@@ -182,3 +182,36 @@ def test_filter_by_source_legacy_case_insensitive():
     filters = AppointmentFilters(source_uuids=["dealerapp"])
     result = apply_filters(appts, filters)
     assert len(result) == 2
+
+
+def test_filter_by_transport_api_uuid_field():
+    """API /list endpoint returns 'uuid' not 'transportOptionUuid'."""
+    appts = [
+        {
+            "uuid": "appt-api-format",
+            "transportOption": {"uuid": "tp-loaner", "transportation": "Loaner"},
+            "status": "N",
+        },
+        {
+            "uuid": "appt-cached-format",
+            "transportOption": {"transportOptionUuid": "tp-loaner", "optionName": "Loaner"},
+            "status": "N",
+        },
+    ]
+    filters = AppointmentFilters(transport_option_uuids=["tp-loaner"])
+    result = apply_filters(appts, filters)
+    assert len(result) == 2
+
+
+def test_filter_by_transport_null_uuid():
+    """Transport option present but with null uuid should match NONE."""
+    appts = [
+        {
+            "uuid": "appt-null-transport",
+            "transportOption": {"uuid": None, "transportation": None},
+            "status": "N",
+        },
+    ]
+    filters = AppointmentFilters(transport_option_uuids=["NONE"])
+    result = apply_filters(appts, filters)
+    assert len(result) == 1
