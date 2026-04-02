@@ -134,17 +134,31 @@ async def run_graph_stream(
 
         final_messages = []
 
+        # Friendly display names for tool events shown in the UI
+        _TOOL_DISPLAY_NAMES = {
+            "get_appointments_tool": "Searching appointments",
+            "get_capacity_tool": "Checking capacity",
+            "get_rules_tool": "Looking up rules",
+            "get_first_available_slot_tool": "Finding available slots",
+            "search_opcode_tool": "Searching services",
+            "get_available_entities": "Loading available options",
+            "confirm_entity": "Verifying names",
+            "get_knowledge_answer": "Searching knowledge base",
+        }
+
         async for event in graph.astream_events(graph_input, config, version="v2"):
             event_type = event.get("event", "")
 
             if event_type == "on_tool_start":
                 tool_name = event.get("name", "unknown")
-                event_data = {"event": "on_tool_start", "name": tool_name}
+                display_name = _TOOL_DISPLAY_NAMES.get(tool_name, tool_name)
+                event_data = {"event": "on_tool_start", "name": display_name}
                 yield f"event: on_tool_start\ndata: {json.dumps(event_data)}\n\n"
 
             elif event_type == "on_tool_end":
                 tool_name = event.get("name", "unknown")
-                event_data = {"event": "on_tool_end", "name": tool_name}
+                display_name = _TOOL_DISPLAY_NAMES.get(tool_name, tool_name)
+                event_data = {"event": "on_tool_end", "name": display_name}
                 yield f"event: on_tool_end\ndata: {json.dumps(event_data)}\n\n"
 
             elif event_type == "on_chat_model_stream":
