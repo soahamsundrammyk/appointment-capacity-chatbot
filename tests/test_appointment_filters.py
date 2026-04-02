@@ -141,3 +141,44 @@ def test_filter_by_source_uuids():
     result = apply_filters(SAMPLE_APPOINTMENTS, filters)
     assert len(result) == 1
     assert result[0]["uuid"] == "appt-1"
+
+
+def test_filter_by_source_legacy_created_by():
+    """When appointmentSourceDetails is None, fall back to createdBy field."""
+    appts_with_legacy = [
+        {
+            "uuid": "appt-legacy-1",
+            "appointmentSourceDetails": None,
+            "createdBy": "Web",
+            "status": "UPDATED",
+        },
+        {
+            "uuid": "appt-legacy-2",
+            "appointmentSourceDetails": None,
+            "createdBy": "dealerapp",
+            "status": "UPDATED",
+        },
+        {
+            "uuid": "appt-legacy-3",
+            "appointmentSourceDetails": {"uuid": "src-web"},
+            "createdBy": "Web",
+            "status": "UPDATED",
+        },
+    ]
+    # Match by legacy createdBy
+    filters = AppointmentFilters(source_uuids=["Web"])
+    result = apply_filters(appts_with_legacy, filters)
+    assert len(result) == 2
+    assert result[0]["uuid"] == "appt-legacy-1"
+    assert result[1]["uuid"] == "appt-legacy-3"
+
+
+def test_filter_by_source_legacy_case_insensitive():
+    """Legacy createdBy matching should be case-insensitive."""
+    appts = [
+        {"uuid": "a1", "appointmentSourceDetails": None, "createdBy": "dealerapp", "status": "N"},
+        {"uuid": "a2", "appointmentSourceDetails": None, "createdBy": "DealerApp", "status": "N"},
+    ]
+    filters = AppointmentFilters(source_uuids=["dealerapp"])
+    result = apply_filters(appts, filters)
+    assert len(result) == 2
