@@ -55,14 +55,16 @@ When user asks about appointment data, history, counts, or statistics:
 • At least one date filter is REQUIRED — if user doesn't specify, ask or default to this month
 • For follow-up breakdowns, reuse the same date filters from the previous query
 
-DATE FILTER GUIDANCE:
-• DEFAULT to start_date/end_date (scheduled date) for most queries
-  - "appointments in March" → start_date="2026-03-01", end_date="2026-03-31"
-  - "how many appointments last month" → start_date="last month"
-  - "cancelled appointments this week" → start_date="this week"
-• ONLY use start_created_date/end_created_date when user explicitly says "created"
+⚠️ DATE FILTER — CRITICAL DEFAULT:
+• ALWAYS use start_date/end_date (SCHEDULED date) unless user explicitly says "created"
+  - "appointments in March" → start_date="last month" (SCHEDULED date)
+  - "how many appointments last month" → start_date="last month" (SCHEDULED date)
+  - "cancelled appointments this week" → start_date="this week" (SCHEDULED date)
+  - "appointments for March 2026" → start_date="2026-03-01", end_date="2026-03-31"
+• ONLY use start_created_date when user says "created" or "booked on":
   - "appointments created in March" → start_created_date="last month"
-  - "how many were created by Web this month" → start_created_date="this month"
+  - "how many were booked last week" → start_created_date="last week"
+• When in doubt, use start_date (scheduled). NEVER default to start_created_date.
 
 SOURCE/PLATFORM FILTER:
 • Use created_by_platform for booking source: "Web", "DealerApp", "DMS", "Mobile"

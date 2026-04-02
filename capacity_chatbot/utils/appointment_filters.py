@@ -43,7 +43,10 @@ def _matches_transport(appt: dict[str, Any], uuids: list[str]) -> bool:
     transport = appt.get("transportOption")
     if transport is None:
         return "NONE" in uuids
-    transport_uuid = transport.get("transportOptionUuid")
+    # API returns "uuid" for /list endpoint, "transportOptionUuid" for cached data
+    transport_uuid = transport.get("uuid") or transport.get("transportOptionUuid")
+    if not transport_uuid:
+        return "NONE" in uuids
     return transport_uuid in uuids
 
 
