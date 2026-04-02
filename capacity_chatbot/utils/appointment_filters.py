@@ -74,14 +74,28 @@ def _matches_prediag(appt: dict[str, Any], statuses: list[str]) -> bool:
     return prediag in statuses
 
 
-def _matches_source(appt: dict[str, Any], uuids: list[str]) -> bool:
+def _matches_source(appt: dict[str, Any], source_values: list[str]) -> bool:
+    """Match appointment source against filter values.
+
+    Checks appointmentSourceDetails.uuid first (redesigned sources),
+    then falls back to createdBy field (legacy platform source like "Web", "DMS").
+    This mirrors appointment-ui-client's dual-mode source filtering.
+    """
+    # Try redesigned source (appointmentSourceDetails.uuid)
     source_details = appt.get("appointmentSourceDetails")
-    if not source_details:
-        return False
-    source_uuid = source_details.get("uuid", "")
-    for uid in uuids:
-        if uid in source_uuid or source_uuid in uid:
-            return True
+    if source_details:
+        source_uuid = source_details.get("uuid", "")
+        for val in source_values:
+            if val in source_uuid or source_uuid in val:
+                return True
+
+    # Fall back to legacy createdBy field (e.g., "Web", "DMS", "dealerapp")
+    created_by = appt.get("createdBy") or appt.get("appointmentSource") or ""
+    if created_by:
+        created_by_lower = created_by.lower()
+        for val in source_values:
+            if val.lower() == created_by_lower:
+                return True
     return False
 
 

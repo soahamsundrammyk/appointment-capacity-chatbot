@@ -76,10 +76,12 @@ async def get_appointments_tool(
     - prediag_status: Filter by AI survey status
 
     EXAMPLES:
-    - "How many appts last month?" → mode="summary", start_created_date="last month"
-    - "Diego's appointments this month" → mode="list", start_created_date="this month", advisor_names=["Diego"]
-    - "Break down by advisor" → mode="summary", start_created_date="this month", group_by="advisor"
+    - "How many appts last month?" → mode="summary", start_date="last month"
+    - "Diego's appointments this month" → mode="list", start_date="this month", advisor_names=["Diego"]
+    - "Break down by advisor" → mode="summary", start_date="this month", group_by="advisor"
     - "Cancelled appointments this week" → mode="summary", start_date="this week", status=["CANCELLED"]
+    - "Web scheduler appointments" → mode="summary", start_date="this month", created_by_platform="Web"
+    - "Appointments created last week" → mode="summary", start_created_date="last week"
 
     Args:
         mode: "summary" or "list"

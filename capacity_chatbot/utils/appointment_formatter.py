@@ -156,7 +156,9 @@ def _get_group_key(appt: dict[str, Any], group_by: str, uuid_mapper: UUIDMapper)
         source = appt.get("appointmentSourceDetails")
         if source:
             return source.get("name", source.get("uuid", "Unknown"))
-        return "Unknown"
+        # Fall back to legacy createdBy field
+        created_by = appt.get("createdBy") or appt.get("appointmentSource")
+        return created_by if created_by else "Unknown"
 
     if group_by == "transport_option":
         transport = appt.get("transportOption")
