@@ -137,9 +137,12 @@ async def get_appointments_tool(
         cached_data, uuid_mapper,
     )
 
+    # Get mkid from config (passed from request auth, not persisted in state)
+    mkid = config.get("configurable", {}).get("mkid") if config else None
+
     # Fetch appointments from the same endpoint as appointment-ui-client
     try:
-        all_appointments = await _fetch_appointments(dealer_uuid, api_request)
+        all_appointments = await _fetch_appointments(dealer_uuid, api_request, mkid)
     except Exception as e:
         logger.error("Failed to fetch appointments: %s", e)
         return "Error fetching appointment data. Please try again."
@@ -294,14 +297,15 @@ def _build_filters(
 
 
 async def _fetch_appointments(
-    dealer_uuid: str, api_request: dict[str, Any]
+    dealer_uuid: str, api_request: dict[str, Any], mkid: str | None = None
 ) -> list[dict[str, Any]]:
     """Fetch appointments from the Mongo-backed webservice endpoint.
 
     Uses POST /webservice/dealers/{dealerUuid}/appointments — same as appointment-ui-client.
+    Requires mkid cookie for authentication.
     """
     async with KAppointmentAPIClient() as client:
-        response = await client.get_appointment_view_data(dealer_uuid, api_request)
+        response = await client.get_appointment_view_data(dealer_uuid, api_request, mkid=mkid)
 
         appointments = response.get("appointmentViewDataDTOList", [])
         logger.info("Fetched %d appointments from AppointmentViewData", len(appointments))
