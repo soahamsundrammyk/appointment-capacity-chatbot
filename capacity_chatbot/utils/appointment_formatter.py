@@ -190,10 +190,28 @@ def format_grouped_summary(
     return "\n".join(lines)
 
 
+def _get_creator_name(appt: dict[str, Any], uuid_mapper: UUIDMapper) -> str:
+    """Get creator advisor display name from either Mongo or Aurora format."""
+    # Mongo: creatorDealerAssociateDetail has fname/lname embedded
+    detail = appt.get("creatorDealerAssociateDetail")
+    if detail:
+        fname = detail.get("fname", "")
+        lname = detail.get("lname", "")
+        name = ("%s %s" % (fname, lname)).strip()
+        if name:
+            return name
+    # Aurora: creatorAdvisorUuid → resolve via UUIDMapper
+    uuid = appt.get("creatorAdvisorUuid", "")
+    return uuid_mapper.get_advisor_name(uuid) if uuid else "Unknown"
+
+
 def _get_group_key(appt: dict[str, Any], group_by: str, uuid_mapper: UUIDMapper) -> str:
     """Extract the grouping key from an appointment."""
     if group_by == "advisor":
         return _get_advisor_name(appt, uuid_mapper)
+
+    if group_by in ("created_by", "creator"):
+        return _get_creator_name(appt, uuid_mapper)
 
     if group_by == "team":
         return _get_team_name(appt, uuid_mapper)

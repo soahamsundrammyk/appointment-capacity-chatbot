@@ -47,7 +47,8 @@ APPOINTMENT DATA QUERIES
 When user asks about appointment data, history, counts, or statistics:
 • Use get_appointments_tool with mode="summary" for counts and breakdowns
 • Use get_appointments_tool with mode="list" to show actual appointment records
-• Use group_by to break down by: "advisor", "team", "status", "source", "transport_option"
+• Use group_by to break down by: "advisor", "created_by", "team", "status", "source", "transport_option"
+• For "who created the most" → use group_by="created_by"
 • For "created by [person]" → use creator_advisor_names (who created the appointment)
 • For "[person]'s appointments" → use advisor_names (who the appointment is assigned to)
 • Always clarify date range if user is ambiguous

@@ -59,7 +59,7 @@ async def get_appointments_tool(
 
     MODE:
     - "summary" (default): Returns total count and status breakdown.
-      Add group_by to break down by: "advisor", "team", "status", "source", "transport_option"
+      Add group_by to break down by: "advisor", "created_by", "team", "status", "source", "transport_option"
     - "list": Returns paginated appointment records with details.
 
     DATE FILTERS (at least one date filter is required):
