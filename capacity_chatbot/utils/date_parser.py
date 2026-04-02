@@ -1,5 +1,6 @@
 """Date parsing and formatting utilities for natural language date expressions and API responses."""
 
+import calendar
 import re
 from collections import defaultdict
 from datetime import date, datetime, timedelta
@@ -520,3 +521,87 @@ def parse_dates(dates: list[str] | None, reference_date: date | None = None) -> 
         return [default_date]
 
     return sorted(list(set(parsed)))
+
+
+def parse_date_range(
+    query: str | None, reference_date: date | None = None
+) -> tuple[str, str] | None:
+    """Parse natural language date expressions to a (start_date, end_date) tuple.
+
+    Returns dates in YYYY-MM-DD format. For single-day queries like "today",
+    start and end are the same date.
+
+    Args:
+        query: Natural language date expression (e.g., "last month", "this week")
+        reference_date: Reference date for relative expressions (defaults to today)
+
+    Returns:
+        Tuple of (start_date, end_date) in YYYY-MM-DD format, or None if unparseable
+    """
+    if not query:
+        return None
+
+    if reference_date is None:
+        reference_date = date.today()
+
+    query_lower = query.lower().strip()
+
+    # Explicit YYYY-MM-DD
+    if DATE_PATTERN.match(query):
+        return (query, query)
+
+    # Single-day expressions
+    if query_lower == "today":
+        d = reference_date.strftime("%Y-%m-%d")
+        return (d, d)
+
+    if query_lower == "yesterday":
+        d = (reference_date - timedelta(days=1)).strftime("%Y-%m-%d")
+        return (d, d)
+
+    if query_lower == "tomorrow":
+        d = (reference_date + timedelta(days=1)).strftime("%Y-%m-%d")
+        return (d, d)
+
+    # This month
+    if query_lower == "this month":
+        first = reference_date.replace(day=1)
+        last_day = calendar.monthrange(reference_date.year, reference_date.month)[1]
+        last = reference_date.replace(day=last_day)
+        return (first.strftime("%Y-%m-%d"), last.strftime("%Y-%m-%d"))
+
+    # Last month
+    if query_lower == "last month":
+        first_of_current = reference_date.replace(day=1)
+        last_of_prev = first_of_current - timedelta(days=1)
+        first_of_prev = last_of_prev.replace(day=1)
+        return (first_of_prev.strftime("%Y-%m-%d"), last_of_prev.strftime("%Y-%m-%d"))
+
+    # This week (Monday-Sunday)
+    if query_lower == "this week":
+        monday = reference_date - timedelta(days=reference_date.weekday())
+        sunday = monday + timedelta(days=6)
+        return (monday.strftime("%Y-%m-%d"), sunday.strftime("%Y-%m-%d"))
+
+    # Last week
+    if query_lower == "last week":
+        this_monday = reference_date - timedelta(days=reference_date.weekday())
+        prev_monday = this_monday - timedelta(days=7)
+        prev_sunday = prev_monday + timedelta(days=6)
+        return (prev_monday.strftime("%Y-%m-%d"), prev_sunday.strftime("%Y-%m-%d"))
+
+    # "last N days"
+    last_n_match = re.match(r"last\s+(\d+)\s+days?", query_lower)
+    if last_n_match:
+        n = int(last_n_match.group(1))
+        start = reference_date - timedelta(days=n)
+        return (start.strftime("%Y-%m-%d"), reference_date.strftime("%Y-%m-%d"))
+
+    # "next N days"
+    next_n_match = re.match(r"next\s+(\d+)\s+days?", query_lower)
+    if next_n_match:
+        n = int(next_n_match.group(1))
+        end = reference_date + timedelta(days=n)
+        return (reference_date.strftime("%Y-%m-%d"), end.strftime("%Y-%m-%d"))
+
+    return None

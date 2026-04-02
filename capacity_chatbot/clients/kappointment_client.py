@@ -161,6 +161,31 @@ class KAppointmentAPIClient:
 
         return await self._make_post_request(url, request_body, "search_operations")
 
+    async def list_appointments(
+        self, department_uuid: str, request: dict[str, Any]
+    ) -> dict[str, Any]:
+        """Call POST /department/{uuid}/list to filter and list appointments.
+
+        Args:
+            department_uuid: Department UUID
+            request: FilterServiceAppointmentRequest with:
+                - pageNumber (int, required): 1-based page number
+                - pageSize (int, required): results per page
+                - startDate/endDate: scheduled date range (yyyy-MM-dd)
+                - startCreatedDate/endCreatedDate: creation date range (yyyy-MM-dd)
+                - createdBy: platform source (Web, DealerApp, DMS, etc.)
+                - teamUuids: list of team UUIDs
+                - orderBy: sort field (e.g. "createdTimeStamp")
+                - isSortAscending: sort direction
+
+        Returns:
+            FilterServiceAppointmentResponse with:
+                - appointmentInfo: list of AppointmentInfoLite
+                - totalCount: total matching records
+        """
+        url = self._build_url(f"department/{department_uuid}/list")
+        return await self._make_post_request(url, request, "list_appointments")
+
     async def close(self):
         """Close the HTTP client."""
         await self._client.aclose()
