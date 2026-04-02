@@ -99,7 +99,7 @@ def test_format_grouped_summary_by_status():
     mapper = UUIDMapper(SAMPLE_CACHED_DATA)
     result = format_grouped_summary(SAMPLE_APPOINTMENTS, "status", "Mar 2026", mapper)
     assert "UPDATED" in result
-    assert "CANCELLED" in result
+    assert "Cancelled" in result
 
 
 def test_format_grouped_summary_by_team():

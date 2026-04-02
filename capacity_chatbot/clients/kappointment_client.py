@@ -186,6 +186,28 @@ class KAppointmentAPIClient:
         url = self._build_url(f"department/{department_uuid}/list")
         return await self._make_post_request(url, request, "list_appointments")
 
+    async def get_appointment_view_data(
+        self, dealer_uuid: str, request: dict[str, Any]
+    ) -> dict[str, Any]:
+        """Call POST /webservice/dealers/{dealerUuid}/appointments to fetch AppointmentViewData.
+
+        This is the same endpoint used by appointment-ui-client. It reads from MongoDB's
+        AppointmentViewData collection which has denormalized data (advisor names, team info,
+        transport option details already embedded in each document).
+
+        Args:
+            dealer_uuid: Dealer UUID
+            request: AppointmentViewDataRequest with either:
+                - scheduledForDates: list of dates (yyyy-MM-dd) for preferredDate filtering
+                - scheduledOnFromDate + scheduledOnToDate: date range for creationDateTime filtering
+
+        Returns:
+            AppointmentViewDataResponse with:
+                - appointmentViewDataDTOList: list of AppointmentViewData documents
+        """
+        url = self._build_url(f"webservice/dealers/{dealer_uuid}/appointments")
+        return await self._make_post_request(url, request, "get_appointment_view_data")
+
     async def close(self):
         """Close the HTTP client."""
         await self._client.aclose()

@@ -1,7 +1,12 @@
-"""Appointment data query tool for fetching and filtering appointment records."""
+"""Appointment data query tool for fetching and filtering appointment records.
 
-import asyncio
+Uses the same MongoDB-backed endpoint as appointment-ui-client for data consistency.
+Endpoint: POST /webservice/dealers/{dealerUuid}/appointments
+Data source: MongoDB AppointmentViewData collection (denormalized, names embedded)
+"""
+
 import logging
+from datetime import date, timedelta
 from typing import Any
 
 from langchain_core.runnables import RunnableConfig
@@ -24,10 +29,6 @@ from capacity_chatbot.utils.validation import (
 )
 
 logger = logging.getLogger(__name__)
-
-PAGE_SIZE = 200
-MAX_PAGES = 50
-MAX_RECORDS = PAGE_SIZE * MAX_PAGES  # 10,000
 
 
 @tool
@@ -53,13 +54,16 @@ async def get_appointments_tool(
 ) -> str:
     """Query appointment data with filters. Returns summary stats or paginated list.
 
+    This tool queries the same data source as the appointment UI (MongoDB AppointmentViewData).
+    Results are consistent with what the user sees in the appointment-ui-client.
+
     MODE:
     - "summary" (default): Returns total count and status breakdown.
       Add group_by to break down by: "advisor", "team", "status", "source", "transport_option"
     - "list": Returns paginated appointment records with details.
 
     DATE FILTERS (at least one date filter is required):
-    - start_date/end_date: Filter by appointment scheduled date
+    - start_date/end_date: Filter by appointment scheduled date (preferredDate)
     - start_created_date/end_created_date: Filter by when appointment was created
     - Accepts: "today", "yesterday", "this week", "last week", "this month",
       "last month", "last 7 days", "last 30 days", or "YYYY-MM-DD"
@@ -69,7 +73,7 @@ async def get_appointments_tool(
     - creator_advisor_names: Filter by who created the appointment (e.g., ["Maria"])
     - team_names: Filter by team (e.g., ["Express Shop"])
     - transport_option_names: Filter by transport (e.g., ["Loaner"])
-    - status: Filter by status (e.g., ["UPDATED", "CANCELLED"])
+    - status: Filter by status (e.g., ["Scheduled", "Cancelled", "No Show"])
     - created_by_platform: Filter by booking source ("Web", "DealerApp", "DMS")
     - repair_concerns: Filter by service/opcode name (e.g., ["Oil Change"])
     - has_recall: True to show only recall appointments, False to exclude them
@@ -79,7 +83,7 @@ async def get_appointments_tool(
     - "How many appts last month?" → mode="summary", start_date="last month"
     - "Diego's appointments this month" → mode="list", start_date="this month", advisor_names=["Diego"]
     - "Break down by advisor" → mode="summary", start_date="this month", group_by="advisor"
-    - "Cancelled appointments this week" → mode="summary", start_date="this week", status=["CANCELLED"]
+    - "Cancelled appointments this week" → mode="summary", start_date="this week", status=["Cancelled"]
     - "Web scheduler appointments" → mode="summary", start_date="this month", created_by_platform="Web"
     - "Appointments created last week" → mode="summary", start_created_date="last week"
 
@@ -113,12 +117,14 @@ async def get_appointments_tool(
 
     cached_data = state.cached_data
     uuid_mapper = UUIDMapper(cached_data)
-    department_uuid = state.department_uuid
+    dealer_uuid = state.dealer_uuid
 
-    # Parse date ranges
+    if not dealer_uuid:
+        return "Error: Dealer UUID is required for appointment queries."
+
+    # Build the API request and date label
     date_range_label, api_request = _build_api_request(
         start_date, end_date, start_created_date, end_created_date,
-        team_names, created_by_platform, cached_data, uuid_mapper,
     )
 
     if api_request is None:
@@ -127,17 +133,18 @@ async def get_appointments_tool(
     # Resolve entity names to UUIDs for client-side filtering
     filters = _build_filters(
         advisor_names, creator_advisor_names, status, transport_option_names,
-        repair_concerns, has_recall, prediag_status, cached_data, uuid_mapper,
+        repair_concerns, has_recall, prediag_status, created_by_platform,
+        cached_data, uuid_mapper,
     )
 
-    # Fetch all appointment pages
+    # Fetch appointments from the same endpoint as appointment-ui-client
     try:
-        all_appointments = await _fetch_all_pages(department_uuid, api_request)
+        all_appointments = await _fetch_appointments(dealer_uuid, api_request)
     except Exception as e:
         logger.error("Failed to fetch appointments: %s", e)
         return "Error fetching appointment data. Please try again."
 
-    # Apply client-side filters
+    # Apply client-side filters (same approach as appointment-ui-client)
     filtered = apply_filters(all_appointments, filters)
 
     # Format output
@@ -154,45 +161,43 @@ def _build_api_request(
     end_date: str | None,
     start_created_date: str | None,
     end_created_date: str | None,
-    team_names: list[str] | None,
-    created_by_platform: str | None,
-    cached_data: dict[str, Any],
-    uuid_mapper: UUIDMapper,
 ) -> tuple[str, dict[str, Any] | None]:
-    """Build the FilterServiceAppointmentRequest for the API."""
-    request: dict[str, Any] = {
-        "pageNumber": 1,
-        "pageSize": PAGE_SIZE,
-        "orderBy": "createdTimeStamp",
-        "isSortAscending": False,
-    }
+    """Build the AppointmentViewDataRequest for the Mongo-backed webservice endpoint.
 
+    The endpoint accepts either:
+    - scheduledForDates: list of individual dates (for preferredDate filtering)
+    - scheduledOnFromDate + scheduledOnToDate: date range (for creationDateTime filtering)
+
+    Returns:
+        Tuple of (date_range_label, api_request_dict) or (label, None) if no date range.
+    """
+    request: dict[str, Any] = {}
     date_range_label = ""
 
-    # Parse scheduled date range
+    # Parse scheduled date range → scheduledForDates (list of individual dates)
     if start_date or end_date:
         if start_date and not end_date:
             parsed = parse_date_range(start_date)
             if parsed:
-                request["startDate"] = parsed[0]
-                request["endDate"] = parsed[1]
+                dates = _generate_date_list(parsed[0], parsed[1])
+                request["scheduledForDates"] = dates
                 date_range_label = "%s - %s" % (format_date(parsed[0]), format_date(parsed[1]))
         elif start_date and end_date:
             start_parsed = parse_date_range(start_date)
             end_parsed = parse_date_range(end_date)
             s = start_parsed[0] if start_parsed else start_date
             e = end_parsed[1] if end_parsed else end_date
-            request["startDate"] = s
-            request["endDate"] = e
+            dates = _generate_date_list(s, e)
+            request["scheduledForDates"] = dates
             date_range_label = "%s - %s" % (format_date(s), format_date(e))
 
-    # Parse created date range
+    # Parse created date range → scheduledOnFromDate/scheduledOnToDate
     if start_created_date or end_created_date:
         if start_created_date and not end_created_date:
             parsed = parse_date_range(start_created_date)
             if parsed:
-                request["startCreatedDate"] = parsed[0]
-                request["endCreatedDate"] = parsed[1]
+                request["scheduledOnFromDate"] = parsed[0]
+                request["scheduledOnToDate"] = parsed[1]
                 if not date_range_label:
                     date_range_label = "created %s - %s" % (
                         format_date(parsed[0]), format_date(parsed[1])
@@ -202,27 +207,32 @@ def _build_api_request(
             end_parsed = parse_date_range(end_created_date)
             s = start_parsed[0] if start_parsed else start_created_date
             e = end_parsed[1] if end_parsed else end_created_date
-            request["startCreatedDate"] = s
-            request["endCreatedDate"] = e
+            request["scheduledOnFromDate"] = s
+            request["scheduledOnToDate"] = e
             if not date_range_label:
                 date_range_label = "created %s - %s" % (format_date(s), format_date(e))
 
-    # Must have at least one date filter (API requirement)
-    if not any(k in request for k in ("startDate", "endDate", "startCreatedDate", "endCreatedDate")):
+    # Must have at least one date filter
+    if not request:
         return "", None
 
-    # Team filter (server-side)
-    if team_names:
-        team_result = validate_team_names(team_names, cached_data)
-        team_uuids = [uuid for _, uuid in team_result.get("valid", [])]
-        if team_uuids:
-            request["teamUuids"] = team_uuids
-
-    # Platform source filter (server-side)
-    if created_by_platform:
-        request["createdBy"] = created_by_platform
-
     return date_range_label, request
+
+
+def _generate_date_list(start_str: str, end_str: str) -> list[str]:
+    """Generate a list of individual dates between start and end (inclusive).
+
+    Same format as appointment-ui-client sends to the API.
+    """
+    from datetime import datetime
+    start = datetime.strptime(start_str, "%Y-%m-%d").date()
+    end = datetime.strptime(end_str, "%Y-%m-%d").date()
+    dates = []
+    current = start
+    while current <= end:
+        dates.append(current.strftime("%Y-%m-%d"))
+        current += timedelta(days=1)
+    return dates
 
 
 def _build_filters(
@@ -233,10 +243,16 @@ def _build_filters(
     repair_concerns: list[str] | None,
     has_recall: bool | None,
     prediag_status: list[str] | None,
+    created_by_platform: str | None,
     cached_data: dict[str, Any],
     uuid_mapper: UUIDMapper,
 ) -> AppointmentFilters:
-    """Resolve names to UUIDs and build the AppointmentFilters object."""
+    """Resolve names to UUIDs and build the AppointmentFilters object.
+
+    For the Mongo endpoint, AppointmentViewData documents have embedded names
+    (assignedDealerAssociateDetail.uuid, teamInfo.uuid, etc.), so we resolve
+    user-provided names to UUIDs for matching.
+    """
     filters = AppointmentFilters()
 
     if advisor_names:
@@ -252,7 +268,7 @@ def _build_filters(
             filters.creator_advisor_uuids = uuids
 
     if status:
-        filters.statuses = [s.upper() for s in status]
+        filters.statuses = status  # Keep original case — Mongo stores "Scheduled", "Cancelled", etc.
 
     if transport_option_names:
         result = validate_transport_option_names(transport_option_names, cached_data)
@@ -271,57 +287,25 @@ def _build_filters(
     if prediag_status:
         filters.prediag_statuses = prediag_status
 
+    if created_by_platform:
+        filters.source_uuids = [created_by_platform]
+
     return filters
 
 
-async def _fetch_all_pages(
-    department_uuid: str, base_request: dict[str, Any]
+async def _fetch_appointments(
+    dealer_uuid: str, api_request: dict[str, Any]
 ) -> list[dict[str, Any]]:
-    """Fetch all pages of appointment data concurrently."""
+    """Fetch appointments from the Mongo-backed webservice endpoint.
+
+    Uses POST /webservice/dealers/{dealerUuid}/appointments — same as appointment-ui-client.
+    """
     async with KAppointmentAPIClient() as client:
-        # Fetch first page
-        first_request = {**base_request, "pageNumber": 1, "pageSize": PAGE_SIZE}
-        first_response = await client.list_appointments(department_uuid, first_request)
+        response = await client.get_appointment_view_data(dealer_uuid, api_request)
 
-        all_appointments = first_response.get("appointmentInfo", [])
-        total_count = first_response.get("totalCount", 0)
-
-        if total_count <= PAGE_SIZE:
-            return all_appointments
-
-        # Cap at MAX_RECORDS
-        effective_total = min(total_count, MAX_RECORDS)
-        total_pages = min((effective_total + PAGE_SIZE - 1) // PAGE_SIZE, MAX_PAGES)
-
-        if total_pages <= 1:
-            return all_appointments
-
-        # Fetch remaining pages concurrently
-        async def fetch_page(page_num: int) -> list[dict[str, Any]]:
-            req = {**base_request, "pageNumber": page_num, "pageSize": PAGE_SIZE}
-            resp = await client.list_appointments(department_uuid, req)
-            return resp.get("appointmentInfo", [])
-
-        tasks = [fetch_page(p) for p in range(2, total_pages + 1)]
-        results = await asyncio.gather(*tasks, return_exceptions=True)
-
-        for result in results:
-            if isinstance(result, Exception):
-                logger.error("Failed to fetch page: %s", result)
-                continue
-            all_appointments.extend(result)
-
-        logger.info(
-            "Fetched %d appointments (%d pages, totalCount=%d)",
-            len(all_appointments), total_pages, total_count,
-        )
-
-        if total_count > MAX_RECORDS:
-            logger.warning(
-                "Results capped at %d records (total: %d)", MAX_RECORDS, total_count
-            )
-
-        return all_appointments
+        appointments = response.get("appointmentViewDataDTOList", [])
+        logger.info("Fetched %d appointments from AppointmentViewData", len(appointments))
+        return appointments
 
 
 APPOINTMENT_TOOLS = [get_appointments_tool]
