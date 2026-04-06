@@ -188,8 +188,10 @@ def _build_api_request(
         elif start_date and end_date:
             start_parsed = parse_date_range(start_date)
             end_parsed = parse_date_range(end_date)
-            s = start_parsed[0] if start_parsed else start_date
-            e = end_parsed[1] if end_parsed else end_date
+            s = start_parsed[0] if start_parsed else None
+            e = end_parsed[1] if end_parsed else None
+            if not s or not e:
+                return "", None  # Unparseable date — caller will show validation message
             dates = _generate_date_list(s, e)
             request["scheduledForDates"] = dates
             date_range_label = "%s - %s" % (format_date(s), format_date(e))
@@ -208,8 +210,10 @@ def _build_api_request(
         elif start_created_date and end_created_date:
             start_parsed = parse_date_range(start_created_date)
             end_parsed = parse_date_range(end_created_date)
-            s = start_parsed[0] if start_parsed else start_created_date
-            e = end_parsed[1] if end_parsed else end_created_date
+            s = start_parsed[0] if start_parsed else None
+            e = end_parsed[1] if end_parsed else None
+            if not s or not e:
+                return "", None
             request["scheduledOnFromDate"] = s
             request["scheduledOnToDate"] = e
             if not date_range_label:
