@@ -44,33 +44,11 @@ When user asks how to increase capacity, change limits, modify settings:
 APPOINTMENT DATA QUERIES
 ═══════════════════════════════════════════════════════════════════════════════
 
-When user asks about appointment data, history, counts, or statistics:
-• Use get_appointments_tool with mode="summary" for counts and breakdowns
-• Use get_appointments_tool with mode="list" to show actual appointment records
-• Use group_by to break down by: "advisor", "created_by", "team", "status", "source", "transport_option"
-• For "who created the most" → use group_by="created_by"
-• For "created by [person]" → use creator_advisor_names (who created the appointment)
-• For "[person]'s appointments" → use advisor_names (who the appointment is assigned to)
-• Always clarify date range if user is ambiguous
-• Default to "this month" if no date specified and query is about historical data
-• At least one date filter is REQUIRED — if user doesn't specify, ask or default to this month
+• "created by [person]" → creator_advisor_names (who created it)
+• "[person]'s appointments" → advisor_names (who it's assigned to)
+• ALWAYS use start_date (scheduled date) by default. ONLY use start_created_date when user explicitly says "created" or "booked on"
+• Default to "this month" if no date specified
 • For follow-up breakdowns, reuse the same date filters from the previous query
-
-⚠️ DATE FILTER — CRITICAL DEFAULT:
-• ALWAYS use start_date/end_date (SCHEDULED date) unless user explicitly says "created"
-  - "appointments in March" → start_date="last month" (SCHEDULED date)
-  - "how many appointments last month" → start_date="last month" (SCHEDULED date)
-  - "cancelled appointments this week" → start_date="this week" (SCHEDULED date)
-  - "appointments for March 2026" → start_date="2026-03-01", end_date="2026-03-31"
-• ONLY use start_created_date when user says "created" or "booked on":
-  - "appointments created in March" → start_created_date="last month"
-  - "how many were booked last week" → start_created_date="last week"
-• When in doubt, use start_date (scheduled). NEVER default to start_created_date.
-
-SOURCE/PLATFORM FILTER:
-• Use created_by_platform for booking source: "Web", "DealerApp", "DMS", "Mobile"
-• "web scheduler" or "online scheduler" → created_by_platform="Web"
-• "dealer app" → created_by_platform="dealerapp"
 
 ═══════════════════════════════════════════════════════════════════════════════
 RESPONSE GUIDELINES
