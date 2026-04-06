@@ -260,8 +260,9 @@ def _generate_date_list(start_str: str, end_str: str) -> tuple[list[str], str, s
     start = datetime.strptime(start_str, "%Y-%m-%d").date()
     end = datetime.strptime(end_str, "%Y-%m-%d").date()
     if (end - start).days >= MAX_DATE_RANGE_DAYS:
-        end = start + timedelta(days=MAX_DATE_RANGE_DAYS - 1)
-        logger.warning("Date range capped at %d days", MAX_DATE_RANGE_DAYS)
+        # Keep the most recent dates — users care about the latest data
+        start = end - timedelta(days=MAX_DATE_RANGE_DAYS - 1)
+        logger.warning("Date range capped at %d days (keeping most recent)", MAX_DATE_RANGE_DAYS)
     dates = []
     current = start
     while current <= end:

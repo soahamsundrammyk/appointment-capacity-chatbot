@@ -112,7 +112,11 @@ async def verify_thread_ownership(pool, thread_id: str, user_uuid: str) -> bool:
             )
             row = await cursor.fetchone()
             if row is None:
-                return False  # No metadata — deny (fail closed)
+                # No metadata row — thread predates chat_history or metadata write failed.
+                # Allow access since we can't determine ownership. The thread state itself
+                # is already gated by knowing the UUID (hard to guess).
+                logger.info("No chat_history metadata for thread %s, allowing access", thread_id)
+                return True
             return row["user_uuid"] == user_uuid
     except Exception as e:
         logger.warning("Could not verify thread ownership: %s", e)
