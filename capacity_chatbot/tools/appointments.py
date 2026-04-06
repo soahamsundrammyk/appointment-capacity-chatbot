@@ -182,30 +182,28 @@ def _build_api_request(
         if start_date and not end_date:
             parsed = parse_date_range(start_date)
             if parsed:
-                dates = _generate_date_list(parsed[0], parsed[1])
+                dates, actual_s, actual_e = _generate_date_list(parsed[0], parsed[1])
                 request["scheduledForDates"] = dates
-                date_range_label = "%s - %s" % (format_date(parsed[0]), format_date(parsed[1]))
+                date_range_label = "%s - %s" % (format_date(actual_s), format_date(actual_e))
         elif not start_date and end_date:
-            # End-only: e.g. "appointments before March 31" — use end date as upper bound
             end_parsed = parse_date_range(end_date)
             if end_parsed:
-                # Default start to 90 days before end
                 e = end_parsed[1]
                 s_date = datetime.strptime(e, "%Y-%m-%d").date() - timedelta(days=MAX_DATE_RANGE_DAYS - 1)
                 s = s_date.strftime("%Y-%m-%d")
-                dates = _generate_date_list(s, e)
+                dates, actual_s, actual_e = _generate_date_list(s, e)
                 request["scheduledForDates"] = dates
-                date_range_label = "up to %s" % format_date(e)
+                date_range_label = "up to %s" % format_date(actual_e)
         elif start_date and end_date:
             start_parsed = parse_date_range(start_date)
             end_parsed = parse_date_range(end_date)
             s = start_parsed[0] if start_parsed else None
             e = end_parsed[1] if end_parsed else None
             if not s or not e:
-                return "", None  # Unparseable date — caller will show validation message
-            dates = _generate_date_list(s, e)
+                return "", None
+            dates, actual_s, actual_e = _generate_date_list(s, e)
             request["scheduledForDates"] = dates
-            date_range_label = "%s - %s" % (format_date(s), format_date(e))
+            date_range_label = "%s - %s" % (format_date(actual_s), format_date(actual_e))
 
     # Parse created date range → scheduledOnFromDate/scheduledOnToDate
     if start_created_date or end_created_date:
@@ -218,6 +216,15 @@ def _build_api_request(
                     date_range_label = "created %s - %s" % (
                         format_date(parsed[0]), format_date(parsed[1])
                     )
+        elif not start_created_date and end_created_date:
+            end_parsed = parse_date_range(end_created_date)
+            if end_parsed:
+                e = end_parsed[1]
+                s_date = datetime.strptime(e, "%Y-%m-%d").date() - timedelta(days=MAX_DATE_RANGE_DAYS - 1)
+                request["scheduledOnFromDate"] = s_date.strftime("%Y-%m-%d")
+                request["scheduledOnToDate"] = e
+                if not date_range_label:
+                    date_range_label = "created up to %s" % format_date(e)
         elif start_created_date and end_created_date:
             start_parsed = parse_date_range(start_created_date)
             end_parsed = parse_date_range(end_created_date)
@@ -240,11 +247,15 @@ def _build_api_request(
 MAX_DATE_RANGE_DAYS = 90
 
 
-def _generate_date_list(start_str: str, end_str: str) -> list[str]:
+def _generate_date_list(start_str: str, end_str: str) -> tuple[list[str], str, str]:
     """Generate a list of individual dates between start and end (inclusive).
 
     Same format as appointment-ui-client sends to the API.
     Capped at MAX_DATE_RANGE_DAYS to prevent oversized requests.
+
+    Returns:
+        Tuple of (date_list, actual_start, actual_end) — actual dates may differ
+        from input if range was capped.
     """
     start = datetime.strptime(start_str, "%Y-%m-%d").date()
     end = datetime.strptime(end_str, "%Y-%m-%d").date()
@@ -256,7 +267,7 @@ def _generate_date_list(start_str: str, end_str: str) -> list[str]:
     while current <= end:
         dates.append(current.strftime("%Y-%m-%d"))
         current += timedelta(days=1)
-    return dates
+    return dates, start.strftime("%Y-%m-%d"), end.strftime("%Y-%m-%d")
 
 
 def _build_filters(

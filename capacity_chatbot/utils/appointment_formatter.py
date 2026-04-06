@@ -75,8 +75,13 @@ def format_summary(
     if total == 0:
         return "Appointments (%s): 0 total — no appointments found matching your filters." % date_range_label
 
-    status_counts = Counter(a.get("status", "Unknown") for a in appointments)
-    cancelled_count = sum(1 for a in appointments if a.get("isCancelled"))
+    # Use isCancelled flag to override status, matching how the UI treats cancellations
+    def _effective_status(a: dict) -> str:
+        if a.get("isCancelled"):
+            return "Cancelled"
+        return a.get("status", "Unknown")
+
+    status_counts = Counter(_effective_status(a) for a in appointments)
     status_parts = ["%d %s" % (count, status) for status, count in status_counts.most_common()]
 
     lines = [
@@ -84,9 +89,6 @@ def format_summary(
         "",
         "By Status: %s" % ", ".join(status_parts),
     ]
-
-    if cancelled_count > 0:
-        lines.append("Cancelled: %d" % cancelled_count)
 
     return "\n".join(lines)
 
