@@ -63,14 +63,14 @@ def test_parse_explicit_date():
 def test_parse_last_n_days():
     ref = date(2026, 3, 15)
     start, end = parse_date_range("last 7 days", reference_date=ref)
-    assert start == "2026-03-08"
+    assert start == "2026-03-09"  # 7 days: Mar 9-15 inclusive
     assert end == "2026-03-15"
 
 
 def test_parse_last_30_days():
     ref = date(2026, 3, 15)
     start, end = parse_date_range("last 30 days", reference_date=ref)
-    assert start == "2026-02-13"
+    assert start == "2026-02-14"  # 30 days: Feb 14-Mar 15 inclusive
     assert end == "2026-03-15"
 
 
@@ -85,7 +85,7 @@ def test_parse_next_n_days():
     ref = date(2026, 3, 15)
     start, end = parse_date_range("next 7 days", reference_date=ref)
     assert start == "2026-03-15"
-    assert end == "2026-03-22"
+    assert end == "2026-03-21"  # 7 days: Mar 15-21 inclusive
 
 
 def test_parse_none_returns_none():

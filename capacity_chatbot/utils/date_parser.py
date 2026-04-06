@@ -594,18 +594,18 @@ def parse_date_range(
         prev_sunday = prev_monday + timedelta(days=6)
         return (prev_monday.strftime("%Y-%m-%d"), prev_sunday.strftime("%Y-%m-%d"))
 
-    # "last N days"
+    # "last N days" — N days back from today (inclusive of today = N dates total)
     last_n_match = re.match(r"last\s+(\d+)\s+days?", query_lower)
     if last_n_match:
         n = int(last_n_match.group(1))
-        start = reference_date - timedelta(days=n)
+        start = reference_date - timedelta(days=n - 1)
         return (start.strftime("%Y-%m-%d"), reference_date.strftime("%Y-%m-%d"))
 
-    # "next N days"
+    # "next N days" — N days forward from today (inclusive of today = N dates total)
     next_n_match = re.match(r"next\s+(\d+)\s+days?", query_lower)
     if next_n_match:
         n = int(next_n_match.group(1))
-        end = reference_date + timedelta(days=n)
+        end = reference_date + timedelta(days=n - 1)
         return (reference_date.strftime("%Y-%m-%d"), end.strftime("%Y-%m-%d"))
 
     return None

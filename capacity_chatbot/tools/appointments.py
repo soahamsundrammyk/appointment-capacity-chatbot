@@ -185,6 +185,17 @@ def _build_api_request(
                 dates = _generate_date_list(parsed[0], parsed[1])
                 request["scheduledForDates"] = dates
                 date_range_label = "%s - %s" % (format_date(parsed[0]), format_date(parsed[1]))
+        elif not start_date and end_date:
+            # End-only: e.g. "appointments before March 31" — use end date as upper bound
+            end_parsed = parse_date_range(end_date)
+            if end_parsed:
+                # Default start to 90 days before end
+                e = end_parsed[1]
+                s_date = datetime.strptime(e, "%Y-%m-%d").date() - timedelta(days=MAX_DATE_RANGE_DAYS - 1)
+                s = s_date.strftime("%Y-%m-%d")
+                dates = _generate_date_list(s, e)
+                request["scheduledForDates"] = dates
+                date_range_label = "up to %s" % format_date(e)
         elif start_date and end_date:
             start_parsed = parse_date_range(start_date)
             end_parsed = parse_date_range(end_date)
@@ -237,8 +248,8 @@ def _generate_date_list(start_str: str, end_str: str) -> list[str]:
     """
     start = datetime.strptime(start_str, "%Y-%m-%d").date()
     end = datetime.strptime(end_str, "%Y-%m-%d").date()
-    if (end - start).days > MAX_DATE_RANGE_DAYS:
-        end = start + timedelta(days=MAX_DATE_RANGE_DAYS)
+    if (end - start).days >= MAX_DATE_RANGE_DAYS:
+        end = start + timedelta(days=MAX_DATE_RANGE_DAYS - 1)
         logger.warning("Date range capped at %d days", MAX_DATE_RANGE_DAYS)
     dates = []
     current = start
