@@ -261,14 +261,13 @@ def _build_filters(
     if advisor_names:
         result = validate_advisor_names(advisor_names, cached_data)
         uuids = [uuid for _, uuid in result.get("valid", [])]
-        if uuids:
-            filters.advisor_uuids = uuids
+        # Always set filter when user specified names — empty list means no matches, returns 0 results
+        filters.advisor_uuids = uuids
 
     if creator_advisor_names:
         result = validate_advisor_names(creator_advisor_names, cached_data)
         uuids = [uuid for _, uuid in result.get("valid", [])]
-        if uuids:
-            filters.creator_advisor_uuids = uuids
+        filters.creator_advisor_uuids = uuids
 
     if status:
         filters.statuses = status  # Keep original case — Mongo stores "Scheduled", "Cancelled", etc.
@@ -278,8 +277,7 @@ def _build_filters(
         uuids = [uuid for _, uuid in result.get("valid", [])]
         if any(n.lower() == "none" for n in transport_option_names):
             uuids.append("NONE")
-        if uuids:
-            filters.transport_option_uuids = uuids
+        filters.transport_option_uuids = uuids
 
     if repair_concerns:
         filters.repair_opcodes = repair_concerns
