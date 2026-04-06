@@ -6,7 +6,7 @@ Data source: MongoDB AppointmentViewData collection (denormalized, names embedde
 """
 
 import logging
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from typing import Any
 
 from langchain_core.runnables import RunnableConfig
@@ -133,7 +133,7 @@ async def get_appointments_tool(
     # Resolve entity names to UUIDs for client-side filtering
     filters = _build_filters(
         advisor_names, creator_advisor_names, status, transport_option_names,
-        repair_concerns, has_recall, prediag_status, created_by_platform,
+        team_names, repair_concerns, has_recall, prediag_status, created_by_platform,
         cached_data, uuid_mapper,
     )
 
@@ -222,14 +222,20 @@ def _build_api_request(
     return date_range_label, request
 
 
+MAX_DATE_RANGE_DAYS = 90
+
+
 def _generate_date_list(start_str: str, end_str: str) -> list[str]:
     """Generate a list of individual dates between start and end (inclusive).
 
     Same format as appointment-ui-client sends to the API.
+    Capped at MAX_DATE_RANGE_DAYS to prevent oversized requests.
     """
-    from datetime import datetime
     start = datetime.strptime(start_str, "%Y-%m-%d").date()
     end = datetime.strptime(end_str, "%Y-%m-%d").date()
+    if (end - start).days > MAX_DATE_RANGE_DAYS:
+        end = start + timedelta(days=MAX_DATE_RANGE_DAYS)
+        logger.warning("Date range capped at %d days", MAX_DATE_RANGE_DAYS)
     dates = []
     current = start
     while current <= end:
@@ -243,6 +249,7 @@ def _build_filters(
     creator_advisor_names: list[str] | None,
     status: list[str] | None,
     transport_option_names: list[str] | None,
+    team_names: list[str] | None,
     repair_concerns: list[str] | None,
     has_recall: bool | None,
     prediag_status: list[str] | None,
@@ -278,6 +285,11 @@ def _build_filters(
         if any(n.lower() == "none" for n in transport_option_names):
             uuids.append("NONE")
         filters.transport_option_uuids = uuids
+
+    if team_names:
+        result = validate_team_names(team_names, cached_data)
+        uuids = [uuid for _, uuid in result.get("valid", [])]
+        filters.team_uuids = uuids
 
     if repair_concerns:
         filters.repair_opcodes = repair_concerns

@@ -108,7 +108,7 @@ def _matches_repair_opcode(appt: dict[str, Any], opcodes: list[str]) -> bool:
     services = _get_services(appt)
     opcodes_lower = [o.lower() for o in opcodes]
     for service in services:
-        labor_opcode = (service.get("laborOpcode") or service.get("laborOpcode") or "").lower()
+        labor_opcode = (service.get("laborOpcode") or "").lower()
         concern_text = (service.get("concernText") or service.get("opcodeName") or "").lower()
         if labor_opcode in opcodes_lower or concern_text in opcodes_lower:
             return True

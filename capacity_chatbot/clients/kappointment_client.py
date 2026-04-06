@@ -212,6 +212,12 @@ class KAppointmentAPIClient:
             cookies = self.config.get_cookies()
             mkid = cookies.get("mkid") if cookies else None
 
+        if not mkid or not mkid.strip():
+            logger.warning(
+                "mkid not available for get_appointment_view_data. "
+                "Request may fail with 401. Set MYKAARMA_MKID env var or enable mkid auth."
+            )
+
         url = self._build_url(f"webservice/dealers/{dealer_uuid}/appointments")
         try:
             headers = self._get_headers()
