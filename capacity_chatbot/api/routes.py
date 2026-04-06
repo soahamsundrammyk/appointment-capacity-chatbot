@@ -8,7 +8,7 @@ import logging
 import os
 from typing import Any
 
-from fastapi import Depends, FastAPI
+from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.responses import StreamingResponse
 from langchain_core.messages import AIMessage, HumanMessage
 
@@ -252,7 +252,22 @@ async def get_thread_history(
     thread_id: str,
     session: dict[str, Any] = Depends(get_authenticated_session),
 ):
-    """Get all messages for a conversation thread."""
+    """Get all messages for a conversation thread.
+
+    Enforces thread ownership — only the user who created the thread can read its history.
+    """
+    from capacity_chatbot.graph import get_postgres_pool
+    from capacity_chatbot.chat_history import verify_thread_ownership
+
+    # Verify the requesting user owns this thread
+    pool = await get_postgres_pool()
+    user_uuid = session.get("userUuid", "")
+    if not await verify_thread_ownership(pool, thread_id, user_uuid):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You do not have access to this conversation.",
+        )
+
     graph = await get_graph()
     config = {"configurable": {"thread_id": thread_id}}
 

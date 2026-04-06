@@ -86,3 +86,28 @@ async def get_threads_for_user(pool, user_uuid: str, limit: int = 50) -> list[di
     except Exception as e:
         logger.exception("Failed to get threads: %s", e)
         return []
+
+
+async def verify_thread_ownership(pool, thread_id: str, user_uuid: str) -> bool:
+    """Check if a thread belongs to the given user.
+
+    Returns True if the thread exists and is owned by this user,
+    or if ownership cannot be verified (pool unavailable, table missing).
+    Returns False only when the thread provably belongs to someone else.
+    """
+    if not pool or not user_uuid:
+        return True  # Cannot verify — allow (auth disabled / local dev)
+
+    try:
+        async with pool.connection() as conn:
+            cursor = await conn.execute(
+                "SELECT user_uuid FROM chat_history WHERE thread_id = %s",
+                (thread_id,),
+            )
+            row = await cursor.fetchone()
+            if row is None:
+                return True  # Thread not in chat_history yet (first message) — allow
+            return row["user_uuid"] == user_uuid
+    except Exception as e:
+        logger.warning("Could not verify thread ownership: %s", e)
+        return True  # Fail open — don't block on metadata table issues
