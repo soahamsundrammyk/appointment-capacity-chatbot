@@ -1,6 +1,6 @@
-# Capacity Chatbot Service
+# Appointment Chatbot Service
 
-AI-powered chatbot for answering capacity-related questions for automotive service departments.
+AI-powered chatbot for automotive service departments — answers questions about appointment capacity, rules, scheduling, and appointment data/history.
 
 ## Quick Start
 
@@ -18,89 +18,118 @@ langgraph up
 
 Service runs at `http://localhost:3334`
 
-## Features
+## What It Can Do
 
-- 🤖 Natural language interface for capacity queries
-- 🔍 Smart tool orchestration (get_capacity, get_rules, search_opcode, etc.)
-- 📊 LangSmith integration for monitoring and persistence
-- 🤝 **Requires integration with appointment-ui-client**
+**Capacity queries** — "How many slots tomorrow?", "Loaner capacity per advisor?"
+
+**Appointment data** — "How many appointments last month?", "Show me Donald's appointments this week", "Break down by advisor"
+
+**Rules & opcodes** — "What are the capacity rules?", "Search for oil change"
+
+**First available slot** — "When is the next available slot for Loaner?"
+
+**Knowledge base** — "How do I increase capacity?", "What is a limiting factor?"
 
 ## Architecture
 
 ```
 ┌─────────────────┐     ┌──────────────────┐     ┌────────────────────┐
-│  appointment-   │────▶│  capacity-       │────▶│  kappointment-api  │
+│  appointment-   │────▶│  appointment-    │────▶│  kappointment-api  │
 │  ui-client      │◀────│  chatbot-service │◀────│                    │
 └─────────────────┘     └──────────────────┘     └────────────────────┘
-      │                         │
-      │                         ▼
-      │                  ┌──────────────┐
-      │                  │ Claude LLM   │
-      │                  │ (Anthropic)  │
-      │                  └──────────────┘
+      │                     │         │
+      │                     ▼         ▼
+      │              ┌──────────┐  ┌──────────────────────┐
+      │              │ Claude   │  │ MongoDB               │
+      │              │ (LLM)   │  │ AppointmentViewData   │
+      │              └──────────┘  └──────────────────────┘
       │
       └──── Provides: department_uuid, dealer_uuid, mkid, cached_data
 ```
 
+**Single-node LangGraph ReAct agent** with 8 tools. The agent decides which tools to call based on the user's question.
+
+### Data Sources
+
+| Data | Source | Endpoint |
+|------|--------|----------|
+| Capacity, rules, slots, opcodes | Aurora (MySQL) | `POST /department/{uuid}/capacity`, etc. |
+| Appointment history & data | MongoDB `AppointmentViewData` | `POST /webservice/dealers/{uuid}/appointments` |
+| Chat thread persistence | PostgreSQL | LangGraph checkpointer |
+
+The appointment data tool uses the **same MongoDB endpoint as the appointment-ui-client**, ensuring data consistency between the chatbot and the UI.
+
+## Tools
+
+| Tool | Description |
+|------|-------------|
+| `get_appointments_tool` | Query appointment data with 11 filter types (advisor, team, status, source, transport, etc.). Summary or list mode. |
+| `get_capacity_tool` | Check available vs booked appointment slots with filters |
+| `get_rules_tool` | View capacity and assignment rules |
+| `get_first_available_slot_tool` | Find next open appointment slot |
+| `search_opcode_tool` | Search services/opcodes, view daily limits |
+| `get_available_entities` | List advisors, teams, transport options |
+| `confirm_entity` | Validate entity names with fuzzy matching |
+| `get_knowledge_answer` | Search knowledge base for how-to answers |
+
 ## API Endpoints
 
-When the app is mounted at `MOUNT_PREFIX` (default `/capacity-chatbot`):
+Mounted at `MOUNT_PREFIX` (default `/capacity-chatbot`):
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `{MOUNT_PREFIX}/ok` | Health check |
-| POST | `{MOUNT_PREFIX}/threads/{thread_id}/runs/stream` | Stream a chat run (SSE). Requires valid session (e.g. Bearer token with mkid when `ENABLE_MKID_AUTH` is true). |
-
-Request body for the stream endpoint: `RunRequest` with `input` (messages, optional `department_uuid`, `dealer_uuid`, `cached_data`) and optional `stream_mode`.
-
-## UI Client Integration
-
-The chatbot uses the following from the UI client (in the request body and/or from auth session):
-
-| Field | Description |
-|-------|-------------|
-| `department_uuid` | Department UUID for API calls (body or session) |
-| `dealer_uuid` | Dealer UUID for opcode search (body or session) |
-| `mkid` | MyKaarma ID; from request body or from Bearer token when auth is enabled |
-| `cached_data` | Transport options, advisors, teams (from request body) |
+| GET | `{prefix}/ok` | Health check |
+| POST | `{prefix}/threads/{thread_id}/runs/stream` | Stream a chat run (SSE) |
+| GET | `{prefix}/threads` | List conversation threads for authenticated user |
+| GET | `{prefix}/threads/{thread_id}/history` | Get messages for a thread (ownership enforced) |
 
 ## Project Structure
 
 ```
 capacity_chatbot/
-├── graph.py              # LangGraph graph definition
-├── state.py              # Input/Output state definitions
-├── prompts.py            # System prompts
-├── api/                  # API layer
-│   ├── routes.py         # FastAPI routes and endpoints
-│   └── middleware/       # API middleware
-│       └── auth.py       # Authentication middleware
-├── config/               # Configuration management
-│   └── api_config.py    # API client configuration
-├── clients/              # External API clients
-│   ├── kappointment_client.py  # KAppointment API client
-│   └── kmanage_client.py       # KManage API client (for auth)
-├── tools/                # LangChain tool wrappers
-│   ├── capacity.py
-│   ├── rules.py
-│   ├── opcode.py
-│   ├── first_available_slot.py
-│   ├── entities.py
-│   └── knowledge.py
-├── nodes/                # Graph nodes
-│   └── capacity_agent.py # ReAct agent node
-├── knowledge/            # Knowledge base (Q&A database)
-│   └── knowledge_store.py
-├── enums/                # Domain constants and type definitions
-│   └── enums.py          # Enumerations (DayName, FilterField, etc.)
-├── model/                # Data models
-│   └── requests.py       # Request/Response models (RunInput, RunRequest)
-└── utils/                # Pure utility functions
-    ├── date_parser.py
-    ├── uuid_mapper.py
-    ├── state_extractor.py
-    ├── validation.py     # Entity name validation (used by tools)
-    └── test_data.py      # Test/sample data helpers for local dev
+├── graph.py                    # LangGraph graph definition + checkpointer
+├── state.py                    # Input/Output state definitions
+├── prompts.py                  # System prompt (behavioral rules)
+├── chat_history.py             # Thread metadata storage (Postgres)
+├── api/
+│   ├── routes.py               # FastAPI routes, SSE streaming, friendly tool names
+│   └── middleware/
+│       └── auth.py             # mkid Bearer token auth via KManage
+├── config/
+│   └── api_config.py           # API client configuration
+├── clients/
+│   ├── kappointment_client.py  # KAppointment API client (capacity + Mongo endpoints)
+│   └── kmanage_client.py       # KManage API client (auth)
+├── tools/
+│   ├── appointments.py         # Appointment data query (Mongo endpoint, 11 filters)
+│   ├── capacity.py             # Capacity queries
+│   ├── rules.py                # Rule queries
+│   ├── opcode.py               # Opcode search
+│   ├── first_available_slot.py # First available slot
+│   ├── entities.py             # Entity listing and validation
+│   └── knowledge.py            # Knowledge base search
+├── nodes/
+│   └── capacity_agent.py       # ReAct agent node
+├── knowledge/
+│   └── knowledge_store.py      # Embedded Q&A knowledge base
+├── enums/
+│   └── enums.py                # Domain enums
+├── model/
+│   └── requests.py             # Request/Response models
+└── utils/
+    ├── appointment_filters.py  # Client-side filter pipeline (11 filter types)
+    ├── appointment_formatter.py # Summary, list, grouped summary formatters
+    ├── date_parser.py          # Natural language date parsing + date ranges
+    ├── uuid_mapper.py          # UUID → name resolution
+    ├── state_extractor.py      # LangGraph state extraction
+    ├── validation.py           # Entity name validation (fuzzy matching)
+    ├── rule_analysis.py        # Rule conflict detection
+    └── test_data.py            # Test/sample data helpers for local dev
+
+tests/
+├── test_appointment_filters.py  # Filter pipeline tests (16 tests)
+├── test_appointment_formatter.py # Formatter tests (7 tests)
+└── test_date_parser.py          # Date range parsing tests (15 tests)
 ```
 
 ## Environment Variables
@@ -110,34 +139,32 @@ capacity_chatbot/
 | Variable | Description |
 |----------|-------------|
 | `ANTHROPIC_API_KEY` | Claude API key |
-| `LANGSMITH_API_KEY` | LangSmith persistence and monitoring |
-| `APPOINTMENT_CAPACITY_CHATBOT_USERNAME` | Service subscriber username for KAppointment/KManage API auth |
+| `LANGSMITH_API_KEY` | LangSmith monitoring |
+| `APPOINTMENT_CAPACITY_CHATBOT_USERNAME` | Service subscriber username for API auth |
 | `APPOINTMENT_CAPACITY_CHATBOT_PASSWORD` | Service subscriber password for API auth |
 
-### Optional (API and backends)
+### Optional
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `KAPPOINTMENT_API_BASE_URL` | KAppointment API base URL (includes `/appointment/v2` path) | `https://srishti244.mykaarma.dev/appointment/v2` |
-| `KMANAGE_API_URL` | KManage API URL for authentication | `https://srishti244.mykaarma.dev/manage/v2` |
-| `PORT` | Server port when running via `python -m capacity_chatbot.api.routes` | `3334` |
-| `MOUNT_PREFIX` | URL prefix for routes (e.g. health at `{MOUNT_PREFIX}/ok`) | `/capacity-chatbot` |
-| `ENABLE_MKID_AUTH` | Enable Bearer-token (mkid) auth via KManage; set to `false` to skip auth | `true` |
-| `MODEL` | Primary Claude model for the agent (e.g. `claude-sonnet-4-5-20250929`) | `claude-sonnet-4-5-20250929` |
-| `FALLBACK_MODEL` | Claude model used when the primary times out or errors | `claude-3-5-haiku-20241022` |
+| `KAPPOINTMENT_API_BASE_URL` | KAppointment API base URL | `https://app.mykaarma.com/appointment/v2` |
+| `KMANAGE_API_URL` | KManage API URL for auth | `https://srishti244.mykaarma.dev/manage/v2` |
+| `MYKAARMA_MKID` | Fallback mkid for webservice endpoints (when auth disabled) | — |
+| `POSTGRES_CONNECTION_STRING` | PostgreSQL for thread persistence | — (uses in-memory) |
+| `PORT` | Server port | `3334` |
+| `MOUNT_PREFIX` | URL prefix for routes | `/capacity-chatbot` |
+| `ENABLE_MKID_AUTH` | Enable Bearer token auth | `true` |
+| `MODEL` | Primary Claude model | `claude-sonnet-4-5-20250929` |
+| `FALLBACK_MODEL` | Fallback Claude model | `claude-3-5-haiku-20241022` |
 
-**Note**: In production/QA/GVM, these are set via Kubernetes ConfigMaps and Secrets, not `.env` files.
-
-### Testing (local / LangSmith)
-
-Used only when the UI client does not send values; in production, context comes from the UI client.
+### Testing (local dev)
 
 | Variable | Description |
 |----------|-------------|
-| `TEST_DEALER_UUID` | Dealer UUID fallback for testing |
-| `TEST_DEPARTMENT_UUID` | Department UUID fallback for testing |
-| `TEST_MKID` | MKID fallback for testing |
-| `TEST_DATA_PATH` | Path to JSON file with sample cached data (advisors, teams, transport options) |
+| `TEST_DEALER_UUID` | Dealer UUID fallback |
+| `TEST_DEPARTMENT_UUID` | Department UUID fallback |
+| `TEST_MKID` | MKID fallback |
+| `TEST_DATA_PATH` | Path to sample cached data JSON |
 
 ## Development
 
@@ -145,13 +172,16 @@ Used only when the UI client does not send values; in production, context comes 
 # Run with auto-reload
 langgraph dev
 
-# Run tests (when added)
-pytest tests/
+# Run tests
+pytest tests/ -v
 ```
 
 ## Deployment
 
 ```bash
-# Production deployment with LangSmith persistence
+# Docker (GVM/production)
+docker-compose up -d --build
+
+# Or direct
 langgraph up --host 0.0.0.0 --port 3334
 ```
