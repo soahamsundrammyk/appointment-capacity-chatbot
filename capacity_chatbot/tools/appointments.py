@@ -6,7 +6,7 @@ Data source: MongoDB AppointmentViewData collection (denormalized, names embedde
 """
 
 import logging
-from datetime import date, datetime, timedelta
+from datetime import datetime, timedelta
 from typing import Any
 
 from langchain_core.runnables import RunnableConfig
@@ -134,7 +134,7 @@ async def get_appointments_tool(
     filters = _build_filters(
         advisor_names, creator_advisor_names, status, transport_option_names,
         team_names, repair_concerns, has_recall, prediag_status, created_by_platform,
-        cached_data, uuid_mapper,
+        cached_data,
     )
 
     # Get mkid from config (passed from request auth, not persisted in state)
@@ -292,7 +292,6 @@ def _build_filters(
     prediag_status: list[str] | None,
     created_by_platform: str | None,
     cached_data: dict[str, Any],
-    uuid_mapper: UUIDMapper,
 ) -> AppointmentFilters:
     """Resolve names to UUIDs and build the AppointmentFilters object.
 
