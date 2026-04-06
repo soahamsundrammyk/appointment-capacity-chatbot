@@ -210,12 +210,11 @@ def _build_api_request(
         if start_created_date and not end_created_date:
             parsed = parse_date_range(start_created_date)
             if parsed:
-                request["scheduledOnFromDate"] = parsed[0]
-                request["scheduledOnToDate"] = parsed[1]
+                s, e = _cap_date_range(parsed[0], parsed[1])
+                request["scheduledOnFromDate"] = s
+                request["scheduledOnToDate"] = e
                 if not date_range_label:
-                    date_range_label = "created %s - %s" % (
-                        format_date(parsed[0]), format_date(parsed[1])
-                    )
+                    date_range_label = "created %s - %s" % (format_date(s), format_date(e))
         elif not start_created_date and end_created_date:
             end_parsed = parse_date_range(end_created_date)
             if end_parsed:
@@ -232,6 +231,7 @@ def _build_api_request(
             e = end_parsed[1] if end_parsed else None
             if not s or not e:
                 return "", None
+            s, e = _cap_date_range(s, e)
             request["scheduledOnFromDate"] = s
             request["scheduledOnToDate"] = e
             if not date_range_label:
@@ -245,6 +245,16 @@ def _build_api_request(
 
 
 MAX_DATE_RANGE_DAYS = 90
+
+
+def _cap_date_range(start_str: str, end_str: str) -> tuple[str, str]:
+    """Cap a date range to MAX_DATE_RANGE_DAYS, keeping the most recent dates."""
+    start = datetime.strptime(start_str, "%Y-%m-%d").date()
+    end = datetime.strptime(end_str, "%Y-%m-%d").date()
+    if (end - start).days >= MAX_DATE_RANGE_DAYS:
+        start = end - timedelta(days=MAX_DATE_RANGE_DAYS - 1)
+        logger.warning("Created-date range capped at %d days (keeping most recent)", MAX_DATE_RANGE_DAYS)
+    return start.strftime("%Y-%m-%d"), end.strftime("%Y-%m-%d")
 
 
 def _generate_date_list(start_str: str, end_str: str) -> tuple[list[str], str, str]:
