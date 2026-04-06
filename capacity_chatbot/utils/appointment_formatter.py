@@ -102,7 +102,7 @@ def format_list(
     if total == 0:
         return "No appointments found matching your filters."
 
-    page_size = min(page_size, MAX_LIST_PAGE_SIZE)
+    page_size = max(1, min(page_size, MAX_LIST_PAGE_SIZE))
     total_pages = math.ceil(total / page_size)
     page = max(1, min(page, total_pages))
 

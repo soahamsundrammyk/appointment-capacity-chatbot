@@ -91,13 +91,18 @@ async def get_threads_for_user(pool, user_uuid: str, limit: int = 50) -> list[di
 async def verify_thread_ownership(pool, thread_id: str, user_uuid: str) -> bool:
     """Check if a thread belongs to the given user.
 
-    Fail-closed: returns False (deny) when ownership cannot be confirmed,
-    except when auth is disabled (local dev) or pool is unavailable.
+    Fail-closed: returns False (deny) when ownership cannot be confirmed.
+    Only skips check when auth is explicitly disabled via ENABLE_MKID_AUTH=false.
     """
-    if not pool:
-        return True  # No Postgres configured — local dev, allow
-    if not user_uuid:
-        return True  # Auth disabled (empty userUuid) — local dev, allow
+    import os
+    auth_disabled = os.getenv("ENABLE_MKID_AUTH", "true").lower() == "false"
+
+    if auth_disabled:
+        return True  # Auth explicitly disabled — local dev, allow
+
+    if not pool or not user_uuid:
+        logger.warning("Cannot verify thread ownership: pool=%s, user_uuid=%s", bool(pool), bool(user_uuid))
+        return False  # Fail closed — pool missing or empty user in auth-enabled mode
 
     try:
         async with pool.connection() as conn:
