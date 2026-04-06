@@ -87,9 +87,11 @@ def _matches_creator(appt: dict[str, Any], uuids: list[str]) -> bool:
 
 
 def _matches_status(appt: dict[str, Any], statuses: list[str]) -> bool:
-    appt_status = appt.get("status") or ""
-    # Case-insensitive comparison
     statuses_lower = [s.lower() for s in statuses]
+    # Check isCancelled flag — some payloads mark cancellation via flag, not status string
+    if "cancelled" in statuses_lower and appt.get("isCancelled"):
+        return True
+    appt_status = appt.get("status") or ""
     return appt_status.lower() in statuses_lower
 
 
@@ -146,8 +148,11 @@ def _matches_source(appt: dict[str, Any], source_values: list[str]) -> bool:
         source_name = source_details.get("name", "")
         for val in source_values:
             val_lower = val.lower()
-            if (source_uuid and (val in source_uuid or source_uuid in val)) or \
-               (source_name and val_lower == source_name.lower()):
+            # UUID: exact match only
+            if source_uuid and val == source_uuid:
+                return True
+            # Name: substring match (e.g., "Web" matches "Web Scheduler")
+            if source_name and (val_lower in source_name.lower() or source_name.lower() in val_lower):
                 return True
 
     # Fall back to legacy createdBy field (e.g., "Web", "DMS", "dealerapp")

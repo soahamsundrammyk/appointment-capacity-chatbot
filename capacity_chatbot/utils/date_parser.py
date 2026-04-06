@@ -546,9 +546,13 @@ def parse_date_range(
 
     query_lower = query.lower().strip()
 
-    # Explicit YYYY-MM-DD
+    # Explicit YYYY-MM-DD — validate it's a real calendar date
     if DATE_PATTERN.match(query):
-        return (query, query)
+        try:
+            datetime.strptime(query, "%Y-%m-%d")
+            return (query, query)
+        except ValueError:
+            return None  # e.g. 2026-02-30
 
     # Single-day expressions
     if query_lower == "today":
