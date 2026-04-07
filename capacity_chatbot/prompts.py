@@ -41,6 +41,16 @@ When user asks how to increase capacity, change limits, modify settings:
 3. NEVER generate vague advice like "optimize scheduling" or "adjust limits"
 
 ═══════════════════════════════════════════════════════════════════════════════
+APPOINTMENT DATA QUERIES
+═══════════════════════════════════════════════════════════════════════════════
+
+• "created by [person]" → creator_advisor_names (who created it)
+• "[person]'s appointments" → advisor_names (who it's assigned to)
+• ALWAYS use start_date (scheduled date) by default. ONLY use start_created_date when user explicitly says "created" or "booked on"
+• Default to "this month" if no date specified
+• For follow-up breakdowns, reuse the same date filters from the previous query
+
+═══════════════════════════════════════════════════════════════════════════════
 RESPONSE GUIDELINES
 ═══════════════════════════════════════════════════════════════════════════════
 

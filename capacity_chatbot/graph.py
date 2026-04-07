@@ -80,6 +80,27 @@ async def get_checkpointer():
 # Cached graph instance
 _cached_graph = None
 
+# Cached postgres pool for direct queries (chat_history, etc.)
+_postgres_pool = None
+
+
+async def get_postgres_pool():
+    """Get a Postgres pool for direct queries (e.g., chat_history).
+
+    Separate from the checkpointer's pool. Returns None if no Postgres configured.
+    """
+    global _postgres_pool
+    if _postgres_pool is None:
+        conn_string = os.getenv("POSTGRES_CONNECTION_STRING")
+        if not conn_string:
+            return None
+        try:
+            _postgres_pool = await _create_postgres_pool(conn_string)
+        except Exception as e:
+            logger.warning("Failed to create chat_history pool: %s", e)
+            return None
+    return _postgres_pool
+
 
 async def get_graph():
     """

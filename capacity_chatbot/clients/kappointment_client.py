@@ -161,6 +161,55 @@ class KAppointmentAPIClient:
 
         return await self._make_post_request(url, request_body, "search_operations")
 
+    async def get_appointment_view_data(
+        self, dealer_uuid: str, request: dict[str, Any], mkid: str | None = None
+    ) -> dict[str, Any]:
+        """Call POST /webservice/dealers/{dealerUuid}/appointments to fetch AppointmentViewData.
+
+        This is the same endpoint used by appointment-ui-client. It reads from MongoDB's
+        AppointmentViewData collection which has denormalized data (advisor names, team info,
+        transport option details already embedded in each document).
+
+        Requires mkid cookie authentication (webservice endpoint).
+
+        Args:
+            dealer_uuid: Dealer UUID
+            request: AppointmentViewDataRequest with either:
+                - scheduledForDates: list of dates (yyyy-MM-dd) for preferredDate filtering
+                - scheduledOnFromDate + scheduledOnToDate: date range for creationDateTime filtering
+            mkid: Optional mkid cookie. If not provided, falls back to config.mkid
+
+        Returns:
+            AppointmentViewDataResponse with:
+                - appointmentViewDataDTOList: list of AppointmentViewData documents
+        """
+        if not mkid:
+            cookies = self.config.get_cookies()
+            mkid = cookies.get("mkid") if cookies else None
+
+        if not mkid or not mkid.strip():
+            logger.warning(
+                "mkid not available for get_appointment_view_data. "
+                "Request may fail with 401. Set MYKAARMA_MKID env var or enable mkid auth."
+            )
+
+        url = self._build_url(f"webservice/dealers/{dealer_uuid}/appointments")
+        try:
+            headers = self._get_headers()
+            cookie_dict = {"mkid": mkid} if mkid else {}
+            logger.debug("Request: %s", json.dumps(request, indent=2, default=str))
+
+            response = await self._client.post(
+                url, json=request, headers=headers, cookies=cookie_dict
+            )
+            response.raise_for_status()
+            response_data = response.json()
+            logger.debug("Response: %s", json.dumps(response_data, indent=2, default=str))
+            return response_data
+        except httpx.HTTPStatusError as e:
+            logger.error("HTTP error calling get_appointment_view_data: %s", e)
+            raise
+
     async def close(self):
         """Close the HTTP client."""
         await self._client.aclose()
