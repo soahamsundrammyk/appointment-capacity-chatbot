@@ -193,8 +193,8 @@ async def run_graph_stream(
                 await save_thread_metadata(
                     pool, thread_id,
                     session_info.get("userUuid", ""),
-                    session_info.get("dealerUuid", ""),
-                    session_info.get("departmentUuid", ""),
+                    session_info.get("dealerUuid") or input_data.get("dealer_uuid") or None,
+                    session_info.get("departmentUuid") or input_data.get("department_uuid") or None,
                     first_msg, total,
                 )
         except Exception as e:

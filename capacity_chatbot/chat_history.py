@@ -14,8 +14,8 @@ async def ensure_chat_history_table(pool) -> None:
                 CREATE TABLE IF NOT EXISTS chat_history (
                     thread_id VARCHAR(255) PRIMARY KEY,
                     user_uuid VARCHAR(255) NOT NULL,
-                    dealer_uuid VARCHAR(255) NOT NULL,
-                    department_uuid VARCHAR(255) NOT NULL,
+                    dealer_uuid VARCHAR(255),
+                    department_uuid VARCHAR(255),
                     first_message TEXT,
                     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
                     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
