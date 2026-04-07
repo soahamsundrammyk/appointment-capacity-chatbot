@@ -8,21 +8,25 @@ logger = logging.getLogger(__name__)
 
 async def ensure_chat_history_table(pool) -> None:
     """Create chat_history table if it doesn't exist."""
-    async with pool.connection() as conn:
-        await conn.execute("""
-            CREATE TABLE IF NOT EXISTS chat_history (
-                thread_id VARCHAR(255) PRIMARY KEY,
-                user_uuid VARCHAR(255) NOT NULL,
-                dealer_uuid VARCHAR(255) NOT NULL,
-                department_uuid VARCHAR(255) NOT NULL,
-                first_message TEXT,
-                created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-                updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-                message_count INTEGER DEFAULT 0
-            );
-            CREATE INDEX IF NOT EXISTS idx_chat_history_user ON chat_history(user_uuid);
-            CREATE INDEX IF NOT EXISTS idx_chat_history_dealer ON chat_history(dealer_uuid);
-        """)
+    try:
+        async with pool.connection() as conn:
+            await conn.execute("""
+                CREATE TABLE IF NOT EXISTS chat_history (
+                    thread_id VARCHAR(255) PRIMARY KEY,
+                    user_uuid VARCHAR(255) NOT NULL,
+                    dealer_uuid VARCHAR(255) NOT NULL,
+                    department_uuid VARCHAR(255) NOT NULL,
+                    first_message TEXT,
+                    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+                    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+                    message_count INTEGER DEFAULT 0
+                );
+            """)
+            await conn.execute("CREATE INDEX IF NOT EXISTS idx_chat_history_user ON chat_history(user_uuid);")
+            await conn.execute("CREATE INDEX IF NOT EXISTS idx_chat_history_dealer ON chat_history(dealer_uuid);")
+        logger.info("chat_history table ready")
+    except Exception as e:
+        logger.error("Failed to create chat_history table: %s", e, exc_info=True)
 
 
 async def save_thread_metadata(

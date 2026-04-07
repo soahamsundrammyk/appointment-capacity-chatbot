@@ -313,15 +313,19 @@ async def startup_event():
         await get_graph()
         logger.info("Graph initialized successfully")
 
-        # Initialize chat history table
-        from capacity_chatbot.graph import get_postgres_pool
-        from capacity_chatbot.chat_history import ensure_chat_history_table
-        pool = await get_postgres_pool()
-        if pool:
-            await ensure_chat_history_table(pool)
-            logger.info("Chat history table initialized")
+        # Initialize chat history table (separate try — don't block startup)
+        try:
+            from capacity_chatbot.graph import get_postgres_pool
+            from capacity_chatbot.chat_history import ensure_chat_history_table
+            pool = await get_postgres_pool()
+            if pool:
+                await ensure_chat_history_table(pool)
+            else:
+                logger.warning("No Postgres pool available — chat history disabled")
+        except Exception as e:
+            logger.error("Failed to initialize chat history table: %s", e, exc_info=True)
     except Exception as e:
-        logger.error(f"Failed to initialize graph: {e}")
+        logger.error("Failed to initialize graph: %s", e, exc_info=True)
 
 
 if __name__ == "__main__":
