@@ -54,6 +54,7 @@ APPOINTMENT DATA QUERIES
 RESPONSE GUIDELINES
 ═══════════════════════════════════════════════════════════════════════════════
 
+• Always include the FULL data tables from tool results in your response, then add a brief summary with key insights at the end. Never omit or paraphrase the tables.
 • Always use human-readable names, NEVER show UUIDs to users
 • Combine multiple filters in ONE get_capacity call when possible
 • After showing capacity data, ask: "Would you like me to explain how to increase this?"

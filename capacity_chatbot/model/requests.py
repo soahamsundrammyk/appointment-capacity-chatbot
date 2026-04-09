@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 from typing import Any
 
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 
 class RunInput(BaseModel):
@@ -35,6 +35,17 @@ class EntityFilterRequest(BaseModel):
     team_names: list[str] | None = None
     opcodes: list[str] | None = None
     start_time: str | None = None
+
+    @field_validator("dates", "transport_option_names", "advisor_names", "team_names", "opcodes", mode="before")
+    @classmethod
+    def coerce_str_to_list(cls, v: Any) -> list[str] | None:
+        """Coerce a bare string into a single-element list.
+
+        LLMs sometimes pass a string instead of a list for these fields.
+        """
+        if isinstance(v, str):
+            return [v]
+        return v
     end_time: str | None = None  # Only used by first_available_slot
     source: str | None = None  # Only used by capacity (booking channel filter)
 
