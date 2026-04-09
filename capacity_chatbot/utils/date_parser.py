@@ -147,12 +147,13 @@ def _get_next_weekday(from_date: date, target_weekday: int, skip_this_week: bool
     days_ahead = (target_weekday - current_weekday) % 7
 
     if skip_this_week:
-        # "next Monday" means next week's Monday regardless of current day
-        # If today is Tuesday and target is Monday, days_ahead = 6 (already next week)
-        # If today is Monday and target is Monday, days_ahead = 0, need to add 7
-        # If today is Wednesday and target is Friday, days_ahead = 2 (this week), need to add 7
-        # Since days_ahead is always >= 0 (result of modulo 7), we always add 7
-        days_ahead += 7
+        # "next Monday" means the upcoming Monday in the NEXT week.
+        # If the target day already passed this week (target < current),
+        # days_ahead already points to next week — don't add 7.
+        # If the target day is today or later this week (target >= current),
+        # days_ahead points to this week — add 7 to skip to next week.
+        if target_weekday >= current_weekday:
+            days_ahead += 7
     else:
         # Find next occurrence (could be this week)
         if days_ahead == 0:
