@@ -1,0 +1,65 @@
+[
+  {
+    "id": "troubleshooting.a-rule-isn-t-working-what-should-i-check",
+    "question": "A rule isn't working, what should I check?",
+    "answer": "If a capacity/assignment rule isn't working: 1) Check rule status - is it ACTIVE? 2) Check applicability clause - does the date/day match? 3) Check IF conditions - are ALL conditions met? (AND means all must be true), 4) Check operator - 'in' vs 'not in' semantics, 5) Verify entity names match exactly (case-sensitive for some fields). Use get_rules tool to see the full rule configuration including ifVerbiage and thenVerbiage.",
+    "tier": "base",
+    "topic": "troubleshooting"
+  },
+  {
+    "id": "troubleshooting.how-do-i-find-which-rule-is-blocking-appointments",
+    "question": "How do I find which rule is blocking appointments?",
+    "answer": "To find the blocking rule: 1) Use get_capacity tool with the specific date/advisor/transport, 2) Check the limitInfo in the response, 3) Look at 'limitingFactor' field - if it says 'CAPACITY_RULE', the 'details' will show the rule name, 4) Go to Settings > Capacity Rules and search for that rule name to modify it.",
+    "tier": "base",
+    "topic": "troubleshooting"
+  },
+  {
+    "id": "troubleshooting.why-am-i-getting-could-not-edit-rule-error",
+    "question": "Why am I getting 'could not edit rule' error?",
+    "answer": "The 'could not edit rule' error means you don't have edit permission for capacity rules. Contact your manager or system administrator to request appropriate access, or ask them to make the changes on your behalf.",
+    "tier": "base",
+    "topic": "troubleshooting"
+  },
+  {
+    "id": "troubleshooting.why-are-appointments-showing-a-red-warning-sign-dm",
+    "question": "Why are appointments showing a red warning sign (DMS push failure)?",
+    "answer": "A red warning sign on appointments indicates a DMS push failure. The most common cause is that the assigned Service Advisor doesn't have a valid DMS ID configured.\n\n**How to fix:**\n1. Go to Manage Settings \u2192 Manage Users\n2. Find the Service Advisor showing the warning\n3. Verify they have a valid DMS ID entered\n4. Add or correct the DMS ID if missing\n5. Save - future appointments should push correctly\n\nNote: Existing failed appointments may need to be manually retried or recreated.",
+    "tier": "base",
+    "topic": "troubleshooting"
+  },
+  {
+    "id": "troubleshooting.why-can-t-customers-book-appointments",
+    "question": "Why can't customers book appointments?",
+    "answer": "Common reasons customers can't book: 1) Capacity is 0 (check limitInfo for limiting factor), 2) All slots are disabled in dealer/individual schedule (red or gray slots), 3) Transport option is disabled or at limit, 4) A capacity rule blocks that day/time/service, 5) Assignment rule doesn't route to any available advisor. Use get_capacity tool with includeLimitInfo=true to see the exact limiting factor.",
+    "tier": "base",
+    "topic": "troubleshooting"
+  },
+  {
+    "id": "troubleshooting.why-does-one-advisor-have-different-capacity-than",
+    "question": "Why does one advisor have different capacity than another?",
+    "answer": "Advisors can have different capacities because: 1) Individual schedule limits differ (Settings > Individuals), 2) They're on different teams with different capacity rules, 3) Capacity rules target specific advisors by name/UUID, 4) One advisor may have date-specific schedule overrides. Check both the individual schedule AND capacity rules that reference DEALER_ASSOCIATE_UUID to see advisor-specific limits.",
+    "tier": "base",
+    "topic": "troubleshooting"
+  },
+  {
+    "id": "troubleshooting.why-is-capacity-different-for-dealer-app-vs-online",
+    "question": "Why is capacity different for dealer app vs online scheduler?",
+    "answer": "Capacity can differ between dealer app and online scheduler because: 1) Online Reserve limits reserve capacity specifically for online customers, 2) If Online Reserve = 3 and Total = 10, dealership can book 10 but 3 are guaranteed for online, 3) Once Online Reserve is used, online customers see 0 availability even if dealer app shows remaining capacity. Check Settings > Transport Options > 'Online Reserve Limits' vs 'Total Limits'.",
+    "tier": "base",
+    "topic": "troubleshooting"
+  },
+  {
+    "id": "troubleshooting.why-is-capacity-showing-0",
+    "question": "Why is capacity showing 0?",
+    "answer": "Capacity of 0 means one of these is blocking appointments: 1) A capacity rule explicitly blocks that day/advisor/transport (ruleLimit = 0), 2) Individual advisor schedule has 0 appointments for that day, 3) Transport option is disabled or has 0 limit, 4) Dealer schedule has 0 for that day. Check the 'limitingFactor' field in the limit info to see the exact cause and limiting source.",
+    "tier": "base",
+    "topic": "troubleshooting"
+  },
+  {
+    "id": "troubleshooting.why-is-the-online-scheduler-showing-no-availabilit",
+    "question": "Why is the online scheduler showing no availability?",
+    "answer": "Online scheduler may show no availability because: 1) Online Reserve limits are exhausted (separate from Total limits), 2) All slots for that day are disabled, 3) Capacity rules block online bookings, 4) Transport options available online are at capacity. Check Settings > Transport Options for 'Online Reserve' limits specifically - they reserve capacity for online customers only.",
+    "tier": "base",
+    "topic": "troubleshooting"
+  }
+]

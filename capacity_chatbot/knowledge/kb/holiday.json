@@ -1,0 +1,16 @@
+[
+  {
+    "id": "holiday.how-do-i-block-all-appointments-on-a-holiday",
+    "question": "How do I block all appointments on a holiday?",
+    "answer": "To block appointments on a holiday: 1) Easiest: Go to Settings > Dealer Schedule, switch to Date-Specific view, select the holiday date, set all slots to OFF (red) or set Total appointments to 0. OR 2) Create a capacity rule: IF Date = [holiday date] THEN Total Appointments <= 0 PER Day. Method 1 is simpler for one-off dates; Method 2 is better if you want to preserve the rule for documentation.",
+    "tier": "base",
+    "topic": "holiday"
+  },
+  {
+    "id": "holiday.how-do-i-close-the-scheduler-for-holidays-or-speci",
+    "question": "How do I close the scheduler for holidays or specific dates?",
+    "answer": "To block appointments on holidays or specific dates:\n\n1. Go to Settings \u2192 Appointments \u2192 Dealer Schedule\n2. Toggle 'Allow changes for selected dates' at the top\n3. Navigate to the specific date you want to block\n4. Click on the date to turn all slots OFF (red), OR\n5. Click individual time slots to disable only specific hours\n6. Save your changes\n\nThis manually closes the scheduler for that day. For recurring closures (like every Sunday), use the weekly schedule view instead.",
+    "tier": "base",
+    "topic": "holiday"
+  }
+]

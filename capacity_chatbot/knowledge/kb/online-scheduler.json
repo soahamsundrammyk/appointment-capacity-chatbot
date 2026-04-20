@@ -1,0 +1,9 @@
+[
+  {
+    "id": "online-scheduler.how-do-i-show-service-prices-on-the-online-schedul",
+    "question": "How do I show service prices on the online scheduler?",
+    "answer": "To display service prices and descriptions to customers during online booking:\n\n1. Go to Settings \u2192 Appointments \u2192 Opcodes and Dealer Menus\n2. Select the opcode you want to configure\n3. Enter the price and description fields\n4. Save your changes\n\n**Note:** Full activation of price display on the online scheduler may require support assistance to enable the feature for your dealership.",
+    "tier": "base",
+    "topic": "online-scheduler"
+  }
+]

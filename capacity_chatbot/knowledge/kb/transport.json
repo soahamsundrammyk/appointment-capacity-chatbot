@@ -1,0 +1,44 @@
+[
+  {
+    "id": "transport.how-do-i-add-time-blocks-to-transport-options",
+    "question": "How do I add time blocks to transport options?",
+    "answer": "Time blocks restrict transport options during specific hours: 1) Go to Settings \u2192 Appointments \u2192 Transportation Option, 2) Select the transport option, 3) In the capacity configuration section, click 'Add Time Block', 4) Set the time range and limit (use 0 to block completely). Example: Block loaners from 12:00 PM - 1:00 PM lunch break by adding a time block with limit 0 for that period. This is useful for temporarily blocking transport availability during specific hours.",
+    "tier": "base",
+    "topic": "transport"
+  },
+  {
+    "id": "transport.how-do-i-enable-or-disable-a-transport-option",
+    "question": "How do I enable or disable a transport option?",
+    "answer": "To enable/disable transport options: 1) Go to Settings \u2192 Appointments \u2192 Transportation Option, 2) In the transport options table at the top, 3) Use the toggle switch next to each option to enable (ON) or disable (OFF). Disabled options won't appear in the online scheduler or dealer app. You can also reorder options using the hamburger icon (drag and drop) to change display order in the scheduler.",
+    "tier": "base",
+    "topic": "transport"
+  },
+  {
+    "id": "transport.how-do-i-increase-transport-option-capacity",
+    "question": "How do I increase transport option capacity?",
+    "answer": "To increase transport option capacity (e.g., Loaner, Shuttle, Pickup and Delivery):\n\n1. Go to Settings \u2192 Appointments \u2192 Transportation Option\n2. You will see two columns:\n   - Left column: Transport options for Dealer App\n   - Right column: Transport options for Consumer/Online Scheduler\n3. Select the transport option you want to modify\n4. Scroll to the capacity configuration section at the bottom\n5. Increase the 'Total allowed bookings' value for that transport option\n6. You can configure different capacities for:\n   - Dealer App bookings\n   - Online Scheduler bookings\n7. For date-specific changes, click 'Allow Changes Only for Selected Dates'\n8. You can also add time blocks to temporarily restrict availability during certain hours\n9. Save your changes - they take effect immediately\n\nIMPORTANT LIMITATION: Transport option settings only set GLOBAL daily limits for the entire dealership. They do NOT support per-advisor, per-team limits. To limit a transport option (like Loaner or Rental) per advisor, you MUST create a Capacity Rule with:\n- IF Transport Option = [Loaner/Rental/etc] AND Advisor = [specific advisor]\n- THEN Total Appointments <= X PER Day",
+    "tier": "base",
+    "topic": "transport"
+  },
+  {
+    "id": "transport.how-do-i-limit-loaners-to-only-certain-advisors-or",
+    "question": "How do I limit loaners to only certain advisors or teams?",
+    "answer": "Use an assignment rule (not capacity rule): 1) Go to Settings > Assignment Rules, 2) Click '+ Add Rule', 3) IF Transport Option in Loaner, 4) THEN Teams in [specific teams] or Advisor in [specific advisors], 5) Activate and save. This ensures loaner appointments can only be assigned to specified teams/advisors. Note: This doesn't limit count, just routing.",
+    "tier": "base",
+    "topic": "transport"
+  },
+  {
+    "id": "transport.how-do-i-limit-transport-option-capacity-per-advis",
+    "question": "How do I limit transport option capacity per advisor?",
+    "answer": "Transport option settings (Settings \u2192 Transportation Option) do NOT support per-advisor limits. They only set global daily limits for the entire dealership.\n\nTo configure transport option capacity per advisor, you MUST use Capacity Rules:\n\n1. Go to Settings \u2192 Appointments \u2192 Capacity Rules\n2. Click '+ Add Rule'\n3. Define IF conditions:\n   - Add: Transport Option = [Loaner/Rental/Shuttle/etc]\n   - Add: Advisor/Dealer Associate = [specific advisor name]\n4. Define THEN clause:\n   - Total Appointments <= [your limit]\n5. Set PER: Day (or Hour if you want hourly limits)\n6. Save the rule\n\nExample: To limit advisor \"Donald\" to max 3 Loaners per day:\n- IF Transport Option = Loaner AND Advisor = Donald\n- THEN Total Appointments <= 3 PER Day\n\nThis is the ONLY way to set per-advisor limits for transport options.",
+    "tier": "base",
+    "topic": "transport"
+  },
+  {
+    "id": "transport.where-do-i-find-transport-option-settings",
+    "question": "Where do I find transport option settings?",
+    "answer": "To access transport options: Settings > Appointments > Transport Options. Top section shows the list of all transport options with enable/disable toggles. Bottom section (after selecting a transport option from dropdown) shows capacity limits per day and time blocks.",
+    "tier": "base",
+    "topic": "transport"
+  }
+]

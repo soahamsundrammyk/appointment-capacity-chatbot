@@ -1,0 +1,135 @@
+[
+  {
+    "id": "concept.how-can-i-limit-service-hours-instead-of-appointme",
+    "question": "How can I limit service hours instead of appointment count?",
+    "answer": "To limit by service hours: Create a capacity rule with THEN = 'Total Service Hours' instead of 'Total Appointments'. Example: 'IF Skill in Oil Change Bucket: Cars, Oil Change Bucket: Trucks THEN Total Service Hours <= 10 PER Day' - this limits total oil change work to 10 hours per day instead of counting individual appointments.",
+    "tier": "base",
+    "topic": "concept"
+  },
+  {
+    "id": "concept.how-do-i-copy-a-schedule-from-one-advisor-to-anoth",
+    "question": "How do I copy a schedule from one advisor to another?",
+    "answer": "Currently there's no direct 'copy schedule' feature. To replicate: 1) Note down the source advisor's limits from Settings > Individuals, 2) Select the target advisor, 3) Manually set the same values. For recurring schedules, you'll need to set up each advisor individually. Consider using teams and team-based capacity rules for consistent limits across multiple advisors.",
+    "tier": "base",
+    "topic": "concept"
+  },
+  {
+    "id": "concept.how-do-i-select-multiple-slots-at-once-in-the-sche",
+    "question": "How do I select multiple slots at once in the schedule grid?",
+    "answer": "To select multiple slots in schedule grid: Hold SHIFT to select multiple slots in adjoining rows/columns. Hold CONTROL (Ctrl) to select multiple separate/non-adjacent slots. Click the day name at the top of a column to toggle ALL slots for that entire day. This makes bulk enable/disable operations much faster.",
+    "tier": "base",
+    "topic": "concept"
+  },
+  {
+    "id": "concept.how-do-i-set-up-express-lane-with-limited-services",
+    "question": "How do I set up express lane with limited services?",
+    "answer": "For an express lane setup: 1) Create a team called 'Express Shop' with quick-service advisors, 2) Create assignment rule: IF Opcode Duration <= 30 (or specific opcodes) THEN Teams in Express Shop, 3) Create capacity rule: IF Teams in Express Shop THEN Total Appointments <= X PER Hour. This routes quick services to express team and limits their hourly volume.",
+    "tier": "base",
+    "topic": "concept"
+  },
+  {
+    "id": "concept.how-do-multiple-capacity-rules-combine",
+    "question": "How do multiple capacity rules combine?",
+    "answer": "Multiple capacity rules that match the same scenario combine by taking the MINIMUM limit. Each rule is evaluated independently, and the most restrictive one wins. Example: Rule A says 'Max 20 appointments for Main Shop' and Rule B says 'Max 10 appointments for Loaner'. If booking a loaner for Main Shop, the effective limit is min(20, 10) = 10.",
+    "tier": "base",
+    "topic": "concept"
+  },
+  {
+    "id": "concept.how-does-no-preference-advisor-assignment-work",
+    "question": "How does 'No Preference' advisor assignment work?",
+    "answer": "The 'No Preference' feature intelligently assigns appointments to service advisors when no specific advisor is selected.\n\n**IMPORTANT: This is NOT a round-robin algorithm.** It's a load-balancing system based on capacity percentage.\n\n**How It Works:**\nWhen 'No Preference' is selected:\n1. Scheduler evaluates all eligible advisors available for the selected date/time slot\n2. Calculates each advisor's current capacity percentage (booked \u00f7 total capacity)\n3. Assigns the appointment to the advisor with the LOWEST capacity percentage for that day\n4. Advisors not available for that day/time are excluded from consideration\n\n**Example:** If 3 advisors are booked at 70%, 60%, and 50% of their daily capacity, the appointment goes to the 50% advisor - ensuring fair workload distribution.\n\n**Eligibility Conditions:**\n- Only advisors marked available for the selected date/time are eligible\n- If no advisors are available, the slot won't show in Consumer Scheduler\n- Assignment won't occur if no advisor's availability includes the selected slot\n\n**Consumer scheduler Default:** 'No Preference' is ENABLED by default in Consumer Scheduler 4.0. If disabled, the system picks the first advisor on the list, causing all appointments to go to one advisor - this is problematic for dealerships!\n\n**Enabling 'No Preference':**\nContact myKaarma support to enable or configure the 'No Preference' feature for your dealership.\n\n**CRITICAL - Dummy Advisor Warning:**\nSome dealerships used to create 'No Preference' as a dummy advisor with a DMS ID. The system now uses a blank/null DMS ID for proper load-balancing. If a DMS ID is assigned to the No Preference user, it behaves like a regular advisor and the load-balancing logic WILL NOT WORK.",
+    "tier": "base",
+    "topic": "concept"
+  },
+  {
+    "id": "concept.what-do-the-slot-colors-mean-in-the-schedule-grid",
+    "question": "What do the slot colors mean in the schedule grid?",
+    "answer": "Schedule grid slot colors: Green = slot is enabled and available for booking. Red = slot is manually disabled (no appointments allowed). Gray = slot is unavailable because it's disabled at a higher level (e.g., disabled in Dealer Schedule, or outside dealership hours). Gray slots cannot be enabled at the individual level until enabled at the dealer level first.",
+    "tier": "base",
+    "topic": "concept"
+  },
+  {
+    "id": "concept.what-does-limiting-factor-mean-in-limit-info",
+    "question": "What does limiting factor mean in limit info?",
+    "answer": "The limiting factor is the limit that's constraining capacity. The system calculates multiple limits: dealer schedule limit, individual schedule limit, capacity rule limit, transport option limit, and opcode daily limit. The LOWEST of these becomes the effective limit (limiting factor). Limit info shows which limit is the limiting factor and its source, helping you know exactly what to change to increase capacity.",
+    "tier": "base",
+    "topic": "concept"
+  },
+  {
+    "id": "concept.what-happens-when-dealer-schedule-and-individual-s",
+    "question": "What happens when dealer schedule and individual schedule conflict?",
+    "answer": "Dealer schedule ALWAYS overrides individual schedule. If a slot is disabled (red or gray) at the dealer level, it cannot be enabled for any individual advisor. The dealer schedule sets the maximum bounds, and individual schedules can only restrict further, not expand. Gray slots in individual schedule mean 'blocked at dealer level'.",
+    "tier": "base",
+    "topic": "concept"
+  },
+  {
+    "id": "concept.what-is-a-team",
+    "question": "What is a team?",
+    "answer": "A team is a group of service advisors who work together. Teams can have their own capacity rules and assignment rules. Examples: Main Shop, Express Shop, Rotation Shop. Each team can have multiple advisors assigned to it, and rules can target specific teams.",
+    "tier": "base",
+    "topic": "concept"
+  },
+  {
+    "id": "concept.what-is-a-transport-option",
+    "question": "What is a transport option?",
+    "answer": "Transport options are ways customers can get to/from the service department. Common options include: Loaner (loaner vehicle), Shuttle (shuttle service), Rental (rental car), Will Wait (customer waits), Pickup and Delivery, None (customer drives themselves). Each transport option can have its own daily capacity limits and time-block restrictions.",
+    "tier": "base",
+    "topic": "concept"
+  },
+  {
+    "id": "concept.what-is-an-assignment-rule",
+    "question": "What is an assignment rule?",
+    "answer": "Assignment rules control which advisors, teams, or transport options are AVAILABLE for an appointment based on criteria. Unlike capacity rules (which limit counts), assignment rules FILTER options. Built with IF/THEN logic: IF conditions are met, THEN only specific options are allowed. Example: 'IF Opcode Duration <= 30, THEN Teams in Express Shop' - quick services only go to Express Shop.",
+    "tier": "base",
+    "topic": "concept"
+  },
+  {
+    "id": "concept.what-is-an-opcode-or-operation",
+    "question": "What is an opcode or operation?",
+    "answer": "An opcode (operation code) represents a specific service type like 'Oil Change', 'Tire Rotation', or 'Brake Inspection'. Each opcode can have its own capacity limits and be used in capacity rules and assignment rules. Opcodes can be grouped by 'Skill' categories (e.g., Oil Change Bucket: Cars, Oil Change Bucket: Trucks).",
+    "tier": "base",
+    "topic": "concept"
+  },
+  {
+    "id": "concept.what-is-capacity",
+    "question": "What is capacity?",
+    "answer": "Capacity refers to the maximum number of appointments that can be scheduled for a given time period, advisor, team, or transport option. It's controlled by multiple factors: dealer schedule limits, individual advisor limits, capacity rules, and transport option limits. The system calculates the effective capacity by taking the minimum of all these limits - the lowest one becomes the 'limiting factor' that constrains booking.",
+    "tier": "base",
+    "topic": "concept"
+  },
+  {
+    "id": "concept.what-is-inclusively-matches-vs-exactly-matches",
+    "question": "What is INCLUSIVELY_MATCHES vs EXACTLY_MATCHES?",
+    "answer": "Rule matching criteria: EXACTLY_MATCHES means all specified conditions must match exactly. INCLUSIVELY_MATCHES is more permissive - it includes the specified values but also matches broader scenarios. For capacity queries, INCLUSIVELY_MATCHES is typically used to get all relevant capacity including rules that may affect the requested entity indirectly.",
+    "tier": "base",
+    "topic": "concept"
+  },
+  {
+    "id": "concept.what-is-the-difference-between-in-and-in-any-opera",
+    "question": "What is the difference between 'in' and 'in any' operators?",
+    "answer": "Both match values in a list, but: 'in' typically matches exact containment in a single value, while 'in any' matches if the value is in ANY of the selected options. For multi-select fields like teams or skills, 'in any' is more common. Example: 'Transport Option in any [Loaner, Shuttle]' matches if the transport is Loaner OR Shuttle.",
+    "tier": "base",
+    "topic": "concept"
+  },
+  {
+    "id": "concept.what-is-the-difference-between-total-and-online-re",
+    "question": "What is the difference between Total and Online Reserve limits?",
+    "answer": "For transport options: Total Limits apply to ALL appointments (dealer app + online scheduler). Online Reserve Limits are specifically reserved for online scheduler appointments only. Example: If Loaner Total = 10 and Online Reserve = 3, the dealership can book 10 total loaners, but 3 of those are guaranteed for online customers. This prevents the dealer app from using all loaners before online customers can book.",
+    "tier": "base",
+    "topic": "concept"
+  },
+  {
+    "id": "concept.what-is-the-priority-order-of-limits",
+    "question": "What is the priority order of limits?",
+    "answer": "The system calculates all applicable limits and uses the MINIMUM (most restrictive): 1) Dealer Schedule Limit, 2) Individual Advisor Schedule Limit, 3) Capacity Rule Limit, 4) Transport Option Limit, 5) Opcode Daily Limit. The lowest becomes the 'effective limit' and is shown as the limiting factor in limitInfo. To increase capacity, you must increase the limiting factor specifically.",
+    "tier": "base",
+    "topic": "concept"
+  },
+  {
+    "id": "concept.what-s-the-difference-between-weekly-and-date-spec",
+    "question": "What's the difference between weekly and date-specific schedules?",
+    "answer": "Weekly Schedule: Applies to all weeks by default - set limits once and they repeat every week. Date-Specific Schedule: Override the weekly schedule for specific calendar dates (holidays, special events, vacation). Important: Date-specific changes ALWAYS override the weekly schedule. Use the blue toggle bar at top of schedule view to switch between views.",
+    "tier": "base",
+    "topic": "concept"
+  }
+]

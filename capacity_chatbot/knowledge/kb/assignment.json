@@ -1,0 +1,23 @@
+[
+  {
+    "id": "assignment.how-do-i-create-an-assignment-rule",
+    "question": "How do I create an assignment rule?",
+    "answer": "To create an assignment rule: 1) Go to Settings > Assignment Rules, 2) Click '+ Add Rule', 3) Name your rule descriptively, 4) Define IF conditions - select category (Opcode Duration, Vehicle Make, Source, etc.), operator (<=, in, not in), and values, 5) Define THEN restriction - what's allowed (Teams, Advisors, Transport Options), 6) Use AND to add multiple conditions, 7) Ensure 'Activate Rule' toggle is ON, 8) Save.",
+    "tier": "base",
+    "topic": "assignment"
+  },
+  {
+    "id": "assignment.how-do-i-fix-conflicting-assignment-rules",
+    "question": "How do I fix conflicting assignment rules?",
+    "answer": "To resolve conflicting assignment rules:\n\n**Step 1: Identify the overlap**\n- Note which rules share overlapping IF conditions\n- Identify what values/inputs trigger both rules\n\n**Step 2: Decide the correct business logic**\n- Determine which rule should apply for overlapping cases\n- Example: Should op_code A go to Team A or Team B?\n\n**Step 3: Modify rules to remove overlap**\n\n**Option A - Make conditions mutually exclusive:**\n- Rule 1: IF op_code in {B, C} \u2192 Team A (remove A from list)\n- Rule 2: IF op_code in {A} \u2192 Team B\n\n**Option B - Merge into single rule:**\n- Delete one rule\n- Update the other to cover all needed cases\n\n**Option C - Add differentiating conditions:**\n- Use AND conditions to make rules more specific\n- Example: IF op_code = A AND source = Online \u2192 Team B\n- Example: IF op_code = A AND source = DealerApp \u2192 Team A\n\n**Step 4: Verify**\nGo to Settings \u2192 Assignment Rules, edit the conflicting rules, and test that scheduling works for previously conflicting scenarios.",
+    "tier": "base",
+    "topic": "assignment"
+  },
+  {
+    "id": "assignment.where-do-i-find-assignment-rules-settings",
+    "question": "Where do I find assignment rules settings?",
+    "answer": "To access assignment rules: Settings > Assignment Rules. Similar layout to capacity rules - you'll see a list of all assignment rules. Click '+ Add Rule' to create new ones. Remember: assignment rules control which options are AVAILABLE (filtering), while capacity rules control how MANY (limiting).",
+    "tier": "base",
+    "topic": "assignment"
+  }
+]

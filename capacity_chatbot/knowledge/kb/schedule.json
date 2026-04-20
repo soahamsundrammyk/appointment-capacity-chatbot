@@ -1,0 +1,37 @@
+[
+  {
+    "id": "schedule.how-do-i-increase-dealer-schedule-capacity",
+    "question": "How do I increase dealer schedule capacity?",
+    "answer": "To increase dealer schedule (store-level) capacity:\n\n1. Go to Settings \u2192 Appointments \u2192 Dealer Schedule\n2. You will see a grid view showing Sunday through Saturday\n3. Each day shows the appointment capacity for that day\n4. To increase capacity for a specific day:\n   - Click on the day cell\n   - Change the 'Total Maximum Appointments per day' value\n   - You can also modify 'Total Maximum Appointments per slot'\n5. For date-specific exceptions (e.g., holidays, special events):\n   - Toggle 'Allow Changes Only for Selected Dates' at the top\n   - This converts to a date-based view where you can set capacity for specific dates\n6. Save your changes\n\nIMPORTANT NOTES:\n- The dealer schedule sets STORE-LEVEL capacity that applies to all advisors\n- Individual advisor schedules cannot exceed the dealer schedule limits\n- You cannot set different slot capacities within the same day here - use Capacity Rules for that\n- Gray slots at the individual level mean they're blocked at the dealer level",
+    "tier": "base",
+    "topic": "schedule"
+  },
+  {
+    "id": "schedule.how-do-i-increase-individual-advisor-schedule-capa",
+    "question": "How do I increase individual advisor schedule capacity?",
+    "answer": "To increase an individual advisor's appointment capacity:\n\n1. Go to Settings \u2192 Appointments \u2192 Individuals\n2. Select the advisor from the dropdown list\n3. You will see a grid view similar to the dealer schedule\n4. To modify capacity:\n   - Click on the day or slot you want to change\n   - Adjust the appointment limit for that day\n   - Toggle slots ON (green) or OFF (red) to enable/disable\n5. For date-specific changes:\n   - Toggle 'Allow Changes Only for Selected Dates' at the top\n   - Set capacity for specific dates (e.g., vacation days, special schedules)\n6. For recurring weekly schedules:\n   - You can set up recurring patterns that repeat weekly\n7. Save your changes\n\nIMPORTANT NOTES:\n- Gray slots mean they're disabled at the Dealer Schedule level - you cannot enable them here\n- To enable a gray slot, you must first enable it in the Dealer Schedule\n- Use this to block specific time slots like lunch hours (set to 0 capacity)\n- Does NOT manage appointment assignment priorities - use Assignment Rules for that",
+    "tier": "base",
+    "topic": "schedule"
+  },
+  {
+    "id": "schedule.how-do-i-set-up-recurring-schedules-that-repeat-ev",
+    "question": "How do I set up recurring schedules that repeat every 2 or 3 weeks?",
+    "answer": "For multi-week recurring schedules (beyond standard weekly): 1) Go to Settings > Appointments > Individuals Schedule, 2) Select the advisor, 3) Click the yellow 'Edit Recurring Schedules' button (if enabled), 4) Select the recurrence length in weeks (e.g., every 2 or 3 weeks), 5) Set the start date for the recurring schedule, 6) Modify slots and limits as needed, 7) Click Save. This feature requires enablement - contact support if you don't see the button.",
+    "tier": "base",
+    "topic": "schedule"
+  },
+  {
+    "id": "schedule.where-do-i-find-dealer-schedule-settings",
+    "question": "Where do I find dealer schedule settings?",
+    "answer": "To access dealer schedule: Settings > Appointments > Dealer Schedule. You'll see a grid with days (columns) and time slots (rows). Use the toggle at top to switch between Weekly and Date-Specific views. This controls dealership-wide limits that override individual advisor schedules.",
+    "tier": "base",
+    "topic": "schedule"
+  },
+  {
+    "id": "schedule.where-do-i-find-individual-advisor-schedule-settin",
+    "question": "Where do I find individual advisor schedule settings?",
+    "answer": "To access individual advisor schedules: Settings > Appointments > Individuals. Select the advisor from the dropdown menu. The grid shows their personal schedule limits. Gray slots mean they're disabled at the dealer level and cannot be enabled here. Use the toggle for Weekly vs Date-Specific views.",
+    "tier": "base",
+    "topic": "schedule"
+  }
+]
