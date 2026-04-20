@@ -76,3 +76,19 @@ def test_load_empty_dir_returns_empty(tmp_path):
     kb_dir = tmp_path / "kb"
     kb_dir.mkdir()
     assert load_kb(kb_dir) == []
+
+
+def test_load_rejects_malformed_json(tmp_path):
+    kb_dir = tmp_path / "kb"
+    kb_dir.mkdir()
+    (kb_dir / "a.json").write_text("{not-valid-json")
+    with pytest.raises(LoaderError, match="invalid JSON"):
+        load_kb(kb_dir)
+
+
+def test_load_rejects_non_dict_entry(tmp_path):
+    kb_dir = tmp_path / "kb"
+    kb_dir.mkdir()
+    (kb_dir / "a.json").write_text(json.dumps([1, 2, 3]))
+    with pytest.raises(LoaderError):
+        load_kb(kb_dir)
