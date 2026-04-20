@@ -144,7 +144,6 @@ async def run_graph_stream(
             "search_opcode_tool": "Searching services",
             "get_available_entities": "Loading available options",
             "confirm_entity": "Verifying names",
-            "get_knowledge_answer": "Searching knowledge base",
         }
 
         async for event in graph.astream_events(graph_input, config, version="v2"):
