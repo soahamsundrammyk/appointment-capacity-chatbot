@@ -1,7 +1,7 @@
 """Request models for API endpoints."""
 
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, field_validator
 
@@ -13,6 +13,7 @@ class RunInput(BaseModel):
     department_uuid: str | None = ""
     dealer_uuid: str | None = ""
     cached_data: dict[str, Any] | None = None
+    user_tier: Literal["base", "manager", "internal"] = "base"
 
 
 class RunRequest(BaseModel):

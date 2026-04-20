@@ -89,6 +89,7 @@ def build_graph_input(
     updated_context = {
         "department_uuid": input_data.get("department_uuid") or session.get("departmentUuid", ""),
         "dealer_uuid": input_data.get("dealer_uuid") or session.get("dealerUuid", ""),
+        "user_tier": input_data.get("user_tier", "base"),
     }
     cd = input_data.get("cached_data") or {}
     if cd:
