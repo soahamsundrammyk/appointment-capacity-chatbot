@@ -7,10 +7,12 @@ from datetime import datetime
 from typing import Any
 
 from langchain_anthropic import ChatAnthropic
-from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
 from langchain_core.runnables import RunnableConfig
 from langgraph.prebuilt import create_react_agent
 
+from capacity_chatbot.knowledge import KB
+from capacity_chatbot.knowledge.prompt_builder import build_system_messages
 from capacity_chatbot.prompts import get_capacity_agent_system_prompt
 from capacity_chatbot.state import CapacityChatbotState
 from capacity_chatbot.tools import CAPACITY_TOOLS
@@ -163,14 +165,20 @@ async def capacity_agent(
         }
 
     current_time = datetime.now().strftime("%A, %B %d, %Y %I:%M %p")
-    system_prompt = get_capacity_agent_system_prompt(current_time=current_time)
+    behavioral_prompt = get_capacity_agent_system_prompt(current_time=current_time)
+    system_blocks = build_system_messages(
+        entries=KB,
+        tier=state.user_tier,
+        behavioral_prompt=behavioral_prompt,
+    )
+    system_message = SystemMessage(content=system_blocks)
     max_messages = _get_max_agent_messages()
     messages_for_agent = _trim_messages_for_agent(state.messages, max_messages)
     agent_input = {"messages": messages_for_agent}
     agent_config = _create_agent_config(state, config)
 
     async def _run_agent(model: ChatAnthropic):
-        agent = create_react_agent(model, tools=CAPACITY_TOOLS, prompt=system_prompt)
+        agent = create_react_agent(model, tools=CAPACITY_TOOLS, prompt=system_message)
         return await agent.ainvoke(agent_input, config=agent_config)
 
     try:
