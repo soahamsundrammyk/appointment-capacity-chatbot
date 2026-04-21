@@ -1,100 +1,121 @@
 [
   {
-    "id": "capacity.can-i-delete-a-capacity-rule-or-assignment-rule",
-    "question": "Can I delete a capacity rule or assignment rule?",
-    "answer": "No, rules CANNOT be deleted. You can only deactivate them. To deactivate a rule: Go to Settings \u2192 Capacity Rules (or Assignment Rules), click Edit on the rule, toggle the 'Active' switch to OFF, and save. The rule will remain in the system but won't apply.",
-    "tier": "base",
+    "id": "capacity.what-is-capacity",
+    "question": "What is capacity in myKaarma?",
+    "answer": "Capacity is the maximum number of appointments (or total service hours) that can be scheduled for a given time period, transport option, advisor, team, or other dimension. It comes from several overlapping controls — the effective capacity is the **minimum** of all limits that apply:\n\n- **Dealer Schedule** — total appointments per day / per slot at the dealer level\n- **Individual (Advisor) Schedule** — per-advisor daily / slot limits\n- **Transport Options → Transport Option Availability Management** — per-transport-option Total and Online Reserve limits\n- **Opcodes → Daily Limits** — per-opcode daily caps\n- **Capacity Rules** — custom rules that layer additional constraints (e.g., \"max 2 Taycan appointments per day\")\n\nThe setting that produces the lowest remaining count is the **limiting factor** for a given booking attempt.",
+    "tier": "manager",
     "topic": "capacity"
   },
   {
-    "id": "capacity.can-i-set-weekly-capacity-limits",
-    "question": "Can I set weekly capacity limits?",
-    "answer": "No, the capacity rule system does NOT support 'Week' as a PER interval. You can only set limits PER Day, PER Hour, PER Multi-Slot, or PER Advisor. If you need to control weekly capacity, you have two workarounds: 1) Set daily limits that average to your weekly goal (e.g., if you want max 100 per week, set 20 per day for 5 working days), 2) Use the individual advisor schedule to block specific days entirely. The system calculates capacity on a day-by-day basis, not across weeks.",
-    "tier": "base",
+    "id": "capacity.what-is-capacity-rule",
+    "question": "What is a capacity rule?",
+    "answer": "A capacity rule is a custom cap you define in **Settings → Appointments → Capacity Rules** using IF / THEN / PER logic.\n\nShape: **IF** some condition matches, **THEN** limit total appointments (or service hours) to X **PER** Day / Hour / Slot.\n\nExample: *IF Vehicle Make In Porsche AND Vehicle Model In Taycan, THEN Total Appointment <= 2 PER Day.*\n\nCapacity rules layer on top of other capacity sources (dealer schedule, advisor schedule, transport options). The effective limit is the minimum across all of them.\n\n**Important:** Capacity rules MUST include at least one applicability condition — one of **Date**, **Day**, **Date and Time**, or **Day and Time**. Without that, the rule won't save (validation error).",
+    "tier": "manager",
     "topic": "capacity"
   },
   {
-    "id": "capacity.how-do-capacity-rules-work",
-    "question": "How do capacity rules work?",
-    "answer": "Capacity rules restrict appointment counts using IF-THEN logic. Structure: 1) IF conditions (Date/Time, Team, Advisor, Transport Option, Opcode, Vehicle details), 2) THEN restriction (Total Appointments <= X, Total Service Hours <= X), 3) PER interval (Day, Hour, Multi-Slot, Advisor). Example: 'IF Transport Option = Loaner AND Team = Main Shop THEN Total Appointments <= 30 PER Day'. Multiple conditions can be joined with AND - all must be true for the rule to apply.",
-    "tier": "base",
+    "id": "capacity.where-to-find",
+    "question": "Where do I find Capacity Rules settings?",
+    "answer": "Go to **Settings → Appointments → Capacity Rules**.\n\n**The page shows:**\n- A search box\n- **FILTER** button (top right)\n- **+ ADD RULE** button (top right)\n- A table with columns: **Rule Name**, **If**, **Then**, **Active?** (sortable via arrows), plus a copy icon per row\n- Pagination at the bottom right\n\nExample row: *Taycan Limit | Vehicle Make In Porsche And Vehi... | Total Appointment <= 2 Per Day | Active*\n\nClick a rule name to edit it, the copy icon to duplicate. Access requires General Settings authority.",
+    "tier": "manager",
     "topic": "capacity"
   },
   {
-    "id": "capacity.how-do-i-allow-unlimited-capacity",
-    "question": "How do I allow unlimited capacity?",
-    "answer": "To allow unlimited appointments: 1) Remove any capacity rules that restrict that entity, 2) Set high limits (like 999) in dealer/individual schedules, 3) Set high limits for transport options. Note: True 'unlimited' isn't recommended as it can cause overbooking. The system uses a very large number (Double.MAX_VALUE) internally to represent 'no limit set'. You'll see this as scientific notation (1.79e+308) in the response.",
-    "tier": "base",
+    "id": "capacity.add-rule-dialog",
+    "question": "How do I add a capacity rule?",
+    "answer": "On **Settings → Appointments → Capacity Rules**, click **+ ADD RULE** (top right).\n\nThe **Add Rule** dialog opens with these fields:\n\n- **RULE NAME** — required, free text (e.g., `Taycan Limit`, `Max Loaners Friday`)\n- **IF** — *Select category* dropdown (see the IF categories article for the full list)\n- **THEN** — *Select category* dropdown + *Select operator* + *Value* input + *Select Duration* (PER) dropdown\n- **Activate Rule** — toggle (ON = rule is enforced immediately, OFF = rule saves as inactive)\n- **CANCEL** / **SUBMIT** buttons at the bottom (SUBMIT stays disabled until both IF and THEN are fully filled in)\n\n**Required:** The rule must include at least one applicability condition (Date, Day, Date and Time, or Day and Time) in the IF clause — otherwise the SUBMIT button stays disabled or you get a validation error.\n\nClick **SUBMIT** when everything is filled in; the new rule appears in the table.",
+    "tier": "manager",
     "topic": "capacity"
   },
   {
-    "id": "capacity.how-do-i-create-a-capacity-rule",
-    "question": "How do I create a capacity rule?",
-    "answer": "To create a capacity rule: 1) Go to Settings > Capacity Rules, 2) Click '+ Add Rule', 3) Define IF conditions - choose category (Date, Team, Transport Option, Opcode, etc.), operator (in, not in, on, between), and values, 4) Use AND to add multiple conditions, 5) Define THEN clause - what to restrict (Total Appointments, Service Hours) and the limit (e.g., <= 30), 6) Set PER interval (Day, Hour, Advisor), 7) Click Continue, verify summary, then Save Rule to activate.",
-    "tier": "base",
-    "topic": "capacity"
-  },
-  {
-    "id": "capacity.how-do-i-increase-capacity-limited-by-a-capacity-r",
-    "question": "How do I increase capacity limited by a capacity rule?",
-    "answer": "To increase capacity limited by a capacity rule: 1) Go to Settings > Capacity Rules, 2) Find the rule (name shown in limitInfo details field), 3) Click Edit, 4) In the THEN clause, increase the limit value (e.g., change <= 30 to <= 50), 5) Save the rule. The change takes effect immediately for new capacity calculations.",
-    "tier": "base",
-    "topic": "capacity"
-  },
-  {
-    "id": "capacity.how-do-i-increase-operation-opcode-capacity-limit",
-    "question": "How do I increase operation/opcode capacity limit?",
-    "answer": "Opcode capacity can be configured in TWO places:\n\n**Option 1: Direct Daily Limits (Scheduler Plus)**\n1. Go to Settings \u2192 Appointments \u2192 Opcodes and Dealer Menus\n2. Search for the specific opcode or click 'Add New'\n3. Scroll to the bottom of the opcode settings\n4. Set the 'Daily Limit' value for that opcode\n5. Save - this limits how many times this service can be booked per day\n\n**Option 2: Capacity Rules (for complex scenarios)**\n1. Go to Settings \u2192 Appointments \u2192 Capacity Rules\n2. Create a rule with IF condition matching the opcode/skill\n3. Set THEN clause with the limit (e.g., Total Appointments <= X)\n4. Use PER interval (Day, Hour, Slot) as needed\n\n**When to use which:**\n- Use Option 1 for simple daily limits per opcode\n- Use Option 2 for complex scenarios: specific dates, specific slots, day-of-week restrictions, or combining with other conditions (teams, advisors, etc.)",
-    "tier": "base",
-    "topic": "capacity"
-  },
-  {
-    "id": "capacity.what-are-the-if-categories-in-capacity-rules",
+    "id": "capacity.if-categories",
     "question": "What are the IF categories in capacity rules?",
-    "answer": "IF categories define when a capacity rule applies: Date/Date and Time/Day (calendar triggers), Time/Hour/Multi-Slot (time-based), Department/Team/Advisor (organizational), Transport Option (Loaner, Shuttle, etc.), Source/Priority/Customer Type (booking origin), Vehicle Model/Year/VIN (vehicle criteria), OP Code/Service Group/Skill (service type). Use AND to combine multiple conditions.",
-    "tier": "base",
+    "answer": "The IF *Select category* dropdown in the Add Rule dialog has 14 options:\n\n**Applicability (at least one is required):**\n- **Date** — specific calendar date(s)\n- **Date and Time** — specific date + time window\n- **Day** — day of week (Mon/Tue/etc.)\n- **Day and Time** — day of week + time window\n\n**Appointment / vehicle attributes:**\n- **Opcodes** — the service selected (e.g., only applies to oil changes)\n- **Recall** — a specific OEM recall campaign\n- **Service Advisor** — the assigned advisor\n- **Skill** — advisor skill requirement\n- **Source** — booking channel (Web, DMS, Internal, etc.)\n- **Teams** — the assigned team\n- **Transport Option** — e.g., Loaner, Shuttle\n- **Vehicle Make** — e.g., Porsche\n- **Vehicle Year** — e.g., 2024\n- **Vehicle Model** — e.g., Taycan\n\nYou can combine multiple conditions with AND. Make → Year → Model cascades (deleting Make also clears Year and Model).",
+    "tier": "manager",
     "topic": "capacity"
   },
   {
-    "id": "capacity.what-are-the-then-options-in-capacity-rules",
-    "question": "What are the THEN options in capacity rules?",
-    "answer": "THEN options define what gets restricted: Total Appointment (limits count of appointments), Total Service Hours (limits cumulative service duration), Total Wait (limits waiting customers), Total Loaner (limits loaner vehicles). Combined with PER interval: Day (daily limit), Hour (hourly limit), Multi-Slot (across time slots), Advisor (per individual advisor). IMPORTANT: 'Week' is NOT a supported interval - the system only supports Day, Hour, Multi-Slot, and Advisor as PER options.",
-    "tier": "base",
+    "id": "capacity.then-categories",
+    "question": "What are the THEN categories in capacity rules?",
+    "answer": "Capacity rules support two THEN targets:\n\n- **Total Appointment** — count of appointments matching the IF conditions. Use this for \"max N appointments per day/hour/slot.\"\n- **Total Service Hours** — sum of service hours (based on each opcode's Opcode Duration). Use this when you care about shop-floor minutes rather than just appointment count.\n\nBoth always use the `<=` operator with a numeric value and a PER frequency (Day / Hour / Slot).\n\nExamples:\n- `Total Appointment <= 2 Per Day` — max 2 matching appointments per day\n- `Total Service Hours <= 8 Per Day` — max 8 hours of service per day for the matching criteria",
+    "tier": "manager",
     "topic": "capacity"
   },
   {
-    "id": "capacity.what-if-conditions-can-assignment-rules-use",
-    "question": "What IF conditions can assignment rules use?",
-    "answer": "Assignment rule IF categories: Appointment Duration, Opcodes, Opcode Duration, Recall, Skill (service details); Customer Name/Email/Phone (customer info); Vehicle Make/Year/Model (vehicle details); API/DealerApp/DMS/Mobile/Web (booking source); Service Advisor/Teams/Transport Option (current assignments). Operators include >, >=, <, <=, =, in, not in, in any.",
-    "tier": "base",
-    "topic": "capacity"
-  },
-  {
-    "id": "capacity.what-is-a-conflicting-assignment-rule",
-    "question": "What is a conflicting assignment rule?",
-    "answer": "A conflict happens when two or more assignment rules can match the same request (overlapping IF conditions), but they produce different outcomes (different THEN actions).\n\n**CRITICAL: There is NO priority system for assignment rules. Conflicts mean scheduling will break entirely.**\n\n**Example:**\n- Rule 1: IF op_code in {A, B, C} \u2192 assign Team A\n- Rule 2: IF op_code in {A} \u2192 assign Team B\n- For op_code = A: Both rules match, but recommend different teams \u2192 CONFLICT!\n\n**Conflict Types:**\n1. **Overlap conflict** (most common): Partial overlap in IF conditions\n2. **Exact duplicate**: Same IF conditions, different THEN actions\n3. **Opposite action**: One rule assigns, another blocks the same entity\n\n**Detection:**\nWhen you fetch assignment rules using get_rules, the system will automatically detect and flag any conflicts.",
-    "tier": "base",
-    "topic": "capacity"
-  },
-  {
-    "id": "capacity.what-operators-can-i-use-in-capacity-rules",
+    "id": "capacity.operators",
     "question": "What operators can I use in capacity rules?",
-    "answer": "Capacity rule operators: 'on' (matches specific day), 'in between' (range between two dates), 'on or after' (starting date and forward), 'in' (contains value), 'not in' (excludes value), 'in any' (matches any of selected values), '<=' (less than or equal - used for setting limits). These operators let you precisely define when rules apply.",
-    "tier": "base",
+    "answer": "Operators depend on the category:\n\n**Set-based categories** (Opcodes, Teams, Transport Option, Vehicle Make, Model, Source, Skill, Recall, Service Advisor):\n- **in** — value must be IN the selected list\n- **not in** — value must NOT be in the selected list\n- **in any** — matches if ANY of the values in the list match\n\n**Numeric / scalar categories** (Vehicle Year, Appointment Duration):\n- **=**, **!=**, **<**, **<=**, **>**, **>=**\n\n**Date category:**\n- **on** — specific date\n- **in between** — date range\n- **on or after** — from a date forward\n\n**Day category:** **on** (matching weekday)\n\n**Date and Time / Day and Time:** same as their base, with a time window added\n\n**THEN clause:** always `<=` — you can only cap, not require a minimum.",
+    "tier": "manager",
     "topic": "capacity"
   },
   {
-    "id": "capacity.what-s-the-difference-between-capacity-rules-and-a",
-    "question": "What's the difference between capacity rules and assignment rules?",
-    "answer": "Capacity Rules limit VOLUME - how many appointments can be booked (e.g., 'max 5 oil changes per hour'). Assignment Rules control ROUTING - which options are available (e.g., 'oil changes only go to Express Team'). Think: Capacity = 'how many', Assignment = 'who/where'. A user might not be able to book because either: the capacity is full (capacity rule) OR the advisor/team isn't assigned to handle that service (assignment rule).",
-    "tier": "base",
+    "id": "capacity.per-duration",
+    "question": "What are the PER Duration options in capacity rules?",
+    "answer": "The PER (Select Duration) dropdown in the THEN clause has three options:\n\n- **Day** — cap applies over a full calendar day (e.g., max 2 Taycan appointments per day)\n- **Hour** — cap applies per hour (e.g., max 3 oil changes per hour)\n- **Slot** — cap applies per scheduling slot (10 / 15 / 30 min — whatever your slot size is set to)\n\n**Weekly limits are NOT supported.** If you need to limit per week, work around it by setting daily limits that sum to your target (e.g., 10 per week ≈ 2 per day Mon-Fri).\n\nPick the granularity that matches how you think about the constraint — shop-floor bottlenecks are usually per-hour or per-slot; customer-facing limits (max X loaners) are usually per-day.",
+    "tier": "manager",
     "topic": "capacity"
   },
   {
-    "id": "capacity.where-do-i-find-capacity-rules-settings",
-    "question": "Where do I find capacity rules settings?",
-    "answer": "To access capacity rules: Settings (gear icon) > Capacity Rules. You'll see a list of all rules with their status (Active/Inactive), name, and summary. Click '+ Add Rule' to create new, or click an existing rule to edit. The Rules tab may also be called 'Rules Management' in some versions.",
-    "tier": "base",
+    "id": "capacity.applicability-required",
+    "question": "Why does my capacity rule fail to save with an applicability error?",
+    "answer": "Every capacity rule must include at least one of these IF conditions:\n\n- **Date**\n- **Day**\n- **Date and Time**\n- **Day and Time**\n\nIf your IF clause only has things like Vehicle Make, Transport Option, or Opcodes (but no time applicability), the **SUBMIT** button stays disabled or the rule errors on save.\n\n**Fix:** Add at least one of the four applicability conditions. If your rule should apply every day, use `Day in [Mon, Tue, Wed, Thu, Fri, Sat, Sun]` as the applicability condition.\n\nExample — capping Porsche Taycans at 2 per day every day:\n- IF: Vehicle Make in Porsche AND Vehicle Model in Taycan AND Day in [Sun–Sat]\n- THEN: Total Appointment <= 2 Per Day\n- Activate Rule: ON",
+    "tier": "manager",
+    "topic": "capacity"
+  },
+  {
+    "id": "capacity.activate-toggle",
+    "question": "What does the Activate Rule toggle do?",
+    "answer": "The **Activate Rule** toggle in the Add / Edit Rule dialog controls whether the rule enforces immediately after saving.\n\n- **ON (Active)** — the rule is enforced as soon as you submit; bookings that match start getting capped\n- **OFF (Inactive)** — the rule is saved to the system but does nothing. Useful for drafting rules ahead of a busy season or testing before rollout.\n\nThe **Active?** column in the rules table reflects this state. Click the rule to reopen the dialog and toggle it without losing any other configuration.\n\nInactive rules do not count against other rules for conflict detection — they're essentially dormant.",
+    "tier": "manager",
+    "topic": "capacity"
+  },
+  {
+    "id": "capacity.duplicate-rule",
+    "question": "How do I duplicate a capacity rule?",
+    "answer": "In the rules table on **Settings → Appointments → Capacity Rules**, each row has a **copy** icon on the right.\n\nClick it → a new rule is created with the same IF / THEN / PER settings and a name suffixed for uniqueness. Edit the name and any fields you want to change, then save.\n\nUseful when you have a rule that almost fits your need — e.g., you have a \"Max 2 Loaners Mon\" rule and want the same for Tue-Fri with individual tuning.",
+    "tier": "manager",
+    "topic": "capacity"
+  },
+  {
+    "id": "capacity.deactivate-rule",
+    "question": "Can I delete a capacity rule?",
+    "answer": "Rules are typically **deactivated** rather than hard-deleted. Deactivation is safer and reversible:\n\n1. Open the rule (click its name)\n2. Toggle **Activate Rule** → OFF\n3. Click **SUBMIT**\n\nThe rule stays in the table but stops enforcing. Re-toggle to ON to reactivate without reconfiguring anything.\n\nIf a direct delete action is available in your version (trash icon on the edit dialog), it removes the rule permanently. Existing bookings made while the rule was active are not retroactively changed.\n\n**Recommended:** deactivate → watch for a week → only hard-delete if you're sure the rule isn't coming back.",
+    "tier": "manager",
+    "topic": "capacity"
+  },
+  {
+    "id": "capacity.common-example-max-loaners",
+    "question": "Example: how do I set a rule for max 3 loaners per day?",
+    "answer": "On **Settings → Appointments → Capacity Rules**, click **+ ADD RULE**:\n\n- **RULE NAME:** `Max 3 Loaners Per Day`\n- **IF** (add two rows via + button):\n  - `Transport Option` → `in` → select `Loaner` (or your custom Courtesy Vehicle option)\n  - `Day` → `on` → select all 7 days (required applicability condition — so the rule applies every day)\n- **THEN:**\n  - `Total Appointment` → `<=` → `3`\n  - **PER:** `Day`\n- **Activate Rule:** ON\n- Click **SUBMIT**\n\nThis caps loaner appointments at 3 across your whole dealership per day. For per-advisor caps, add `Service Advisor in [name]` to the IF and create one rule per advisor.",
+    "tier": "manager",
+    "topic": "capacity"
+  },
+  {
+    "id": "capacity.common-example-block-day",
+    "question": "Example: how do I block all appointments on a specific date (holiday)?",
+    "answer": "**Preferred approach:** use the **Dealer Schedule** page (Settings → Appointments → Dealer Schedule) → set max appointments to 0 for that date in the Date Specific Time Blocks tab. That's simpler than a capacity rule.\n\n**If you must use a capacity rule:**\n- **RULE NAME:** `Block Christmas Day`\n- **IF:** `Date` → `on` → `12/25/2026`\n- **THEN:** `Total Appointment` → `<=` → `0`\n- **PER:** `Day`\n- **Activate Rule:** ON\n- **SUBMIT**\n\nA 0-limit rule effectively closes the day. Same pattern for ranges (use `Date` → `in between` with start + end dates).",
+    "tier": "manager",
+    "topic": "capacity"
+  },
+  {
+    "id": "capacity.common-example-per-advisor-transport",
+    "question": "Example: how do I limit a specific advisor to max N loaners per day?",
+    "answer": "Use a capacity rule combining transport option + advisor:\n\n- **RULE NAME:** `Donald Max 3 Loaners`\n- **IF** (three rows):\n  - `Transport Option` → `in` → `Loaner`\n  - `Service Advisor` → `in` → `Donald`\n  - `Day` → `on` → all 7 days (required applicability)\n- **THEN:**\n  - `Total Appointment` → `<=` → `3`\n  - **PER:** `Day`\n- **Activate Rule:** ON\n- **SUBMIT**\n\nThis is the ONLY way to set per-advisor transport-option limits — the Transport Options page only supports dealer-wide caps. Repeat the rule per advisor who needs a limit.",
+    "tier": "manager",
+    "topic": "capacity"
+  },
+  {
+    "id": "capacity.multiple-rules-combine",
+    "question": "How do multiple capacity rules combine?",
+    "answer": "Capacity rules combine by **taking the minimum**. Every rule that matches a given booking attempt is enforced; the lowest remaining capacity across all matching rules is the effective limit.\n\nExample with two rules:\n- Rule A: IF Transport Option in Loaner, THEN Total Appointment <= 3 Per Day\n- Rule B: IF Vehicle Make in Porsche, THEN Total Appointment <= 2 Per Day\n\nA Porsche customer requesting a loaner hits BOTH rules. Effective cap = min(3, 2) = 2 per day.\n\nSame logic when a rule conflicts with dealer schedule, individual advisor schedule, transport option limit, or opcode daily limit — whichever is lowest wins.\n\n**There is no priority system.** If you need mutually exclusive logic (A OR B), design IF conditions so only one rule matches each booking attempt.",
+    "tier": "manager",
+    "topic": "capacity"
+  },
+  {
+    "id": "capacity.limiting-factor",
+    "question": "How do I tell which capacity rule or setting is blocking a booking?",
+    "answer": "A few approaches, in order of ease:\n\n1. **Capacity Dashboard** (Settings → Appointments → Capacity Dashboard if enabled) — shows per-slot capacity breakdown and labels the limiting factor\n2. **Chatbot** — ask \"Why can't I book X on Y?\" — the get_capacity tool returns limit info including the limiting factor type (dealer schedule / individual / capacity rule / transport option / opcode)\n3. **Rules table filter** — filter Capacity Rules by the IF conditions matching your booking (transport, make, advisor)\n4. **Temporary disable** — toggle rules Inactive one by one to isolate the culprit; reactivate after testing\n\nCommon culprits: a capacity rule with 0 limit, a dealer schedule closure on that date, a depleted Online Reserve on the transport option, an opcode daily limit already hit, or an advisor's individual schedule showing no availability.",
+    "tier": "manager",
     "topic": "capacity"
   }
 ]

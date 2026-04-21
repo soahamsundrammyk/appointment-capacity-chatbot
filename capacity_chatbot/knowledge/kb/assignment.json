@@ -1,23 +1,86 @@
 [
   {
-    "id": "assignment.how-do-i-create-an-assignment-rule",
-    "question": "How do I create an assignment rule?",
-    "answer": "To create an assignment rule: 1) Go to Settings > Assignment Rules, 2) Click '+ Add Rule', 3) Name your rule descriptively, 4) Define IF conditions - select category (Opcode Duration, Vehicle Make, Source, etc.), operator (<=, in, not in), and values, 5) Define THEN restriction - what's allowed (Teams, Advisors, Transport Options), 6) Use AND to add multiple conditions, 7) Ensure 'Activate Rule' toggle is ON, 8) Save.",
-    "tier": "base",
+    "id": "assignment.what-is-assignment-rule",
+    "question": "What is an assignment rule?",
+    "answer": "An assignment rule routes appointments to the right resources (teams, advisors, skills) or restricts which transport options / opcodes / recalls are allowed based on matching criteria.\n\nShape: **IF** some condition matches, **THEN** assign to (or restrict to) a specific resource or attribute.\n\nExamples:\n- *IF Transport Option in Loaner, THEN Service Advisor in [Donald, Maria]* — route loaner appointments to these two advisors\n- *IF Vehicle Make in Porsche, THEN Teams in [Porsche Main]* — Porsche vehicles always go to the Porsche team\n- *IF Customer = Paul Crenshaw, THEN Transport Option NOT in Courtesy Vehicle* — specific customer can't book a loaner\n\nUnlike capacity rules, assignment rules are **routing / restriction** logic — they don't cap appointment counts, they shape WHICH resource can handle an appointment or WHICH options are available for it.",
+    "tier": "manager",
     "topic": "assignment"
   },
   {
-    "id": "assignment.how-do-i-fix-conflicting-assignment-rules",
-    "question": "How do I fix conflicting assignment rules?",
-    "answer": "To resolve conflicting assignment rules:\n\n**Step 1: Identify the overlap**\n- Note which rules share overlapping IF conditions\n- Identify what values/inputs trigger both rules\n\n**Step 2: Decide the correct business logic**\n- Determine which rule should apply for overlapping cases\n- Example: Should op_code A go to Team A or Team B?\n\n**Step 3: Modify rules to remove overlap**\n\n**Option A - Make conditions mutually exclusive:**\n- Rule 1: IF op_code in {B, C} \u2192 Team A (remove A from list)\n- Rule 2: IF op_code in {A} \u2192 Team B\n\n**Option B - Merge into single rule:**\n- Delete one rule\n- Update the other to cover all needed cases\n\n**Option C - Add differentiating conditions:**\n- Use AND conditions to make rules more specific\n- Example: IF op_code = A AND source = Online \u2192 Team B\n- Example: IF op_code = A AND source = DealerApp \u2192 Team A\n\n**Step 4: Verify**\nGo to Settings \u2192 Assignment Rules, edit the conflicting rules, and test that scheduling works for previously conflicting scenarios.",
-    "tier": "base",
+    "id": "assignment.capacity-vs-assignment",
+    "question": "What's the difference between capacity rules and assignment rules?",
+    "answer": "They answer different questions.\n\n**Capacity rules** = \"How MANY can we do?\"\n- Shape: IF conditions THEN **Total Appointment / Total Service Hours** <= N PER Day/Hour/Slot\n- Output: a numeric cap\n- Combines with other capacity sources by taking the minimum\n- Requires at least one applicability condition (Date/Day/Date+Time/Day+Time)\n\n**Assignment rules** = \"WHO / WHICH handles it?\"\n- Shape: IF conditions THEN **routing target** (Teams, Service Advisor, Skill, Transport Option, Opcodes, Recall) `in` / `not in` a list\n- Output: a match/mismatch decision\n- No PER clause, no applicability requirement\n- Used for routing (e.g., send Porsche to Porsche team) and restriction (e.g., VIP customers can't get loaners)\n\nBoth live in the same Rules structure but serve different purposes. You typically need both — assignment to route the work, capacity to limit its volume.",
+    "tier": "manager",
     "topic": "assignment"
   },
   {
-    "id": "assignment.where-do-i-find-assignment-rules-settings",
-    "question": "Where do I find assignment rules settings?",
-    "answer": "To access assignment rules: Settings > Assignment Rules. Similar layout to capacity rules - you'll see a list of all assignment rules. Click '+ Add Rule' to create new ones. Remember: assignment rules control which options are AVAILABLE (filtering), while capacity rules control how MANY (limiting).",
-    "tier": "base",
+    "id": "assignment.where-to-find",
+    "question": "Where do I find Assignment Rules settings?",
+    "answer": "Go to **Settings → Appointments → Assignment Rules**.\n\n**The page shows:**\n- A search box\n- **FILTER** button (top right)\n- **+ ADD RULE** button (top right)\n- A table with columns: **Rule Name**, **If**, **Then**, **Active?** (sortable), plus a copy icon per row\n- Pagination at the bottom right\n\nExample row: *Block Paul Crenshaw For Loaner | Customer = Paul Crenshaw, Paul C... | Transport Option Not In Courtesy... | Active*\n\nClick a rule name to edit. Access requires General Settings authority (typically service managers).",
+    "tier": "manager",
+    "topic": "assignment"
+  },
+  {
+    "id": "assignment.add-rule-dialog",
+    "question": "How do I add an assignment rule?",
+    "answer": "On **Settings → Appointments → Assignment Rules**, click **+ ADD RULE** (top right).\n\nThe **Add Rule** dialog opens with these fields:\n\n- **RULE NAME** — required, free text\n- **IF** — *Select category* dropdown (see the IF categories article)\n- **THEN** — *Select category* dropdown (see the THEN categories article — different from capacity rules)\n- **Activate Rule** — toggle (ON = rule enforces immediately)\n- **CANCEL** / **SUBMIT** buttons\n\n**Important differences from capacity rules:**\n- **No PER / Duration / Value fields** — assignment rules don't count, they route\n- **No applicability requirement** — you don't need Date/Day conditions; the rule applies to every matching booking\n\nClick **SUBMIT** when IF and THEN are both filled in.",
+    "tier": "manager",
+    "topic": "assignment"
+  },
+  {
+    "id": "assignment.if-categories",
+    "question": "What are the IF categories in assignment rules?",
+    "answer": "The IF *Select category* dropdown in the Add Rule dialog (Assignment Rules) has 15 options:\n\n**Customer attributes:**\n- **Customer** — specific customer\n- **Customer Email** — match by email\n- **Customer Phone** — match by phone\n\n**Appointment attributes:**\n- **Appointment Duration** — total length of the appointment in minutes\n- **Opcode Duration** — the longest opcode duration in the appointment\n- **Opcodes** — which services\n- **Recall** — specific OEM campaign\n- **Source** — booking channel (Web, DMS, Internal, etc.)\n- **Transport Option** — e.g., Loaner, Shuttle\n\n**Resource attributes:**\n- **Service Advisor** — the assigned advisor\n- **Skill** — advisor skill requirement\n- **Teams** — the assigned team\n\n**Vehicle attributes:**\n- **Vehicle Make**, **Vehicle Year**, **Vehicle Model**\n\nNote: assignment rules have more customer-facing IF options (Customer, Email, Phone, Appointment Duration, Opcode Duration) than capacity rules do.",
+    "tier": "manager",
+    "topic": "assignment"
+  },
+  {
+    "id": "assignment.then-categories",
+    "question": "What are the THEN categories in assignment rules?",
+    "answer": "The THEN *Select category* dropdown in the Add Rule dialog (Assignment Rules) has 6 options:\n\n- **Opcodes** — restrict which opcodes can be used for this appointment\n- **Recall** — limit which OEM campaigns apply\n- **Skill** — require a specific advisor skill\n- **Service Advisor** — route to specific advisor(s)\n- **Teams** — route to specific team(s)\n- **Transport Option** — restrict which transport options are available\n\nEach supports the `in` / `not in` / `in any` operators followed by a value list.\n\n**Common patterns:**\n- **Route to team:** THEN Teams `in` [Porsche Team] — Porsche makes always land with the Porsche team\n- **Restrict transport:** THEN Transport Option `not in` [Loaner] — certain customers can't get loaners\n- **Require skill:** THEN Skill `in` [Transmission Specialist] — certain services require a specialist\n- **Route to advisor:** THEN Service Advisor `in` [Donald, Maria] — loaners go to these two only",
+    "tier": "manager",
+    "topic": "assignment"
+  },
+  {
+    "id": "assignment.operators",
+    "question": "What operators do assignment rules use?",
+    "answer": "Assignment rules use the same operators as capacity rules, applied to list-based matching:\n\n- **in** — attribute must be in the selected list\n- **not in** — attribute must NOT be in the selected list\n- **in any** — matches if any of the selected values apply\n- **=** / **!=** — for Customer fields (exact match on one email / phone / customer)\n- **<**, **<=**, **>**, **>=**, **=** — for numeric categories (Appointment Duration, Opcode Duration, Vehicle Year)\n\nThere's no `<=` capacity style because assignment rules don't cap — they match or don't match.\n\n**Combining:** multiple IF conditions on the same rule combine with AND — all must match for the rule to apply.",
+    "tier": "manager",
+    "topic": "assignment"
+  },
+  {
+    "id": "assignment.conflicting-rules",
+    "question": "What is a conflicting assignment rule and how do I fix it?",
+    "answer": "A conflict happens when two or more assignment rules match the same appointment but produce contradictory THEN actions.\n\n**Critical:** there is NO priority system for assignment rules. Conflicts cause scheduling to break.\n\n**Examples of conflicts:**\n- **Overlap (most common):** Rule 1: IF Opcodes in [A, B, C] → Teams in [Team A]. Rule 2: IF Opcodes in [A] → Teams in [Team B]. For opcode A, both rules match with different teams — conflict.\n- **Duplicate IF / different THEN:** Two rules with identical IF but different THEN routing.\n- **Opposite action:** One rule routes to Team A; another blocks routing to Team A for the same IF.\n\n**Fix:**\n1. **Narrow IF conditions** so only one rule matches each appointment (add a differentiator — make, transport option, day-of-week)\n2. **Merge rules** with the same intent into one — multiple THEN routes can share an IF if the list is the same\n3. **Delete or deactivate** the conflicting rule\n\n**Detection:** When the chatbot's get_rules tool is invoked, it flags conflicts so you can see which rules overlap.",
+    "tier": "manager",
+    "topic": "assignment"
+  },
+  {
+    "id": "assignment.common-example-make-to-team",
+    "question": "Example: how do I route Porsche vehicles to the Porsche team?",
+    "answer": "On **Settings → Appointments → Assignment Rules**, click **+ ADD RULE**:\n\n- **RULE NAME:** `Porsche → Porsche Team`\n- **IF:** `Vehicle Make` → `in` → `Porsche`\n- **THEN:** `Teams` → `in` → `Porsche Team`\n- **Activate Rule:** ON\n- Click **SUBMIT**\n\nAny appointment where the vehicle make is Porsche will now only be assignable to the Porsche Team. If a customer books a Porsche on the online scheduler, they'll only see Porsche Team advisors / slots.\n\nFor the inverse (no Porsches go to generic teams), add: THEN Teams `not in` [Generic Service Team].",
+    "tier": "manager",
+    "topic": "assignment"
+  },
+  {
+    "id": "assignment.common-example-block-loaner-customer",
+    "question": "Example: how do I prevent a specific customer from booking a loaner?",
+    "answer": "Useful for customers who've had issues with loaner returns.\n\nOn **Settings → Appointments → Assignment Rules**, click **+ ADD RULE**:\n\n- **RULE NAME:** `Block Paul Crenshaw For Loaner`\n- **IF:** `Customer` → `=` → `Paul Crenshaw`\n- **THEN:** `Transport Option` → `not in` → `Courtesy Vehicle` (or your loaner label)\n- **Activate Rule:** ON\n- **SUBMIT**\n\nThe customer will no longer see Courtesy Vehicle as a transport option when booking (online or via an advisor in the DealerApp).\n\nTo scale: use multiple `Customer` conditions with `in` instead of `=`, or use `Customer Email` / `Customer Phone` to match a broader pattern.",
+    "tier": "manager",
+    "topic": "assignment"
+  },
+  {
+    "id": "assignment.common-example-skill-routing",
+    "question": "Example: how do I route transmission services to an advisor with transmission skill?",
+    "answer": "On **Settings → Appointments → Assignment Rules**, click **+ ADD RULE**:\n\n- **RULE NAME:** `Transmission work → Transmission Skill`\n- **IF:** `Opcodes` → `in` → [list your transmission opcodes]\n- **THEN:** `Skill` → `in` → `Transmission`\n- **Activate Rule:** ON\n- **SUBMIT**\n\nNow transmission-category appointments can only be assigned to advisors tagged with the Transmission skill (skills are set per-advisor in Users management).\n\nSame pattern for other specialty categories — diesel, hybrid, electric vehicles, brake work — configure skill tags on advisors first, then use assignment rules to route.",
+    "tier": "manager",
+    "topic": "assignment"
+  },
+  {
+    "id": "assignment.activate-toggle",
+    "question": "What does the Activate Rule toggle do on an assignment rule?",
+    "answer": "Same semantics as capacity rules:\n\n- **ON (Active)** — rule enforces immediately after submit\n- **OFF (Inactive)** — rule is saved but dormant; has no effect on routing\n\nUse Inactive to draft rules before going live, test without impact, or temporarily pause a rule without losing its config.\n\nThe **Active?** column on the Assignment Rules table shows the current state.",
+    "tier": "manager",
     "topic": "assignment"
   }
 ]
