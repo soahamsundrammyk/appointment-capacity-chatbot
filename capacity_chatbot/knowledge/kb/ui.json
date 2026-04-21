@@ -1,0 +1,23 @@
+[
+  {
+    "id": "ui.enable-new-appointment-card",
+    "question": "How do I enable the new appointment card design for a dealer?",
+    "answer": "The redesigned appointment card (with configurable field display and modern styling) is gated by a dealer-level DSO — only myKaarma staff can toggle it.\n\n**DSO key:** `appointments.newappointmentcard.enable`\n\n**Steps (Admin Tool):**\n1. Go to **Admin Tool → Dealers → [dealer] → DSOs**\n2. Search for `appointments.newappointmentcard.enable`\n3. Set value to `true`\n4. Save\n\nUsers at that dealer will see the new card design after a page refresh. To revert, set the DSO back to `false`.\n\nNote: this is myKaarma-internal only. Dealer managers do not have self-admin access to this DSO.",
+    "tier": "internal",
+    "topic": "ui"
+  },
+  {
+    "id": "ui.enable-desktop-checkin",
+    "question": "How do I enable Desktop Check-In for a dealer?",
+    "answer": "Desktop Check-In adds a Check-In Status column and the in-app check-in flow to the Appointments tab. It requires both a DSO and per-user authorities.\n\n**1. Enable the DSO (myKaarma-internal):**\n- DSO key: `appointments.desktop.checkin.enable`\n- Admin Tool → Dealers → [dealer] → DSOs → set to `true`\n\n**2. Grant the authority to users who should use check-in:**\n- Authority: `appointments.desktop.checkin.enable`\n- Admin Tool → Users → Authorities\n\nWithout the DSO, even users with the authority won't see check-in. Without the authority, users will see the column but cannot initiate a check-in.\n\nAlso verify the dealer has the required DMS integration configured (Reynolds/CDK/ADP) — check-in relies on DMS RO data.",
+    "tier": "internal",
+    "topic": "ui"
+  },
+  {
+    "id": "ui.enable-text-automation-status",
+    "question": "How do I enable text automation status changes for a dealer?",
+    "answer": "Text automation expands the available appointment statuses (Confirmed, Rescheduling Requested, Cancellation Requested) driven by the customer's SMS replies to reminders.\n\n**DSO key:** `appointments.textautomationapptstatus.scheduling`\n\n**Steps (Admin Tool):**\n1. Admin Tool → Dealers → [dealer] → DSOs\n2. Search for `appointments.textautomationapptstatus.scheduling`\n3. Set value to `true`\n4. Save\n\nOnce enabled, the Status dropdown on appointments will include the automation-driven statuses. Dealer must also have SMS communication enabled.\n\nThis is a myKaarma-internal setting — managers cannot self-serve it via the Admin Tool's self-admin interface.",
+    "tier": "internal",
+    "topic": "ui"
+  }
+]

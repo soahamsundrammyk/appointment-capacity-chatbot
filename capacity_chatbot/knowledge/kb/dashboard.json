@@ -1,0 +1,170 @@
+[
+  {
+    "id": "dashboard.calendar-views-explained",
+    "question": "What are the different calendar views in the Appointments tab?",
+    "answer": "The Appointments tab has two **primary** views and several **secondary** views:\n\n**Primary views** (toggle at the top):\n- **Calendar** — grid showing appointments over time\n- **Ledger** — table/list view of appointments\n\n**Calendar secondary views** (grouping the grid by):\n- **Advisor View** — columns are advisors; see each advisor's load\n- **Team View** — columns are teams\n- **All Appointments View** — flat grid, all appointments together\n- **Team + Advisor View** — teams with advisors nested under\n\n**Date range selector** (left panel): Day, Week, Month, Custom range, or All Future.\n\nYour default views are saved per user, so whatever you last picked is what you'll see next time.",
+    "tier": "base",
+    "topic": "dashboard"
+  },
+  {
+    "id": "dashboard.advisor-vs-team-view",
+    "question": "What's the difference between Advisor View and Team View?",
+    "answer": "Both are secondary calendar/ledger layouts:\n\n- **Advisor View** — each column (or group) is an individual advisor. Use when you want to see each advisor's workload.\n- **Team View** — each column (or group) is a team. Use when you care about whole-team capacity, not who the specific advisor is.\n- **Team + Advisor View** — teams as top-level groups, individual advisors nested under each team. Best for large shops with multiple teams.\n\nSwitch between them using the secondary view toggle next to the primary Calendar/Ledger toggle.",
+    "tier": "base",
+    "topic": "dashboard"
+  },
+  {
+    "id": "dashboard.slot-colors-meaning",
+    "question": "What do the slot colors mean in the calendar?",
+    "answer": "Each time slot in the calendar grid has one of these states:\n\n- **Light / clickable (available)** — open slot; click to start scheduling an appointment\n- **Blocked** — time slot is unavailable (blocked by a capacity rule, schedule, or time block)\n- **Disabled / grayed out** — slot is in the past; cannot schedule\n- **Overbooked (warning indicator)** — the slot's capacity is already full; booking here requires the `appointments.fullslot.warn` or `fullslot.allow` authority\n\nAppointment **cards** on a slot are color-coded by status, not by slot state — see \"What do appointment card colors mean?\" for status colors.",
+    "tier": "base",
+    "topic": "dashboard"
+  },
+  {
+    "id": "dashboard.switch-calendar-ledger",
+    "question": "How do I switch between Calendar view and Ledger view?",
+    "answer": "There's a primary view toggle at the top of the Appointments tab:\n- **Calendar** — grid/time-based view\n- **Ledger** — table of appointments with columns\n\nClick the toggle to switch. Your choice is remembered per user, so you'll come back to the same view next session.",
+    "tier": "base",
+    "topic": "dashboard"
+  },
+  {
+    "id": "dashboard.filter-appointments",
+    "question": "How do I filter appointments in calendar or ledger view?",
+    "answer": "Use the filter bar at the top of the Appointments tab. Available filters:\n\n- **Appointment Date Range** / **Scheduled On Date Range**\n- **Advisor** (multi-select)\n- **Team** (multi-select)\n- **Transport Option** (multi-select)\n- **Source** (multi-select — Web, DMS, Internal, etc.)\n- **Status** (multi-select — options depend on whether text automation is enabled)\n- **Created By** (multi-select)\n- **Repair Concern** (multi-select)\n- **Recall** (multi-select)\n- **Pre-Diag Status** (if Pre-Diag enabled for your dealer)\n- **Check-In Status** (if Desktop Check-In enabled)\n\nFilters apply to both Calendar and Ledger — switching views preserves your active filters.",
+    "tier": "base",
+    "topic": "dashboard"
+  },
+  {
+    "id": "dashboard.slot-unavailable-reason",
+    "question": "Why are some time slots marked unavailable?",
+    "answer": "A slot can be unavailable for several reasons:\n\n1. **Dealer schedule is closed** for that day/time (Settings → Dealer Schedule)\n2. **Individual advisor schedule** is closed (Settings → Individuals)\n3. **A capacity rule** has hit its limit for that slot (Settings → Capacity Rules)\n4. **A time block** restricts transport options during that window (Settings → Transport Options → Time Blocks)\n5. **Holiday / closed date** specifically blocks that day (Settings → Dealer Schedule → selected date override)\n\nClick an unavailable slot (if your version shows a tooltip) — it may display the specific reason. For deeper diagnosis, use the Capacity Dashboard to see which rule or schedule is constraining the slot.",
+    "tier": "base",
+    "topic": "dashboard"
+  },
+  {
+    "id": "dashboard.appointment-card-colors",
+    "question": "What do the appointment card colors mean?",
+    "answer": "Appointment cards in the calendar are color-coded by **status**:\n\n- **Green** — Show (customer showed up / completed)\n- **Red** — No Show\n- **Yellow / amber** — pending confirmation or rescheduling request (text-automation flows)\n- **Gray** — default / scheduled\n- **Other colors** — specific statuses like Confirmed, Cancelled, Updated, Reminder Sent (varies with text automation settings)\n\nThe exact list of status colors depends on whether text automation is enabled for your dealer (DSO `appointments.textautomationapptstatus.scheduling`). Hover the card to see the full status text.",
+    "tier": "base",
+    "topic": "dashboard"
+  },
+  {
+    "id": "dashboard.red-warning-dms-push",
+    "question": "Why is an appointment showing a red warning icon?",
+    "answer": "A red warning on an appointment usually means the appointment **failed to push to your DMS** (e.g., Reynolds, CDK, ADP).\n\n**What it means:** The appointment exists in myKaarma but didn't make it into the DMS, so your advisors looking at the DMS won't see it.\n\n**What to do:**\n1. Click the appointment to see the push failure reason\n2. Common causes: invalid opcode, missing customer data, DMS outage, configuration mismatch\n3. For transient failures, contact myKaarma support with the appointment ID — they can retry the push\n4. For systemic failures (e.g., all appointments failing), it's usually a DMS integration issue and needs engineering\n\nIf you have edit access, you can correct data issues (opcode, customer info) and the system may retry the push automatically.",
+    "tier": "base",
+    "topic": "dashboard"
+  },
+  {
+    "id": "dashboard.customize-card-fields",
+    "question": "How do I customize what fields show on appointment cards?",
+    "answer": "The fields shown on each appointment card in calendar views (Status, Customer Name, Year/Make/Model, Transport Option, etc.) are configurable.\n\nIf your dealer has the new appointment card design enabled (DSO `appointments.newappointmentcard.enable`):\n1. Open the card configuration option (usually via the gear icon near the view toggle)\n2. Check/uncheck the fields you want displayed\n3. Reorder fields by dragging\n4. Save — your preference is stored per user\n\nIf the option isn't visible, the new card design may not be enabled for your dealer — contact myKaarma support to enable it.",
+    "tier": "base",
+    "topic": "dashboard"
+  },
+  {
+    "id": "dashboard.missing-appointments-troubleshoot",
+    "question": "Why don't I see all appointments on my calendar?",
+    "answer": "Most \"missing appointments\" issues trace to one of these:\n\n1. **Active filter** — check the filter bar; a date range, advisor, or status filter may be hiding appointments. Clear all filters and reload.\n2. **Wrong view** — if you're on Advisor View and the appointment isn't assigned to an advisor you can see, switch to All Appointments View.\n3. **Date range too narrow** — expand the range in the left panel (try \"All Future\" or \"This Month\").\n4. **Authority** — you may only see appointments you created or are assigned to. Ask your admin to enable `appointments.dealerapp.userappteditaccess`.\n5. **Cache issue** — refresh the page or clear browser cache.\n6. **DMS push lag** — appointments created in the DMS can take a few minutes to appear in myKaarma.\n\nIf you still don't see a specific appointment you know exists, search for it by customer name in the Ledger view — that bypasses most calendar filters.",
+    "tier": "base",
+    "topic": "dashboard"
+  },
+  {
+    "id": "dashboard.sort-ledger",
+    "question": "How do I sort appointments in the ledger?",
+    "answer": "In Ledger view, click any column header to sort by that column. Click again to reverse direction (ASC ↔ DESC).\n\nMost columns support sorting — the default sort is **Appointment Date ascending**. Your sort preference is saved per user, so it persists across sessions.\n\nThe saved sort applies per-view — sorting the Advisor View doesn't change how the All Appointments View is sorted.",
+    "tier": "base",
+    "topic": "dashboard"
+  },
+  {
+    "id": "dashboard.customize-ledger-columns",
+    "question": "How do I change which columns appear in the ledger?",
+    "answer": "To customize ledger columns:\n\n1. In Ledger view, click the **Edit Table** (or gear) icon in the toolbar\n2. The column config panel opens — you can:\n   - Check/uncheck columns to show/hide them\n   - Drag columns to reorder them\n   - Set which columns are pinned to the left\n   - Adjust column widths (also draggable directly on column borders in the table)\n3. Save — your layout is persisted per user\n\nColumns available include: Appt Date/Time, Customer Name, Status, Phone, Email, Repair Concern, Team, Advisor, VIN, Year/Make/Model, Mileage, Transport Option, Source, Created By, RO#, Customer Key, Hang Tag, Notes, Scheduled On, and conditionally Pre-Diag Status / Check-In Status.",
+    "tier": "base",
+    "topic": "dashboard"
+  },
+  {
+    "id": "dashboard.pin-columns",
+    "question": "How do I pin columns to the left side of the ledger?",
+    "answer": "Pinned columns stay visible when you scroll horizontally — useful for keeping the customer name or appointment time in sight.\n\n1. In Ledger view, open the Edit Table panel\n2. For each column you want pinned, set its \"pinned\" option (or drag it into the pinned section)\n3. Save — your layout persists per user\n\nTypically Appointment Date, Time, and Customer Name are pinned.",
+    "tier": "base",
+    "topic": "dashboard"
+  },
+  {
+    "id": "dashboard.export-appointments-csv",
+    "question": "How do I export appointments to CSV?",
+    "answer": "In Ledger view, click the **Export** (or Download) icon in the toolbar. The export includes:\n\n- Exactly the columns you currently have visible in your table layout\n- Exactly the appointments that match your current filters\n- In the same sort order as the table\n\nSo if you want an export of only this week's no-shows for Team A, set those filters first, then export.\n\nThe file downloads as a `.csv` you can open in Excel, Google Sheets, etc.",
+    "tier": "base",
+    "topic": "dashboard"
+  },
+  {
+    "id": "dashboard.print-appointments",
+    "question": "How do I print the appointment list?",
+    "answer": "In Ledger view, click the **Print** icon in the toolbar. The print layout uses:\n\n- The columns currently visible in your table\n- The current filter and sort state\n- Pinned columns remain on the left\n\nIt opens in your browser's print dialog — adjust orientation / paper size there before printing.\n\nIf columns are cut off, reduce the number of visible columns first (Edit Table → uncheck non-essential columns), then print.",
+    "tier": "base",
+    "topic": "dashboard"
+  },
+  {
+    "id": "dashboard.filter-by-advisor-status-source",
+    "question": "How do I filter appointments by advisor, status, transport, or source?",
+    "answer": "Use the filter bar at the top of the Appointments tab. Each filter is multi-select:\n\n- Click the filter name (e.g., **Advisor**) to open its dropdown\n- Check one or more values\n- Close the dropdown — filter is applied immediately\n- Repeat for other filter dimensions (Status, Transport Option, Source, etc.)\n\n**Tip:** Filters are additive (AND across dimensions, OR within a dimension). So \"Advisor = Diego OR Maria\" AND \"Status = Show\" shows Show appointments for either advisor.\n\nClear all filters at once with the **Clear Filters** button.",
+    "tier": "base",
+    "topic": "dashboard"
+  },
+  {
+    "id": "dashboard.save-column-config",
+    "question": "How do I save my column configuration so it doesn't reset?",
+    "answer": "Column layouts (visible columns, order, pinning, width) are saved **per user automatically** — once you make changes in the Edit Table panel and save, they persist across sessions.\n\nIf your layout keeps resetting:\n1. Check you clicked **Save** in the Edit Table panel, not just closed it\n2. Clear browser cache and log back in — stale cache can override saved preferences\n3. Confirm you're logged in as the same user (layouts are per-user, not shared)\n\nTo reset to defaults, click **Reset** in the Edit Table panel.",
+    "tier": "base",
+    "topic": "dashboard"
+  },
+  {
+    "id": "dashboard.change-appointment-status",
+    "question": "How do I change an appointment's status?",
+    "answer": "Click the status cell on an appointment (either on the card in Calendar view or in the Status column in Ledger view). A dropdown opens showing available statuses.\n\nSelect the new status. Changes save immediately.\n\n**Notes:**\n- Available statuses depend on whether text automation is enabled: more options (Confirmed, Rescheduling Requested, Cancellation Requested) appear with automation.\n- You need edit access — if the dropdown is grayed out, you may be read-only or not the assignee (see the \"edit all appointments\" authority).\n- Marking **Show** may require linking an RO first — see the related article.",
+    "tier": "base",
+    "topic": "dashboard"
+  },
+  {
+    "id": "dashboard.status-values-explained",
+    "question": "What do the different appointment statuses mean?",
+    "answer": "Appointment statuses fall into two flows depending on whether text automation is enabled:\n\n**Standard (text automation OFF):**\n- **Scheduled** — default for new appointments\n- **Updated** — appointment was modified\n- **Cancelled** — customer cancelled\n- **Reminder Sent** — reminder SMS/email went out\n- **Rescheduled** — moved to a new time\n- **Show** — customer arrived / appointment completed\n- **No Show** — customer didn't arrive\n\n**Text automation ON (adds):**\n- **Confirmed** — customer confirmed via text\n- **Rescheduling Requested** — customer replied asking to reschedule\n- **Cancellation Requested** — customer replied asking to cancel\n\nThe available set depends on your dealer's text automation DSO. Ask support if a specific status isn't showing up as expected.",
+    "tier": "base",
+    "topic": "dashboard"
+  },
+  {
+    "id": "dashboard.mark-appointment-show",
+    "question": "How do I mark an appointment as Show (completed)?",
+    "answer": "Change the status to **Show**:\n1. Click the status on the appointment\n2. Select **Show** from the dropdown\n\n**If you see a popup asking you to link an RO first:**\nBy default, Show requires a linked repair order. Either:\n- Click **Link RO** and select the matching RO, OR\n- Ask your admin to grant the `appointments.dealerapp.markasshow.without.ro.enable` authority (so you can Show without an RO — typical for BDC staff)",
+    "tier": "base",
+    "topic": "dashboard"
+  },
+  {
+    "id": "dashboard.mark-show-requires-ro",
+    "question": "Why does marking Show require linking an RO first?",
+    "answer": "By default, myKaarma requires appointments to be tied to a repair order before they can be marked Show. This ensures reporting (conversion, revenue per appointment) is accurate.\n\n**To bypass:** A user can be granted the `appointments.dealerapp.markasshow.without.ro.enable` authority. Typical for:\n- BDC/receptionist staff who don't create ROs\n- Dealers using myKaarma's appointment data independent of DMS\n\nAsk your admin to grant this authority if your role doesn't involve ROs. Without it, you must link an RO (via the Link RO button on the appointment) before marking Show.",
+    "tier": "base",
+    "topic": "dashboard"
+  },
+  {
+    "id": "dashboard.link-appointment-ro",
+    "question": "How do I link an appointment to a repair order?",
+    "answer": "Open the appointment. If no RO is linked, you'll see a **Link RO** (or RO Mapping) button or prompt.\n\n1. Click **Link RO**\n2. A dialog opens showing available ROs from your DMS\n3. Search by RO number or customer\n4. Select the matching RO\n5. Confirm — the appointment now references that RO\n\nIf no RO exists yet (customer arrived and you haven't created an RO), create the RO in your DMS first, then come back to link it. Newly created DMS ROs may take 1–2 minutes to appear in the link dialog.",
+    "tier": "base",
+    "topic": "dashboard"
+  },
+  {
+    "id": "dashboard.pre-diag-status",
+    "question": "What does the Pre-Diag status on an appointment mean?",
+    "answer": "If your dealer has Pre-Diagnosis (AI Survey) enabled, each appointment has a status indicator:\n\n- **Not Sent** — the pre-diag survey hasn't been sent to the customer yet\n- **Sent** — the customer received the survey (via SMS/email) but hasn't responded\n- **Customer Responded** — customer completed the survey; results are ready to review\n- **Reviewed** — advisor has reviewed the customer's responses\n- **Needs Review** — customer responded but no one has reviewed yet\n\nOpen the appointment to see the survey responses (concerns, photos, pre-approval info). Useful for advisors to prep before the customer arrives.\n\nIf you don't see Pre-Diag anywhere, the feature isn't enabled for your dealer — contact myKaarma support.",
+    "tier": "base",
+    "topic": "dashboard"
+  },
+  {
+    "id": "dashboard.checkin-status",
+    "question": "Where do I see and manage check-in status for an appointment?",
+    "answer": "If Desktop Check-In is enabled for your dealer:\n\n- A **Check-In Status** column appears in the Ledger (add it via Edit Table if not visible)\n- On the appointment details, you'll see check-in state: **Not Started / In Progress / Completed**\n- Action buttons let you **Start**, **Resume**, or **View** the check-in flow\n\nTo start a check-in when the customer arrives, click **Start Check-In** on their appointment. This opens the check-in wizard (customer confirmation, estimate, menu selection, etc.).\n\nIf you don't see check-in anywhere, the DSO `appointments.desktop.checkin.enable` isn't enabled for your dealer — contact myKaarma support.",
+    "tier": "base",
+    "topic": "dashboard"
+  }
+]

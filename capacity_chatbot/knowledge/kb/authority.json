@@ -1,0 +1,51 @@
+[
+  {
+    "id": "authority.enable-appointments-tab",
+    "question": "How do I enable the Appointments tab for a user?",
+    "answer": "The Appointments tab is controlled by the `appointments.dealerapp.tab.enable` authority.\n\n**Steps (requires admin access):**\n1. Go to **Admin Tool → Users** (or Settings → Users → Dealer Users)\n2. Find and select the user\n3. Open **Authorities** / **Permissions**\n4. Enable `appointments.dealerapp.tab.enable`\n5. Save — the user must refresh or log out and back in for the tab to appear\n\nIf the user still doesn't see the tab after refresh, verify their role/team has the authority inherited correctly. If the issue persists, contact myKaarma support — the Appointments product feature may not be enabled at the dealer level.",
+    "tier": "manager",
+    "topic": "authority"
+  },
+  {
+    "id": "authority.allow-edit-all-appointments",
+    "question": "How do I give a user edit access to all appointments (not just their own)?",
+    "answer": "By default, users can only edit appointments they created or are assigned to. To allow editing any appointment:\n\n**Required authority:** `appointments.dealerapp.userappteditaccess`\n\n**Steps:**\n1. Admin Tool → Users → select the user\n2. Authorities → enable `appointments.dealerapp.userappteditaccess`\n3. Save and have the user re-login\n\nAlso ensure `appointments.dealerapp.allreadonly` is NOT enabled — read-only overrides edit access.",
+    "tier": "manager",
+    "topic": "authority"
+  },
+  {
+    "id": "authority.make-user-read-only",
+    "question": "How do I make a user read-only on the Appointments tab?",
+    "answer": "To set a user to read-only mode (can view but not modify appointments):\n\n**Required authority:** `appointments.dealerapp.allreadonly`\n\n**Steps:**\n1. Admin Tool → Users → select the user\n2. Authorities → enable `appointments.dealerapp.allreadonly`\n3. Save\n\nOnce enabled, the user will see appointments but status dropdowns, RO mapping, and other edit actions will be disabled. This overrides any edit-related authorities they have.",
+    "tier": "manager",
+    "topic": "authority"
+  },
+  {
+    "id": "authority.allow-mark-show-without-ro",
+    "question": "How do I allow a user to mark an appointment as \"Show\" without linking an RO first?",
+    "answer": "By default, marking an appointment as Show requires a linked repair order. To allow bypassing this:\n\n**Required authority:** `appointments.dealerapp.markasshow.without.ro.enable`\n\n**Steps:**\n1. Admin Tool → Users → select the user\n2. Authorities → enable `appointments.dealerapp.markasshow.without.ro.enable`\n3. Save\n\nThe user will then see \"Show\" in the status dropdown without the RO-required gate. Useful for BDC staff who don't create ROs themselves.",
+    "tier": "manager",
+    "topic": "authority"
+  },
+  {
+    "id": "authority.allow-overbook-slots",
+    "question": "How do I allow a user to book into full (overbooked) appointment slots?",
+    "answer": "Two related authorities control overbook behavior:\n\n- `appointments.fullslot.allow` — allows booking into full slots silently\n- `appointments.fullslot.warn` — shows a warning dialog but allows the user to proceed\n\n**Typical manager/service director setup:**\n1. Admin Tool → Users → select the user\n2. Authorities → enable `appointments.fullslot.warn` (recommended — warns but doesn't block)\n3. For users who should never be warned, enable `appointments.fullslot.allow` instead\n4. Save\n\nWithout either authority, users cannot book into slots that have reached capacity.",
+    "tier": "manager",
+    "topic": "authority"
+  },
+  {
+    "id": "authority.enable-capacity-chatbot",
+    "question": "How do I enable the capacity chatbot for a user?",
+    "answer": "The capacity chatbot (the AI assistant for appointment capacity questions) has two gates — both must be enabled:\n\n**1. DSO (dealer-level, myKaarma-internal setting):**\n- DSO key: `appointments.capacity.chatbot.enable`\n- This must be enabled by myKaarma support for the dealership\n\n**2. User authority:**\n- Authority: `appointments.capacity.chatbot.enable`\n- Admin Tool → Users → select the user → Authorities → enable it\n\nIf only the DSO is on, the user won't see the chatbot. If only the authority is on (and DSO is off), the chatbot still won't appear. Both are required.",
+    "tier": "manager",
+    "topic": "authority"
+  },
+  {
+    "id": "authority.access-capacity-dashboard",
+    "question": "How do I give a user access to the Capacity Dashboard?",
+    "answer": "The Capacity Dashboard is the grid view of rules, capacity limits, and available slots across advisors and teams.\n\n**Required authority:** `appointments.capacitydashboard.enable`\n\n**Steps:**\n1. Admin Tool → Users → select the user\n2. Authorities → enable `appointments.capacitydashboard.enable`\n3. Save and have the user re-login\n\nThe capacity dashboard icon/toggle will then appear in the left panel of the Appointments tab. Typically given to service managers, schedulers, and BDC leads.",
+    "tier": "manager",
+    "topic": "authority"
+  }
+]
