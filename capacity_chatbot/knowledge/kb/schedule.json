@@ -1,37 +1,114 @@
 [
   {
-    "id": "schedule.how-do-i-increase-dealer-schedule-capacity",
-    "question": "How do I increase dealer schedule capacity?",
-    "answer": "To increase dealer schedule (store-level) capacity:\n\n1. Go to Settings \u2192 Appointments \u2192 Dealer Schedule\n2. You will see a grid view showing Sunday through Saturday\n3. Each day shows the appointment capacity for that day\n4. To increase capacity for a specific day:\n   - Click on the day cell\n   - Change the 'Total Maximum Appointments per day' value\n   - You can also modify 'Total Maximum Appointments per slot'\n5. For date-specific exceptions (e.g., holidays, special events):\n   - Toggle 'Allow Changes Only for Selected Dates' at the top\n   - This converts to a date-based view where you can set capacity for specific dates\n6. Save your changes\n\nIMPORTANT NOTES:\n- The dealer schedule sets STORE-LEVEL capacity that applies to all advisors\n- Individual advisor schedules cannot exceed the dealer schedule limits\n- You cannot set different slot capacities within the same day here - use Capacity Rules for that\n- Gray slots at the individual level mean they're blocked at the dealer level",
-    "tier": "base",
+    "id": "schedule.dealer-schedule-overview",
+    "question": "What is the Dealer Schedule page and what does it show?",
+    "answer": "**Settings → Appointments → Dealer Schedule** is where you set store-wide appointment capacity — the overall caps that apply to the whole dealership, before any per-advisor / per-transport / per-rule layering.\n\nThe page has:\n\n**Three tab buttons** across the top:\n- **This Week Schedule** — default tab, read-only view of this week's slots (green = open, gray = closed / blocked)\n- **Date Specific Time Blocks** — override capacity for a specific date or date range\n- **Weekly Time Blocks** — set the recurring weekly pattern (default capacity for every Mon, Tue, Wed, etc.)\n\n**The grid** (for the selected tab):\n- Columns = days of the week (e.g., Tue 04/21, Wed 04/22, ..., Mon 04/27)\n- Top two rows: **Total Max Appts per Day** and **Total Max Appts per Slot** (editable numeric inputs)\n- Body rows: time slots from open to close in your configured slot size (e.g., 07:00 AM to 05:30 PM in 30-min rows)\n- **Green cell** = slot open; **Gray cell** = slot closed / blocked\n\n**Action buttons:** **Discard** / **Save** at the bottom.\n\n**Multi-select helper text:**\n- Hold **Shift** to select multiple slots in adjoining rows/columns\n- Hold **Ctrl** to select a range or click individual slots\n\nAccess requires the appropriate admin authority.",
+    "tier": "manager",
     "topic": "schedule"
   },
   {
-    "id": "schedule.how-do-i-increase-individual-advisor-schedule-capa",
-    "question": "How do I increase individual advisor schedule capacity?",
-    "answer": "To increase an individual advisor's appointment capacity:\n\n1. Go to Settings \u2192 Appointments \u2192 Individuals\n2. Select the advisor from the dropdown list\n3. You will see a grid view similar to the dealer schedule\n4. To modify capacity:\n   - Click on the day or slot you want to change\n   - Adjust the appointment limit for that day\n   - Toggle slots ON (green) or OFF (red) to enable/disable\n5. For date-specific changes:\n   - Toggle 'Allow Changes Only for Selected Dates' at the top\n   - Set capacity for specific dates (e.g., vacation days, special schedules)\n6. For recurring weekly schedules:\n   - You can set up recurring patterns that repeat weekly\n7. Save your changes\n\nIMPORTANT NOTES:\n- Gray slots mean they're disabled at the Dealer Schedule level - you cannot enable them here\n- To enable a gray slot, you must first enable it in the Dealer Schedule\n- Use this to block specific time slots like lunch hours (set to 0 capacity)\n- Does NOT manage appointment assignment priorities - use Assignment Rules for that",
-    "tier": "base",
+    "id": "schedule.individuals-schedule-overview",
+    "question": "What is the Individuals Schedule page and what does it show?",
+    "answer": "**Settings → Appointments → Individuals Schedule** is where you configure per-advisor and per-team schedules.\n\nStructure is almost identical to Dealer Schedule with a few differences:\n\n- **Team / advisor selector** at the top (e.g., `Service Dept` for team view). Pick a specific advisor to view/edit their individual schedule, or stay on the team aggregate.\n- **Three tab buttons:**\n  - **This Week Schedule** — default, read-only this-week view\n  - **Date Specific Time Blocks** — one-off overrides for specific dates\n  - **Recurring Time Blocks** — recurring weekly pattern (different name from Dealer Schedule's \"Weekly Time Blocks\")\n- **Total Max Appts per Day** and **Total Max Appts per Slot** at the top of the grid (these are this advisor's caps, which stack *under* the dealer-level caps)\n- **Green/gray slot grid** with same Shift/Ctrl multi-select\n- **Discard / Save** at the bottom\n\n**Note:** When the `apptsRecurringScheduleEnable` DSO is OFF, this tab is labeled **Individuals** instead of **Individuals Schedule**, and the recurring behavior works slightly differently.\n\n**Relationship with Dealer Schedule:** an advisor's schedule can be MORE restrictive than the dealer's (advisor closes 4 PM while dealer is open until 6 PM). It cannot be MORE permissive — gray cells at the dealer level stay closed regardless of individual settings.",
+    "tier": "manager",
     "topic": "schedule"
   },
   {
-    "id": "schedule.how-do-i-set-up-recurring-schedules-that-repeat-ev",
-    "question": "How do I set up recurring schedules that repeat every 2 or 3 weeks?",
-    "answer": "For multi-week recurring schedules (beyond standard weekly): 1) Go to Settings > Appointments > Individuals Schedule, 2) Select the advisor, 3) Click the yellow 'Edit Recurring Schedules' button (if enabled), 4) Select the recurrence length in weeks (e.g., every 2 or 3 weeks), 5) Set the start date for the recurring schedule, 6) Modify slots and limits as needed, 7) Click Save. This feature requires enablement - contact support if you don't see the button.",
-    "tier": "base",
+    "id": "schedule.select-advisor",
+    "question": "How do I view or edit a specific advisor's schedule?",
+    "answer": "On **Settings → Appointments → Individuals Schedule**:\n\n1. At the top of the page, use the **team / advisor selector** (labeled with a team name like `Service Dept` by default)\n2. Change the selection to the advisor whose schedule you want to edit\n3. The grid refreshes to show their schedule\n\n**Pick a team** to see the aggregate for all advisors on that team — edits at the team level affect all members.\n**Pick an individual advisor** for per-person changes (advisor calls out sick, needs a reduced schedule, etc.).\n\nAll three tabs (This Week Schedule, Date Specific Time Blocks, Recurring Time Blocks) work the same for either selection.\n\nEdits are saved per selection — changing to a different advisor without clicking **Save** discards unsaved changes.",
+    "tier": "manager",
     "topic": "schedule"
   },
   {
-    "id": "schedule.where-do-i-find-dealer-schedule-settings",
-    "question": "Where do I find dealer schedule settings?",
-    "answer": "To access dealer schedule: Settings > Appointments > Dealer Schedule. You'll see a grid with days (columns) and time slots (rows). Use the toggle at top to switch between Weekly and Date-Specific views. This controls dealership-wide limits that override individual advisor schedules.",
-    "tier": "base",
+    "id": "schedule.change-max-appts",
+    "question": "How do I change the maximum appointments per day or per slot?",
+    "answer": "Both **Dealer Schedule** and **Individuals Schedule** have two numeric inputs at the top of the grid:\n\n- **Total Max Appts per Day** — total bookings allowed across all slots that day\n- **Total Max Appts per Slot** — max concurrent bookings in a single time slot\n\n1. Go to **Settings → Appointments → Dealer Schedule** (or Individuals Schedule)\n2. Pick the **Weekly Time Blocks** or **Recurring Time Blocks** tab for a permanent change, or **Date Specific Time Blocks** for a one-off override\n3. Edit the numbers in the appropriate day column(s)\n4. Click **Save**\n\n**Common values** (Porsche Riverside example):\n- Dealer: 25 appts/day / 3 per slot Mon-Fri, 25/1 Sat, 0/0 Sun (closed)\n- Individuals (team): 50 appts/day / 5 per slot weekdays (higher because summed across team)\n\nChanges take effect immediately. Existing appointments beyond the new cap are not auto-cancelled.",
+    "tier": "manager",
     "topic": "schedule"
   },
   {
-    "id": "schedule.where-do-i-find-individual-advisor-schedule-settin",
-    "question": "Where do I find individual advisor schedule settings?",
-    "answer": "To access individual advisor schedules: Settings > Appointments > Individuals. Select the advisor from the dropdown menu. The grid shows their personal schedule limits. Gray slots mean they're disabled at the dealer level and cannot be enabled here. Use the toggle for Weekly vs Date-Specific views.",
-    "tier": "base",
+    "id": "schedule.this-week-tab",
+    "question": "What is the \"This Week Schedule\" tab for?",
+    "answer": "**This Week Schedule** is the default tab — a read-only view of this week's effective schedule based on your recurring weekly pattern and any date-specific overrides.\n\nUse it to:\n- Visually check what this week looks like before a customer starts booking\n- Confirm a recent change is reflected (e.g., you closed next Saturday and want to verify)\n- Spot anomalies (unexpected gray cells or low day caps)\n\n**To make changes**, switch to one of the editable tabs:\n- **Date Specific Time Blocks** for a one-off (e.g., this Friday is a special event, lower capacity)\n- **Weekly Time Blocks** (Dealer Schedule) or **Recurring Time Blocks** (Individuals) for the recurring pattern\n\nNavigate between weeks with the `<` and `>` arrows next to the date range.",
+    "tier": "manager",
+    "topic": "schedule"
+  },
+  {
+    "id": "schedule.date-specific-tab",
+    "question": "How do I change the schedule for a specific date (holiday, one-off event)?",
+    "answer": "Use the **Date Specific Time Blocks** tab on either **Dealer Schedule** or **Individuals Schedule**:\n\n1. Go to **Settings → Appointments → Dealer Schedule**\n2. Click the **Date Specific Time Blocks** tab\n3. The grid now shows a specific date range (e.g., `Apr 21, 2026 - Apr 27, 2026`). Navigate with `<` / `>` to pick the date(s) you want to modify\n4. Edit:\n   - **Total Max Appts per Day** / **Per Slot** values for those dates\n   - Click individual time slot cells to toggle them open/closed (green/gray)\n   - Use **Shift** to select a range of slots, **Ctrl** to click multiple individual slots\n5. Click **Save**\n\n**Common use cases:**\n- Block a holiday entirely → set Total Max Appts per Day to `0` for that date\n- Reduce capacity on a busy sales event day → lower Max Per Slot\n- Close at 3 PM on a half-day → select the 3 PM – 5:30 PM slots → mark them closed\n\nDate-specific settings override the Weekly / Recurring pattern for the specified dates only. Other dates continue to use the recurring schedule.",
+    "tier": "manager",
+    "topic": "schedule"
+  },
+  {
+    "id": "schedule.weekly-recurring-tab",
+    "question": "How do I set a recurring weekly schedule (close every Sunday, shorter Saturdays, etc.)?",
+    "answer": "Use the recurring-pattern tab:\n- **Dealer Schedule** → **Weekly Time Blocks**\n- **Individuals Schedule** → **Recurring Time Blocks**\n\nBoth work the same way:\n\n1. Navigate to the tab\n2. The grid shows a week-of columns (Sun-Sat)\n3. Edit the **Total Max Appts per Day** and **Total Max Appts per Slot** for each day\n4. Click individual time slot cells to mark them open (green) or closed (gray)\n5. Use **Shift** / **Ctrl** to select multiple slots\n6. Click **Save**\n\nThis sets the default pattern that repeats every week. Date-specific settings can override it for specific dates.\n\n**Common setups:**\n- **Closed Sunday:** Sun column → Total Max Per Day = 0 and Per Slot = 0 (all cells go gray)\n- **Half-day Saturday:** Sat → normal AM slots green, PM slots gray\n- **Reduced Monday morning:** lower Per Slot from 3 to 2 for 07:00 – 09:00 AM rows",
+    "tier": "manager",
+    "topic": "schedule"
+  },
+  {
+    "id": "schedule.block-specific-slots",
+    "question": "How do I block specific time slots on a day (e.g., lunch hour)?",
+    "answer": "Use the grid's cell selection:\n\n1. Open the appropriate tab — **Weekly Time Blocks** (recurring lunch every day) or **Date Specific Time Blocks** (one-off)\n2. In the grid, click a green cell in the time row you want to block\n3. The cell turns gray (closed)\n4. For a range (e.g., 12:00 PM – 1:00 PM on Tue):\n   - **Shift + click** another cell in the same column to select all cells between\n   - OR **Ctrl + click** individual cells to toggle each one\n5. Click **Save**\n\n**Common example — lunch block every weekday:**\n- Weekly Time Blocks tab\n- In the 12:00 PM and 12:30 PM rows, click each weekday cell (Mon, Tue, Wed, Thu, Fri)\n- Cells turn gray → Save\n\nGray cells are unavailable for booking at that level. A cell can be gray at the dealer level (closes the slot for everyone) or just at the individual level (this advisor is out at lunch, another advisor can still take appointments).",
+    "tier": "manager",
+    "topic": "schedule"
+  },
+  {
+    "id": "schedule.multi-select-tips",
+    "question": "How do I select multiple time slots at once in the schedule grid?",
+    "answer": "From the note at the bottom of every schedule page:\n\n**Hold Shift** to select multiple time slots in adjoining rows or columns — drag or click endpoints.\n\n**Hold Ctrl** (Cmd on Mac) to:\n- Select a range of time slots\n- Click individual (non-adjacent) time slots to add/remove them from your selection\n\nTypical workflows:\n- **Block an entire morning across all weekdays:** Shift+click the 07:00 AM cell in Mon column, then Shift+click the 11:30 AM cell in Fri column → everything from Mon 7 AM to Fri 11:30 AM is selected → toggle once\n- **Block only Tue and Thu afternoons:** Ctrl+click the 12:00 PM Tue cell, then the 05:30 PM Tue cell with Shift, then Ctrl+click to repeat for Thu\n\nSelected cells are highlighted visually. Clicking one of them flips all selected cells' state at once.",
+    "tier": "manager",
+    "topic": "schedule"
+  },
+  {
+    "id": "schedule.dealer-vs-individual-interaction",
+    "question": "How do Dealer Schedule and Individuals Schedule interact?",
+    "answer": "**Dealer Schedule** sets the dealership's outer envelope. **Individuals Schedule** fills in the detail per advisor / team.\n\n**Interaction rules:**\n- A slot closed at the Dealer level (gray) is closed for everyone — individual advisors can't override it to open\n- A slot open at the Dealer level can still be closed at the Individual level (advisor not working that hour)\n- Day-level caps: the dealer's `Total Max Appts per Day` is the hard ceiling. Sum of all advisors' day caps can be lower, never higher\n- Per-slot caps: the dealer's `Total Max Appts per Slot` is the ceiling. Summed individual slot caps can be lower, never higher\n\n**Practical implication:** if a customer or advisor reports \"I can't book X\" and the Individuals Schedule looks open, check the Dealer Schedule — a gray cell there blocks the slot regardless.\n\n**Good pattern for a new dealer setup:** first build the Dealer Schedule (store hours, rough capacity per day). Then configure each advisor's Individual Schedule to slot into that envelope (advisor A works 7-3, advisor B works 10-6, etc.).",
+    "tier": "manager",
+    "topic": "schedule"
+  },
+  {
+    "id": "schedule.block-holiday-example",
+    "question": "Example: how do I close the dealer for Christmas Day?",
+    "answer": "Use the Dealer Schedule Date Specific tab (simplest path):\n\n1. **Settings → Appointments → Dealer Schedule**\n2. Click **Date Specific Time Blocks** tab\n3. Navigate with `<` / `>` to the week containing 12/25\n4. In the 12/25 column:\n   - Set **Total Max Appts per Day** to `0`\n   - Set **Total Max Appts per Slot** to `0`\n   - (All time slot cells automatically turn gray)\n5. Click **Save**\n\nOptionally do the same for 12/24 (Christmas Eve) or any other closure dates.\n\n**Alternative:** use a Capacity Rule with `Date on 12/25` → `Total Appointment <= 0 Per Day`. Both work; the Dealer Schedule approach is more direct and visible for a one-off.\n\nThis closes bookings at the dealership level — no advisor or transport option can override. The online scheduler and DealerApp both respect it.",
+    "tier": "manager",
+    "topic": "schedule"
+  },
+  {
+    "id": "schedule.close-sunday-example",
+    "question": "Example: how do I close the dealer every Sunday?",
+    "answer": "Use the **Weekly Time Blocks** tab on Dealer Schedule:\n\n1. **Settings → Appointments → Dealer Schedule**\n2. Click **Weekly Time Blocks** tab\n3. In the **Sun** column:\n   - Set **Total Max Appts per Day** to `0`\n   - Set **Total Max Appts per Slot** to `0`\n   - (All Sunday cells turn gray)\n4. Click **Save**\n\nThis recurring setting applies every Sunday going forward. If one specific Sunday is different (e.g., Mother's Day special), use the Date Specific Time Blocks tab to override just that date.",
+    "tier": "manager",
+    "topic": "schedule"
+  },
+  {
+    "id": "schedule.remove-user-from-schedule",
+    "question": "How do I remove an advisor from the schedule (e.g., advisor no longer works here)?",
+    "answer": "Two paths depending on what you want:\n\n**If the advisor is leaving permanently** — deactivate them at the user level first:\n1. **Settings → Users → Dealer Users**\n2. Find the advisor, mark them inactive / deactivate\n3. Their individual schedule stops being used automatically\n\n**If the advisor is out temporarily** (vacation, medical leave, etc.):\n1. **Settings → Appointments → Individuals Schedule**\n2. Pick the advisor in the team/advisor selector\n3. Use **Date Specific Time Blocks** for the date range of their absence\n4. Select all cells in the date range and mark them closed (gray) — or set Total Max Per Day to 0\n5. **Save**\n\n**To remove an advisor from a specific team** — that's a user/team management action, separate from the schedule. Go to Settings → Users or Teams management.",
+    "tier": "manager",
+    "topic": "schedule"
+  },
+  {
+    "id": "schedule.recurring-schedule-dso",
+    "question": "What changes when \"recurring schedule\" is enabled for the dealer?",
+    "answer": "Your dealership may have the `APPOINTMENTS_RECURRING_SCHEDULE_ENABLE` setting turned on (controlled by myKaarma staff). When enabled:\n\n- The Individuals menu item is labeled **Individuals Schedule** (instead of just **Individuals**)\n- The Individuals page has a **Recurring Time Blocks** tab (matching the Dealer Schedule's Weekly Time Blocks)\n- Advisor schedules can have recurring patterns like \"every other week\" or \"every 3rd week\" — not just the default weekly repeat\n- More flexibility for shops with rotating advisor schedules\n\nWhen disabled, the Individuals page is more minimal — no Recurring tab, just Date Specific + the current week view.\n\nIf your Individuals page doesn't match what another dealer sees in training materials, your dealer likely doesn't have recurring schedules enabled. Ask myKaarma support to toggle the DSO.",
+    "tier": "manager",
+    "topic": "schedule"
+  },
+  {
+    "id": "schedule.update-recurring",
+    "question": "How do I update a recurring schedule for an advisor?",
+    "answer": "For dealers with recurring schedules enabled:\n\n1. **Settings → Appointments → Individuals Schedule**\n2. Select the advisor in the team/advisor selector\n3. Click the **Recurring Time Blocks** tab\n4. Edit:\n   - The **Total Max Appts per Day** and **Per Slot** for each weekday column\n   - Click cells to toggle slots open / closed (green / gray)\n   - Use **Shift** / **Ctrl** for multi-select\n5. Click **Save**\n\nThe pattern repeats week over week. One-off overrides (e.g., advisor swaps a Tuesday with a colleague once) go in the **Date Specific Time Blocks** tab for that specific date.\n\nIf you don't see a Recurring Time Blocks tab, the recurring-schedule DSO isn't enabled for your dealer — contact myKaarma support.",
+    "tier": "manager",
+    "topic": "schedule"
+  },
+  {
+    "id": "schedule.discard-changes",
+    "question": "What does the Discard button do?",
+    "answer": "The **Discard** button (bottom-left of the grid, next to **Save**) throws away all unsaved changes and reverts the grid to the last saved state.\n\nUse when:\n- You made a test edit to see the impact and don't want to commit\n- You hit the wrong cell / wrong day and want to start over\n- You're exploring the grid with Shift/Ctrl selections and want a clean slate\n\nNo confirmation is shown — the discard is immediate (but only affects unsaved edits, nothing already persisted).\n\nNote: switching tabs without saving also discards unsaved work in the current tab. Always click **Save** before navigating away.",
+    "tier": "manager",
     "topic": "schedule"
   }
 ]
