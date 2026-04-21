@@ -1,0 +1,114 @@
+[
+  {
+    "id": "opcodes.page-overview",
+    "question": "Where do I manage opcodes and what does the page show?",
+    "answer": "Go to **Settings → Appointments → Opcodes And Dealer Menus**.\n\nThe page is a searchable, filterable table of every opcode / service menu in your system.\n\n**Columns:**\n- **Order** — optional display order number\n- **Type** — Opcode or (Dealer) Menu\n- **Make** — which vehicle makes it applies to (usually ALL)\n- **Mileage** — mileage range (usually Any Mileage)\n- **Description** — e.g., \"55,000 mile service\"\n- **Opcode** — the code itself (e.g., `PO55K`, `LOANER`, `100u`)\n- **Category** — e.g., Powertrain, Accessories, Campaign, Other\n\n**Top toolbar:**\n- Search box: \"Search for a service menu or opcode (enter min 2 letters)\"\n- **ADD** button with a dropdown (Add Opcode, Add Dealer Menu)\n- **BULK EDIT** button\n- **FILTER** button\n- **Refresh** and **Download** links just below\n\n**Bottom:** Pagination (default 10 per page; example dealer shows \"1 – 10 of 254\" total opcodes).\n\nAccess needs the relevant admin authority.",
+    "tier": "manager",
+    "topic": "opcodes"
+  },
+  {
+    "id": "opcodes.search",
+    "question": "How do I search for an opcode?",
+    "answer": "On **Settings → Appointments → Opcodes And Dealer Menus**, use the search bar at the top.\n\nThe placeholder reads: *Search for a service menu or opcode (enter min 2 letters)*.\n\n- Type at least 2 characters of the opcode code, description, or category\n- Results filter the table in real time\n- Examples: `oil`, `PO55K`, `loaner`, `recall`, `100u`\n\nFor more precise filtering (e.g., only Campaign category, specific Make), use the **FILTER** button next to the search bar instead.",
+    "tier": "manager",
+    "topic": "opcodes"
+  },
+  {
+    "id": "opcodes.add-new-opcode",
+    "question": "How do I add a new opcode?",
+    "answer": "On **Settings → Appointments → Opcodes And Dealer Menus**:\n\n1. Click the **ADD** button at the top right (it has a dropdown — pick **Add Opcode**, not *Add Dealer Menu*)\n2. The Add Opcode dialog opens (similar to the Edit Opcode dialog — see that article)\n3. Fill in at least: opcode code (the short identifier), description, category, and any relevant fields (duration, price, eligibility)\n4. Set the **Product × Eligibility** toggles for where the opcode should appear:\n   - Online Scheduler\n   - DealerApp Scheduler\n   - Mobile Service\n   - Service Cart (Show in MPI)\n   - Check In\n5. Click **UPDATE** (or **SAVE**) at the bottom of the dialog\n\nThe new opcode appears in the table and is immediately usable across the channels you enabled.",
+    "tier": "manager",
+    "topic": "opcodes"
+  },
+  {
+    "id": "opcodes.edit-dialog-fields",
+    "question": "What fields are in the Edit Opcode dialog?",
+    "answer": "Opening **Settings → Appointments → Opcodes And Dealer Menus** and clicking any opcode's row (or the edit icon) opens the **Edit Opcode** dialog with these fields:\n\n**Top:**\n- *Copy from DMS Description* link (pulls the description from your DMS)\n- **OPCODE DURATION** — in `Hrs` (how long the service takes on the shop floor)\n- **FLAT RATE HOURS** — in `Hrs` (billable hours — often different from duration)\n\n**Price (Optional)** section:\n- **DMS LABOR PRICE**, **DMS PARTS PRICE**, **DMS TOTAL PRICE** (read from your DMS)\n- **MK LABOR PRICE**, **MK PARTS PRICE**, **MK MISC AMOUNT**, **MK TOTAL PRICE** (myKaarma override prices)\n- **No parts needed ($0 parts cost)** checkbox\n- *Copy from DMS Price* link (copies DMS values into MK fields)\n\n**Use mK Price in ServiceCart RO line** — No/Yes toggle (whether to use MK prices on the repair order rather than DMS prices)\n\n**PAY TYPE** — dropdown (e.g., `CPP`, `WAR`, `INT`, etc. — customer pay type / warranty / internal)\n\n**Product × Eligibility** — per-product No/Yes toggles:\n- **Online Scheduler**\n- **DealerApp Scheduler**\n- **Mobile Service**\n- **Service Cart (Show in MPI)**\n- **Check In**\n\n**INTERNAL NOTES** — free-text notes (internal only, not shown to customers)\n\n**Other Details:**\n- **LEAD TIME** — in `Days` (how far ahead this opcode must be booked)\n- **Daily Limits** — per-weekday numeric inputs (SUN, MON, TUE, WED, THU, FRI, SAT) capping daily bookings of this opcode\n\n**Buttons:** CANCEL, UPDATE, DELETE",
+    "tier": "manager",
+    "topic": "opcodes"
+  },
+  {
+    "id": "opcodes.set-dms-vs-mk-price",
+    "question": "What's the difference between DMS Price and MK Price on an opcode?",
+    "answer": "In the **Edit Opcode** dialog, the Price (Optional) section shows two distinct price sets:\n\n- **DMS LABOR / PARTS / TOTAL PRICE** — the price pulled from your DMS (Reynolds, CDK, ADP, etc.). Read-only reference of what your DMS thinks the service costs.\n- **MK LABOR / PARTS / MISC AMOUNT / TOTAL PRICE** — the myKaarma override price. These are what customers see in the online scheduler, what shows on appointment confirmations, and optionally what lands on the RO line.\n\n**When to set MK prices:**\n- Your DMS price is outdated or inconsistent\n- You want the online scheduler to show different pricing (e.g., a promo)\n- You need a \"starts at\" price when the DMS has a range\n\n**Copy from DMS Price** link — one-click copies all DMS prices into the MK fields. Useful when DMS is authoritative and you just want the override to match.\n\n**Use mK Price in ServiceCart RO line** — toggle. `Yes` = use MK prices on the RO; `No` = use DMS prices. Set to `Yes` when you want your overrides to flow back to the DMS RO.\n\n**No parts needed ($0 parts cost)** checkbox — use for labor-only services to zero out parts cost explicitly.",
+    "tier": "manager",
+    "topic": "opcodes"
+  },
+  {
+    "id": "opcodes.enable-on-online-scheduler",
+    "question": "How do I make an opcode appear on the Online Scheduler?",
+    "answer": "Two things need to be true for an opcode to appear on the online scheduler:\n\n**1. At the opcode level:**\n- **Settings → Appointments → Opcodes And Dealer Menus**\n- Open the opcode\n- In the **Product × Eligibility** section, set **Online Scheduler** → `Yes`\n- Click **UPDATE**\n\n**2. At the Online Scheduler settings level:**\n- **Settings → Appointments → Online Scheduler**\n- Verify **Turn On/Off Opcodes for Online Scheduler** is **On** (otherwise no opcodes appear regardless of per-opcode setting)\n- Optionally configure **Edit Opcode Format** to control what's shown for each opcode (name, price, description, custom text)\n\nIf you've done both and the opcode still doesn't appear, check the opcode's **Make** — it needs to match a brand that's in your Online Scheduler *Brands available to schedule* list.",
+    "tier": "manager",
+    "topic": "opcodes"
+  },
+  {
+    "id": "opcodes.set-daily-limit",
+    "question": "How do I set a daily limit on a specific opcode (per-opcode capacity)?",
+    "answer": "Per-opcode daily limits are set inside the **Edit Opcode** dialog:\n\n1. Go to **Settings → Appointments → Opcodes And Dealer Menus**\n2. Open the opcode\n3. Scroll to **Other Details → Daily Limits**\n4. You'll see seven inputs: **SUN, MON, TUE, WED, THU, FRI, SAT**\n5. Enter the maximum number of appointments of this opcode you'll allow per day\n6. Leave a day blank (or `0`) to disallow / cap it at zero for that day\n7. Click **UPDATE**\n\n**Example:** You do 3 alignments per day max Mon-Fri, none on weekends:\n- SUN=0, MON=3, TUE=3, WED=3, THU=3, FRI=3, SAT=0\n\nThis is a hard cap per-opcode that applies across all booking channels. For more complex rules (e.g., \"max 2 alignments per advisor\"), use Capacity Rules instead.",
+    "tier": "manager",
+    "topic": "opcodes"
+  },
+  {
+    "id": "opcodes.set-lead-time",
+    "question": "How do I set a lead time (minimum advance notice) on an opcode?",
+    "answer": "In **Edit Opcode** → **Other Details → LEAD TIME** — enter a number in `Days`.\n\nThe lead time is the minimum notice required before this opcode can be booked. Useful for:\n- Parts-dependent services (you need time to order)\n- Specialty services requiring prep (tire order, diagnostic time)\n- Opcodes that require specific advisor availability\n\n**Example:** Lead Time = `3` days means the opcode only appears for booking 3+ days in the future. A customer trying to book for tomorrow won't see this opcode.\n\nLead time on an opcode is independent of the global \"Restriction of Online Appointment Scheduling\" (hours-based) setting on the Online Scheduler page — both apply.",
+    "tier": "manager",
+    "topic": "opcodes"
+  },
+  {
+    "id": "opcodes.bulk-edit",
+    "question": "How do I edit multiple opcodes at once (bulk edit)?",
+    "answer": "On **Settings → Appointments → Opcodes And Dealer Menus**:\n\n1. Use the checkboxes in the leftmost column to select the opcodes you want to modify (or filter first, then select all on the page)\n2. Click **BULK EDIT** at the top\n3. The Bulk Edit dialog lets you change fields across all selected opcodes at once — typical fields: Category, Product × Eligibility toggles, prices, lead time, daily limits\n4. Click **UPDATE** — changes apply to every selected opcode\n\nUse with care — bulk changes can't be undone in one click. If you're making a wide change (e.g., enabling Online Scheduler for all oil change variants), preview a subset first by filtering to just one before expanding.",
+    "tier": "manager",
+    "topic": "opcodes"
+  },
+  {
+    "id": "opcodes.filter",
+    "question": "How do I filter the opcode list?",
+    "answer": "Click the **FILTER** button (top right of the Opcodes And Dealer Menus page). A filter panel opens.\n\nTypical filter dimensions:\n- **Category** (Powertrain, Accessories, Campaign, Other, etc.)\n- **Make** (Porsche, Honda, ALL, etc.)\n- **Type** (Opcode vs Dealer Menu)\n- **Product eligibility** — filter to only opcodes enabled on Online Scheduler, DealerApp, etc.\n\nFilters stack with the search bar and with column sorting. Clear individual filters by unchecking them, or click a **Clear Filters** option to reset.",
+    "tier": "manager",
+    "topic": "opcodes"
+  },
+  {
+    "id": "opcodes.download",
+    "question": "How do I export the opcode list?",
+    "answer": "On **Settings → Appointments → Opcodes And Dealer Menus**, click the **Download** link below the search bar.\n\nThe download respects:\n- Your current filters\n- Your current search term\n- The visible columns\n\nThe file exports as CSV (or Excel depending on version). Useful for:\n- Auditing your opcode catalog\n- Reviewing pricing for a DMS reconciliation\n- Handing a list to your DMS team\n\nTo export only a subset, filter first, then click Download.",
+    "tier": "manager",
+    "topic": "opcodes"
+  },
+  {
+    "id": "opcodes.copy-from-dms",
+    "question": "What do \"Copy from DMS Description\" and \"Copy from DMS Price\" do?",
+    "answer": "These are one-click sync actions in the **Edit Opcode** dialog.\n\n**Copy from DMS Description** (link near the top) — pulls the current description text from your DMS into the opcode's Description field. Useful when:\n- DMS description has been updated and you want myKaarma to match\n- You want to show customers the same wording as what's on their RO / invoice\n\n**Copy from DMS Price** (link in the Price Optional section) — copies the DMS Labor / Parts / Total values into the corresponding MK Price fields. Useful when:\n- DMS is your source of truth for pricing\n- You want the online scheduler / confirmations to show exactly what the DMS has\n\nBoth are safe — you can always edit the MK values after copying.",
+    "tier": "manager",
+    "topic": "opcodes"
+  },
+  {
+    "id": "opcodes.delete",
+    "question": "How do I delete an opcode?",
+    "answer": "In the **Edit Opcode** dialog, click **DELETE** (bottom right, next to UPDATE).\n\nA confirmation typically appears — confirm to remove the opcode from myKaarma.\n\n**Before deleting, consider:**\n- Existing appointments referencing this opcode — some systems preserve the reference, others orphan it\n- Bulk export first (Download) so you have a backup of the opcode's configuration\n- If the opcode is tied to a campaign (OEM recall), you typically shouldn't delete — disable eligibility toggles instead\n\n**Alternative:** Instead of deleting, uncheck all the **Product × Eligibility** toggles (Online Scheduler, DealerApp, etc.). The opcode stays in the system but won't appear anywhere. This is reversible; deletion is not.",
+    "tier": "manager",
+    "topic": "opcodes"
+  },
+  {
+    "id": "opcodes.pay-type",
+    "question": "What is the PAY TYPE field on an opcode and what values does it take?",
+    "answer": "The **PAY TYPE** dropdown in the Edit Opcode dialog classifies how the service is paid:\n\nCommon values:\n- **CPP** — Customer Pay Parts (or Customer Pay, depending on DMS)\n- **WAR** — Warranty\n- **INT** — Internal (dealer cost)\n- **SUB** — Sublet / outside vendor\n\nThe exact list depends on your DMS integration mapping. It's primarily a DMS reporting/classification field — it determines which pay-type bucket the RO line lands in when the appointment pushes to your DMS.\n\nSet it to the most common pay type for that opcode. Individual appointments can override the pay type at the service level if needed.",
+    "tier": "manager",
+    "topic": "opcodes"
+  },
+  {
+    "id": "opcodes.available-in-mpi",
+    "question": "How do I make an opcode show up in the Service Cart / MPI?",
+    "answer": "In the **Edit Opcode** dialog, find **Product × Eligibility → Service Cart (Show in MPI)** and toggle it to `Yes`.\n\n- Toggle on → the opcode appears in the Service Cart (Multi-Point Inspection) as a selectable recommended service\n- Toggle off → advisors can't add it from MPI, only from direct RO line entry\n\nService Cart is the UX where an advisor recommends additional services during/after a vehicle inspection. Making an opcode available there is useful for common upsells (tire rotation, wiper replacement, brake inspection).",
+    "tier": "manager",
+    "topic": "opcodes"
+  },
+  {
+    "id": "opcodes.internal-notes",
+    "question": "What is the INTERNAL NOTES field on an opcode?",
+    "answer": "Free-text notes visible only inside myKaarma admin — NEVER shown to customers or on ROs.\n\nUse for:\n- Describing when/why the opcode was set up (\"Created for the May 2026 Porsche recall campaign\")\n- Flagging who maintains it (\"Don't change pricing without asking Sarah\")\n- Cross-references to other systems (\"Matches DMS opcode PM-55K\")\n\nInternal notes do NOT affect scheduling behavior or appear on customer communications. They're for your team's future reference.",
+    "tier": "manager",
+    "topic": "opcodes"
+  }
+]

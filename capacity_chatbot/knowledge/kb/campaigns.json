@@ -1,0 +1,65 @@
+[
+  {
+    "id": "campaigns.page-overview",
+    "question": "Where do I manage OEM campaigns / recalls and what does the page show?",
+    "answer": "Go to **Settings → Appointments → Campaigns**.\n\nThis page manages OEM recalls and campaign opcodes — special services the manufacturer mandates (e.g., software update, part replacement under warranty).\n\n**Table columns:**\n- **OEM ID** — the OEM's campaign identifier (e.g., `ANA6`, `WMP5`, `WNJ8`)\n- **Name** — description (e.g., \"Re-programming central computer (PCM)\")\n- **Opcode** — the linked opcode in your system\n- **Start Date** — when the campaign became active (e.g., `08/15/2022`)\n- **Make** — the vehicle make (e.g., Porsche)\n- **Lead Time (Hrs)** — minimum notice in hours before a campaign appointment can be booked\n- **Per-day daily limits** (columns Sun, Mon, Tue, Wed, Thu, Fri, Sat) — e.g., `1 / 1 / 1 / 1 / 1 / 1 / 0` means 1 per weekday, none on weekend\n   - `NL` = no limit\n   - `0` = not available that day\n- **Actions** — trash icon (delete), pencil icon (edit)\n\n**Top toolbar:** search box (\"Search for a campaign using Name or ID\"), **ADD** button, **BULK EDIT**, **FILTER**.\n\nPagination at the bottom right.",
+    "tier": "manager",
+    "topic": "campaigns"
+  },
+  {
+    "id": "campaigns.add-new",
+    "question": "How do I add a new OEM campaign?",
+    "answer": "On **Settings → Appointments → Campaigns**, click **ADD** (top right).\n\nThe Add Campaign dialog opens with:\n- **ID** — the OEM campaign ID (e.g., `ANA6`)\n- **NAME** — description (e.g., `Re-programming central computer (PCM)`)\n- **START DATE** — when the campaign becomes active (date picker, e.g., `04/21/2026`)\n- **MAKE** — vehicle make dropdown (e.g., Porsche)\n- **OPCODE** — search field to link a myKaarma opcode (type at least 2 letters to search)\n\n**Campaign Details**\n- **LEAD TIME** — in `hrs` (minimum hours ahead a customer must book)\n\n**Daily Limits**\n- Per-weekday number inputs (SUN, MON, TUE, WED, THU, FRI, SAT)\n- Leave blank for no limit (shows `NL`)\n- `0` to disallow that day\n\nClick **SAVE** to create the campaign, or **CANCEL** to discard.",
+    "tier": "manager",
+    "topic": "campaigns"
+  },
+  {
+    "id": "campaigns.edit",
+    "question": "How do I edit an existing campaign?",
+    "answer": "Click the **pencil** icon in the Actions column of the campaign's row on **Settings → Appointments → Campaigns**.\n\nThe **Edit Campaign** dialog opens with the same fields as the Add dialog, pre-filled:\n- ID, NAME, START DATE\n- MAKE, OPCODE\n- LEAD TIME (hrs)\n- Daily Limits (per weekday)\n\nEdit any field and click **SAVE** to commit. **CANCEL** discards changes.\n\nChanging the **Opcode** reassigns which service the campaign is tied to. Changing **Daily Limits** immediately affects future bookings of this campaign.",
+    "tier": "manager",
+    "topic": "campaigns"
+  },
+  {
+    "id": "campaigns.delete",
+    "question": "How do I delete a campaign?",
+    "answer": "Click the **trash** icon in the Actions column of the campaign's row on **Settings → Appointments → Campaigns**. Confirm the deletion.\n\n**Before deleting:**\n- Appointments already booked under this campaign stay on the calendar (the record is preserved), but no new appointments can reference it\n- If you want to pause a campaign without losing its config, set all daily limits to `0` instead of deleting — reversible\n- If the OEM reissues the same campaign later with the same ID, you'll need to re-create it\n\nDeletions are permanent.",
+    "tier": "manager",
+    "topic": "campaigns"
+  },
+  {
+    "id": "campaigns.daily-limits",
+    "question": "How do I set daily booking limits for a campaign?",
+    "answer": "In the Add/Edit Campaign dialog, the **Daily Limits** section has 7 inputs — one per weekday (SUN, MON, TUE, WED, THU, FRI, SAT).\n\n- Enter a number to cap appointments for that weekday (e.g., `3` = max 3 campaign appointments on Mondays)\n- Leave blank → no limit (shows as `NL` in the campaigns table)\n- Enter `0` → campaign is not bookable that day\n\n**Typical pattern** for a recall campaign: 1 per weekday, 0 on weekends (so you can handle roughly one recall per day Mon-Fri during normal service hours).\n\nThese are separate from opcode-level daily limits (set on the opcode itself under Opcodes And Dealer Menus). The campaign limit AND the opcode limit both apply — whichever is lower wins for campaign-linked bookings.",
+    "tier": "manager",
+    "topic": "campaigns"
+  },
+  {
+    "id": "campaigns.lead-time",
+    "question": "What is Lead Time on a campaign and how does it work?",
+    "answer": "**LEAD TIME (hrs)** in the Campaign dialog is the minimum number of hours ahead a customer must book this campaign service.\n\nExamples:\n- Lead Time = `0` → same-day bookings allowed right up to the current time\n- Lead Time = `24` → customer must book at least 24 hours out\n- Lead Time = `48` → two-day minimum\n\nUse cases:\n- Parts need to be ordered (`24-72 hours`)\n- The OEM needs advance notice to approve the work\n- Shop needs prep time (e.g., scan tool setup, fluid stock check)\n\nThe campaign-level lead time stacks with the opcode-level lead time (from **Opcodes And Dealer Menus → [opcode] → Other Details → LEAD TIME**). The larger of the two applies.",
+    "tier": "manager",
+    "topic": "campaigns"
+  },
+  {
+    "id": "campaigns.bulk-edit",
+    "question": "How do I bulk edit multiple campaigns?",
+    "answer": "On **Settings → Appointments → Campaigns**:\n\n1. Check the checkboxes next to each campaign you want to modify\n2. Click **BULK EDIT** at the top\n3. A dialog lets you change shared fields across all selected campaigns (typically Lead Time, Daily Limits)\n4. Click **SAVE**\n\nUseful when:\n- Several OEM campaigns share the same Lead Time you need to update\n- You want to zero out all Saturday limits for a holiday weekend\n- An OEM has issued several related recalls with the same service capacity needs\n\nChanges apply to every selected campaign at once.",
+    "tier": "manager",
+    "topic": "campaigns"
+  },
+  {
+    "id": "campaigns.filter-search",
+    "question": "How do I search or filter the campaigns list?",
+    "answer": "On **Settings → Appointments → Campaigns**:\n\n**Search** — the search bar at the top: *\"Search for a campaign using Name or ID\"*. Type at least 2 characters — e.g., `recall`, `software`, `ANA6`, `Porsche`.\n\n**Filter** — click **FILTER** at the top right for structured filtering:\n- By **Make**\n- By **Start Date** range\n- By **Status** (active vs expired, if supported)\n\nCombine search + filter to narrow a large campaigns list. The table respects both simultaneously.\n\nPagination controls are at the bottom right: *1 – 10 of N*.",
+    "tier": "manager",
+    "topic": "campaigns"
+  },
+  {
+    "id": "campaigns.link-opcode",
+    "question": "How is a campaign linked to an opcode?",
+    "answer": "Every campaign must be tied to exactly one **Opcode** — the service that runs when a customer books for this campaign.\n\nIn the Add / Edit Campaign dialog, the **OPCODE** field is a search input: *\"Search for an opcode\"*. Type at least 2 characters — matching opcodes from **Settings → Appointments → Opcodes And Dealer Menus** appear. Pick one.\n\n**How it flows at booking time:**\n1. Customer's VIN is identified (or OEM ID match)\n2. System checks if the customer / vehicle qualifies for any active campaigns\n3. If yes, the campaign's linked Opcode is auto-added to the appointment (no need for the customer or advisor to select it manually)\n4. Campaign-specific daily limits and lead time apply on top of the opcode's own settings\n\nIf you want to change which service is performed for a campaign (e.g., the OEM updated the procedure), edit the campaign and change the Opcode link.",
+    "tier": "manager",
+    "topic": "campaigns"
+  }
+]
