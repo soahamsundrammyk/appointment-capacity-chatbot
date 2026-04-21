@@ -1,44 +1,65 @@
 [
   {
-    "id": "transport.how-do-i-add-time-blocks-to-transport-options",
-    "question": "How do I add time blocks to transport options?",
-    "answer": "Time blocks restrict transport options during specific hours: 1) Go to Settings \u2192 Appointments \u2192 Transportation Option, 2) Select the transport option, 3) In the capacity configuration section, click 'Add Time Block', 4) Set the time range and limit (use 0 to block completely). Example: Block loaners from 12:00 PM - 1:00 PM lunch break by adding a time block with limit 0 for that period. This is useful for temporarily blocking transport availability during specific hours.",
-    "tier": "base",
+    "id": "transport.page-overview",
+    "question": "Where do I configure Transport Options and what's on the page?",
+    "answer": "Go to **Settings → Appointments → Transport Options**.\n\nThe page has four sections top-to-bottom:\n\n1. **Transport Options table** — built-in options (Shuttle, Loaner, Rental, Will Wait, Pickup and Delivery, None) each with an icon, an **Option** toggle (overall on/off), an **Available Online** toggle (shown on online scheduler?), a **Title** (what customers see), and a **Message** (customer-facing description).\n\n2. **Custom Transport Options** (max 4) — create up to 4 custom options like \"Lyft Rideshare\" with your own title, message, and icon. **Add** button to create a new one.\n\n3. **Transport Option Availability Management** — per-option daily capacity limits with two tracks (**Total** and **Online Reserve**), weekly grid (Sun – Sat All Day), \"add time block\" per option, \"Allow changes only for selected dates\" for date-specific overrides.\n\n4. **Online Reserve** section — a separate weekly grid controlling the portion of capacity reserved for online bookings.\n\nPage header: \"Here you can set the available transportation options for when appointments are being scheduled online or when scheduling the appointment yourself.\"\n\n**Discard** / **Save** buttons at the bottom commit your changes. Access requires the General Settings authority.",
+    "tier": "manager",
     "topic": "transport"
   },
   {
-    "id": "transport.how-do-i-enable-or-disable-a-transport-option",
-    "question": "How do I enable or disable a transport option?",
-    "answer": "To enable/disable transport options: 1) Go to Settings \u2192 Appointments \u2192 Transportation Option, 2) In the transport options table at the top, 3) Use the toggle switch next to each option to enable (ON) or disable (OFF). Disabled options won't appear in the online scheduler or dealer app. You can also reorder options using the hamburger icon (drag and drop) to change display order in the scheduler.",
-    "tier": "base",
+    "id": "transport.total-vs-online-reserve",
+    "question": "What's the difference between \"Total\" and \"Online Reserve\" capacity for a transport option?",
+    "answer": "On **Settings → Appointments → Transport Options**, each option has two separate capacity tracks in the **Transport Option Availability Management** section:\n\n- **Total** — total appointments of that transport option allowed per day / per time block, across ALL booking channels (online, dealer app, call-ins)\n- **Online Reserve** — the portion of that total that is set aside for customers booking on the online scheduler\n\n**How to think about it:**\n- If Total = 10 and Online Reserve = 3, customers can book up to 3 loaners online, and 7 remaining can be booked by dealer staff (or by online customers if staff hasn't filled them).\n- If Online Reserve = 0, customers see no availability for this transport option online, even when Total slots are open.\n\n**Common ticket:** \"Why can't customers book loaners online, but my advisors can?\" → usually because Online Reserve is 0 or fully consumed, even though Total is available.\n\nSet both values in the weekly grid (Sun – Sat All Day), and use \"Allow changes only for selected dates\" for one-off overrides.",
+    "tier": "manager",
     "topic": "transport"
   },
   {
-    "id": "transport.how-do-i-increase-transport-option-capacity",
-    "question": "How do I increase transport option capacity?",
-    "answer": "To increase transport option capacity (e.g., Loaner, Shuttle, Pickup and Delivery):\n\n1. Go to Settings \u2192 Appointments \u2192 Transportation Option\n2. You will see two columns:\n   - Left column: Transport options for Dealer App\n   - Right column: Transport options for Consumer/Online Scheduler\n3. Select the transport option you want to modify\n4. Scroll to the capacity configuration section at the bottom\n5. Increase the 'Total allowed bookings' value for that transport option\n6. You can configure different capacities for:\n   - Dealer App bookings\n   - Online Scheduler bookings\n7. For date-specific changes, click 'Allow Changes Only for Selected Dates'\n8. You can also add time blocks to temporarily restrict availability during certain hours\n9. Save your changes - they take effect immediately\n\nIMPORTANT LIMITATION: Transport option settings only set GLOBAL daily limits for the entire dealership. They do NOT support per-advisor, per-team limits. To limit a transport option (like Loaner or Rental) per advisor, you MUST create a Capacity Rule with:\n- IF Transport Option = [Loaner/Rental/etc] AND Advisor = [specific advisor]\n- THEN Total Appointments <= X PER Day",
-    "tier": "base",
+    "id": "transport.available-online-toggle",
+    "question": "How do I show or hide a transport option on the online scheduler?",
+    "answer": "On **Settings → Appointments → Transport Options**, each transport option row has an **Available Online** toggle in its own column.\n\n- **ON** — option appears when customers book on the online scheduler\n- **OFF** — hidden online; dealer staff can still select it when booking internally\n\nChange the toggle and click **Save** at the bottom of the page.\n\nCommon use: loaner vehicles where you only want existing customers (who call in) to get one — toggle **Loaner → Available Online = OFF**, customers won't see it online.\n\nNote: this is separate from the **Option** toggle (the first column), which disables the option entirely across all channels.",
+    "tier": "manager",
     "topic": "transport"
   },
   {
-    "id": "transport.how-do-i-limit-loaners-to-only-certain-advisors-or",
-    "question": "How do I limit loaners to only certain advisors or teams?",
-    "answer": "Use an assignment rule (not capacity rule): 1) Go to Settings > Assignment Rules, 2) Click '+ Add Rule', 3) IF Transport Option in Loaner, 4) THEN Teams in [specific teams] or Advisor in [specific advisors], 5) Activate and save. This ensures loaner appointments can only be assigned to specified teams/advisors. Note: This doesn't limit count, just routing.",
-    "tier": "base",
+    "id": "transport.title-and-message",
+    "question": "How do I customize what customers see for a transport option (title and message)?",
+    "answer": "On **Settings → Appointments → Transport Options**, each option has editable **Title** and **Message** fields in the *Online Scheduler Setting For Customer View* column.\n\n**Title** — short label the customer sees (e.g., `Courtesy Vehicle` instead of `Loaner`, or `I Will Wait` instead of `Will Wait`)\n**Message** — longer description shown when the customer selects or hovers the option\n\nExamples from a live dealer:\n- **Shuttle** → Title: `Courtesy Shuttle`, Message: `Our courtesy shuttle operates Monday – Friday from 7:30am to 4:30pm within a 10 mile radius of the dealership. Check with your advisor for more information.`\n- **Pickup and Delivery** → Title: `Pickup and Delivery`, Message: `Please call (951) 552-2142 for details, and scheduling options.`\n- **None** → Title: `No Transportation Needed`, Message: `Transportation is not required during the service appointment.`\n\nEdit via the pencil icon next to each field. Click **Save** at the bottom of the page when done.",
+    "tier": "manager",
     "topic": "transport"
   },
   {
-    "id": "transport.how-do-i-limit-transport-option-capacity-per-advis",
-    "question": "How do I limit transport option capacity per advisor?",
-    "answer": "Transport option settings (Settings \u2192 Transportation Option) do NOT support per-advisor limits. They only set global daily limits for the entire dealership.\n\nTo configure transport option capacity per advisor, you MUST use Capacity Rules:\n\n1. Go to Settings \u2192 Appointments \u2192 Capacity Rules\n2. Click '+ Add Rule'\n3. Define IF conditions:\n   - Add: Transport Option = [Loaner/Rental/Shuttle/etc]\n   - Add: Advisor/Dealer Associate = [specific advisor name]\n4. Define THEN clause:\n   - Total Appointments <= [your limit]\n5. Set PER: Day (or Hour if you want hourly limits)\n6. Save the rule\n\nExample: To limit advisor \"Donald\" to max 3 Loaners per day:\n- IF Transport Option = Loaner AND Advisor = Donald\n- THEN Total Appointments <= 3 PER Day\n\nThis is the ONLY way to set per-advisor limits for transport options.",
-    "tier": "base",
+    "id": "transport.hide-none-option",
+    "question": "How do I hide or customize the \"None\" transport option?",
+    "answer": "The **None** option sits in the built-in Transport Options table like the others.\n\n**To hide it online** — toggle **None → Available Online = OFF**. Customers online will have to pick a real transport option.\n**To disable it entirely** — toggle **None → Option = OFF**. Not recommended unless you always want a transport option attached.\n**To customize the wording** — edit **Title** (e.g., `No Transportation Needed`, `I'll drop off my vehicle`) and **Message** (the body text the customer sees).\n\nClick **Save** at the bottom when done. Changes appear on the online scheduler immediately.",
+    "tier": "manager",
     "topic": "transport"
   },
   {
-    "id": "transport.where-do-i-find-transport-option-settings",
-    "question": "Where do I find transport option settings?",
-    "answer": "To access transport options: Settings > Appointments > Transport Options. Top section shows the list of all transport options with enable/disable toggles. Bottom section (after selecting a transport option from dropdown) shows capacity limits per day and time blocks.",
-    "tier": "base",
+    "id": "transport.custom-option-add",
+    "question": "How do I add a custom transport option (like Lyft or Uber)?",
+    "answer": "Custom options live in the **Custom Transport Options** section of **Settings → Appointments → Transport Options** (labeled *(max 4)* — you can have up to 4).\n\n**Steps:**\n1. Click the **Add** button in the Custom Transport Options section\n2. The **Edit Custom Transport Option** dialog opens with:\n   - **Title*** (required, max 30 characters, e.g., `Lyft Rideshare`)\n   - **Message** (max 300 characters, e.g., `Up to $50 complimentary round trip`)\n   - **Icon** — pick one from the 9 available icons (bus, key, dollar, clock, car, blocked, walking, airport shuttle, compare arrows)\n3. Click **Save** on the dialog, then **Save** at the bottom of the page\n\nThe new option appears in the Transport Options list with its own **Option**, **Available Online**, **Title**, and **Message** controls. You can also set Total / Online Reserve capacity for it in the Availability Management section.\n\nTo edit an existing custom option, click the pencil icon next to its title. To delete, use the trash icon (or clear the title and save).",
+    "tier": "manager",
+    "topic": "transport"
+  },
+  {
+    "id": "transport.set-daily-capacity",
+    "question": "How do I set daily capacity limits for a transport option?",
+    "answer": "In **Settings → Appointments → Transport Options**, scroll to the **Transport Option Availability Management** section (below the main table and custom options).\n\n1. Select the transport option (e.g., *Courtesy Vehicle*, *Lyft Rideshare*) from the list at the top of the section\n2. You see a weekly grid with two columns (**Total** and **Online Reserve**) and rows for each day (Sun, Mon, Tue, Wed, Thu, Fri, Sat)\n3. Enter a number in each **All Day** cell for both tracks — Total and Online Reserve\n4. Click **Save** at the bottom of the page\n\nFor date-specific overrides (holidays, special events), check **Allow changes only for selected dates** and pick the date(s).\n\nSee \"What's the difference between Total and Online Reserve capacity?\" for the meaning of each track.",
+    "tier": "manager",
+    "topic": "transport"
+  },
+  {
+    "id": "transport.add-time-block",
+    "question": "How do I add a time block to a transport option (e.g., no loaners between 12-1pm)?",
+    "answer": "Time blocks let you close a transport option for specific hours within a day.\n\n1. Go to **Settings → Appointments → Transport Options**\n2. Scroll to **Transport Option Availability Management**\n3. Select the option you want to restrict\n4. In the weekly grid, click **add time block** for the appropriate day\n5. Set the start and end times (e.g., `12:00 PM` to `1:00 PM`)\n6. Click **Save**\n\nDuring the blocked window, customers and staff cannot book that transport option — even if capacity remains. Common uses: lunch hours, shift changes, or specific service blocks.\n\nYou can add multiple time blocks per day. Blocks apply to both Total and Online Reserve (they share the same time-block configuration).",
+    "tier": "manager",
+    "topic": "transport"
+  },
+  {
+    "id": "transport.date-specific-override",
+    "question": "How do I override transport capacity for specific dates (holidays, one-offs)?",
+    "answer": "In **Settings → Appointments → Transport Options** → **Transport Option Availability Management**:\n\n1. Select the option\n2. Check **Allow changes only for selected dates**\n3. Pick the date(s) you want to override using the date picker\n4. Enter the adjusted Total and Online Reserve values for those dates\n5. Click **Save**\n\nThe override takes precedence over the weekly schedule for the chosen dates only. Example: your weekly schedule says 10 loaners/day, but you want 0 on Christmas Eve — set an override with Total = 0 and Online Reserve = 0 for 12/24.\n\nTo revert, uncheck the override or delete the date entry.",
+    "tier": "manager",
     "topic": "transport"
   }
 ]

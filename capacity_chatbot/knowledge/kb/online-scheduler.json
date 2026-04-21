@@ -2,119 +2,98 @@
   {
     "id": "online-scheduler.where-to-configure",
     "question": "Where do I find the Online Scheduler settings?",
-    "answer": "Online Scheduler settings live under:\n\n**Admin → Appointments → Online Scheduler**\n\nThe settings screen is organized in two columns:\n\n**Left column**\n- Turn On/Off opcodes (service selection) with Edit Opcode Format sublink\n- Appointment Slot Size\n- Online Scheduler Call Routing\n- Default Next Appointment Settings\n- Custom Header Message\n\n**Right column**\n- Brands Available to Schedule\n- Scheduling of Appointment After Current Time\n- Custom Background Image\n- Price Expiration Duration for Previously Declined Services (shown only when that feature is enabled)\n\nYou need the **General Settings** authority to open this screen. Changes are saved as a batch when you click **SAVE CHANGES** at the bottom.",
+    "answer": "Go to **Settings → Appointments → Online Scheduler**.\n\nThe settings page has these sections (top to bottom, left-to-right layout):\n\n**Left column**\n- Turn On/Off Opcodes for Online Scheduler (toggle + Edit Opcode Format link)\n- Appointment Slot Size (radio buttons)\n- Online scheduler call routing (phone number input)\n- Default Next Appointment Settings (time in weeks + mileage in miles)\n- Custom Header Message (rich-text editor with Preview / Reset to Default)\n\n**Right column**\n- Brands available to schedule (multi-select dropdown)\n- Restriction of Online Appointment Scheduling (minimum hours ahead dropdown)\n- Custom Background Image Upload (with Preview / Reset to Default)\n- Price Expiration Duration For Previously Declined Services (months + days dropdowns, conditional on the feature being enabled)\n\nEach section saves via the **SAVE CHANGES** button at the top or bottom of the page. Access requires the General Settings authority (typically held by service managers).",
     "tier": "manager",
     "topic": "online-scheduler"
   },
   {
     "id": "online-scheduler.enable-service-selection",
     "question": "How do I let customers choose services (opcodes) on the online scheduler?",
-    "answer": "On **Admin → Appointments → Online Scheduler**, find the **Turn On/Off Opcodes** toggle at the top of the left column.\n\n- **On** → customers see a list of your quick-op services and can select one during booking\n- **Off** → service selection is hidden; customers just pick a time\n\nWhen service selection is on, use the **Edit Opcode Format** link right next to the toggle to control which fields are shown (see \"How do I show or hide service prices / descriptions / custom text?\").\n\nWhich services actually appear is controlled separately under **Admin → Appointments → Opcodes and Dealer Menus** — make sure the opcodes you want online have their Online Scheduler flag enabled there.",
+    "answer": "In **Settings → Appointments → Online Scheduler**, find the **Turn On/Off Opcodes for Online Scheduler** toggle at the top of the left column.\n\n- **On** → customers see your configured services and can pick one during booking\n- **Off** → no service selection — customers just pick a time\n\nWhen the toggle is on, click **Edit Opcode Format** right next to it to control which fields display on each service (see \"How do I show or hide service prices / descriptions / custom text?\").\n\nWhich opcodes actually appear online is controlled per-opcode in **Settings → Appointments → Opcodes And Dealer Menus** → edit the opcode → enable **Online Scheduler** under the Product × Eligibility section.\n\nClick **SAVE CHANGES** after adjustments.",
     "tier": "manager",
     "topic": "online-scheduler"
   },
   {
     "id": "online-scheduler.opcode-format-fields",
     "question": "How do I show or hide service prices, descriptions, or custom text on the online scheduler?",
-    "answer": "Open **Admin → Appointments → Online Scheduler**, click the **Edit Opcode Format** link (just below the Turn On/Off Opcodes toggle).\n\nThe Edit Visibility Options popup lets you toggle each field independently:\n\n- **Name** — service name\n- **Description** — service description\n- **Price** — show a price next to each service\n- **Custom Text** — a short label shown next to the price (max 20 chars, default: \"Price starts at:\")\n\nCommon setups:\n- To display \"Price may vary\" instead of \"Price starts at:\", enable Custom Text and change the content to `Price may vary`\n- To hide prices entirely, disable the Price toggle\n\nClick Save in the popup, then SAVE CHANGES on the main screen.",
+    "answer": "Go to **Settings → Appointments → Online Scheduler**, then click the **Edit Opcode Format** link (just below the Turn On/Off Opcodes toggle).\n\nThe Edit Visibility Options popup lets you independently toggle:\n- **Name** — service name\n- **Description** — service description\n- **Price** — the dollar amount\n- **Custom Text** — a short label shown with the price (max 20 chars, default *Price starts at:*)\n\nCommon setups:\n- Display *Price may vary* instead of *Price starts at:* → enable Custom Text, change text to `Price may vary`\n- Hide prices entirely → disable the Price toggle\n\nSave the popup, then click **SAVE CHANGES** on the main screen.",
     "tier": "manager",
     "topic": "online-scheduler"
   },
   {
     "id": "online-scheduler.price-may-vary",
     "question": "How do I show \"Price may vary\" on the online scheduler instead of a firm price?",
-    "answer": "The \"Price may vary\" label is the **Custom Text** field in the opcode format settings:\n\n1. Go to **Admin → Appointments → Online Scheduler**\n2. Click **Edit Opcode Format** (under the Turn On/Off Opcodes toggle)\n3. Enable **Custom Text**\n4. Enter `Price may vary` in the text field (up to 20 characters)\n5. Optionally disable the firm **Price** toggle if you don't want a dollar amount shown at all\n6. Save the popup, then SAVE CHANGES on the main screen\n\nThe label appears next to each service in the online scheduler in place of (or alongside) the price.",
+    "answer": "The \"Price may vary\" label is the **Custom Text** field in the opcode format settings:\n\n1. Go to **Settings → Appointments → Online Scheduler**\n2. Click **Edit Opcode Format** (under Turn On/Off Opcodes)\n3. Enable **Custom Text**\n4. Enter `Price may vary` (up to 20 characters)\n5. Optionally disable the **Price** toggle if you don't want a dollar amount shown at all\n6. Save the popup → click **SAVE CHANGES** on the main screen\n\nThe label will appear next to each service in the online scheduler in place of (or alongside) the price.",
     "tier": "manager",
     "topic": "online-scheduler"
   },
   {
     "id": "online-scheduler.change-slot-size",
     "question": "How do I change the appointment slot size on the online scheduler?",
-    "answer": "On **Admin → Appointments → Online Scheduler**, the **Appointment Slot Size** section lets you choose 15, 30, 45, or 60 minute intervals via radio buttons.\n\nThe slot size controls how granular the customer-facing time picker is (e.g., at 15 min intervals customers see 9:00, 9:15, 9:30; at 30 min they see 9:00, 9:30).\n\n**Note:** This control may be disabled in some setups because slot size is a fundamental scheduling primitive that affects existing appointments. If the radios are grayed out, submit a request to myKaarma support — they can change it for you and the change takes ~48 hours to fully propagate.",
+    "answer": "In **Settings → Appointments → Online Scheduler**, the **Appointment Slot Size** section has radio buttons for **5, 10, 15, 20, 30, and 60 minutes**.\n\nThe description says: *This setting lets you choose the appointment time intervals for which your dealership will allow appointments to be set.*\n\n**Important:** The radios are often disabled with this message: *This feature is currently not available. Please call myKaarma support team (562-349-1367) to get assistance.*\n\nIf disabled, **contact myKaarma support** — slot size is a sensitive primitive that affects existing appointments, so myK changes it manually. The change takes up to 48 hours to fully propagate.",
     "tier": "manager",
     "topic": "online-scheduler"
   },
   {
     "id": "online-scheduler.call-me-now-number",
     "question": "How do I set the \"Call Me Now\" phone number on the online scheduler?",
-    "answer": "In **Admin → Appointments → Online Scheduler**, the **Online Scheduler Call Routing** section has a phone number input.\n\n1. Enter the number customers should reach when they click \"Call Me Now\" on the online scheduler\n2. Format: 10-digit US number (e.g., `5551234567`)\n3. Click SAVE CHANGES\n\nThe \"Call Me Now\" option itself may be hidden if call communication is disabled for your dealer — in that case, this section won't appear on the settings screen. Ask myKaarma support if you need call routing turned on.",
+    "answer": "In **Settings → Appointments → Online Scheduler**, the **Online scheduler call routing** section has a phone number input.\n\nThe hint says: *Put the number below that is best for your customers to call when scheduling appointments. This number will be called when a customer select 'call me now' when scheduling an appointment on your website.*\n\n1. Enter the phone number you want the button to dial (10-digit US format, e.g., `5551234567`)\n2. Click **SAVE CHANGES**\n\nIf this section is hidden on your Online Scheduler page, voice calls are disabled for your dealership — contact myKaarma support to enable them.",
     "tier": "manager",
     "topic": "online-scheduler"
   },
   {
     "id": "online-scheduler.choose-brands",
     "question": "How do I choose which brands are available to schedule online?",
-    "answer": "In **Admin → Appointments → Online Scheduler**, use the **Brands Available to Schedule** multi-select dropdown in the right column.\n\n1. Open the dropdown — it lists every brand associated with your dealer\n2. Check each brand you want customers to be able to schedule for\n3. Uncheck brands you don't want shown\n4. Click SAVE CHANGES\n\nCustomers will only see the brands you've checked when they select their vehicle during online booking. Useful for dealers who sell multiple brands but only service some online.",
+    "answer": "In **Settings → Appointments → Online Scheduler** (right column), use the **Brands available to schedule** dropdown.\n\nThe hint reads: *Select the brands below that will be displayed as options when your customers and appointment setting personnel are creating appointments in the scheduler.*\n\n1. Open the **Brands** dropdown — it lists every make associated with your dealer\n2. Check each brand you want shown\n3. Uncheck brands you don't want\n4. Click **SAVE CHANGES**\n\nCustomers only see the brands you've checked when picking their vehicle during online booking.",
     "tier": "manager",
     "topic": "online-scheduler"
   },
   {
     "id": "online-scheduler.minimum-advance-booking",
     "question": "How do I set the minimum advance notice for online bookings?",
-    "answer": "On **Admin → Appointments → Online Scheduler**, the right column has **Scheduling of Appointment After Current Time**.\n\nPick a value from 0 to 72 hours. Customers cannot book any time slot closer than this to the current moment.\n\nCommon setups:\n- `0 hours` — customers can book same-day, up to right now\n- `2 hours` — prevents \"I need service in 30 minutes\" bookings\n- `24 hours` — requires a full day of notice\n\nClick SAVE CHANGES. The new rule applies immediately for future bookings.",
+    "answer": "In **Settings → Appointments → Online Scheduler** (right column), the section is called **Restriction of Online Appointment Scheduling**.\n\nThe hint says: *Select the required minimum number of hours ahead that a customer is allowed to book an appointment online. For example, if it is 9 a.m. and '24 hours' is selected here, then the customer will only be able to book appointments for 9 a.m. tomorrow or thereafter.*\n\nThe dropdown offers values from 0 to 72 hours. Common picks:\n- **0 hour** — customers can book same-day up to right now\n- **2 hours** — prevents \"I need service in 30 minutes\" bookings\n- **24 hours** — requires a full day of notice\n\nClick **SAVE CHANGES**. The new rule applies immediately for future bookings.",
     "tier": "manager",
     "topic": "online-scheduler"
   },
   {
     "id": "online-scheduler.custom-header-message",
     "question": "How do I add a custom message at the top of the online scheduler?",
-    "answer": "In **Admin → Appointments → Online Scheduler**, the **Custom Header Message** section has a rich-text editor.\n\n1. Type or paste your message — formatting, lists, links, and basic styles are supported\n2. Click **Preview** to see how it will look to customers\n3. Click **Save Changes** (or use **Reset** to restore the default)\n\nThe message appears at the top of your online scheduler above the service/time selection. Common uses:\n- Seasonal promotions (\"Free multi-point inspection with any service this month\")\n- Instructions (\"Please arrive 10 minutes before your appointment\")\n- Closure notices (\"Closed July 4th for Independence Day\")",
+    "answer": "In **Settings → Appointments → Online Scheduler**, the **Custom Header Message** section has a rich-text editor (with Source / Styles / Format options).\n\nHelp text: *Describe the message that you like to convey to your clients scheduling appointments online. This message can be any promotional message or any general comments that you like them to know.*\n\n1. Type or paste your message — formatting, lists, and links are supported\n2. Click **PREVIEW** to see how it looks to customers\n3. Click **SAVE CHANGES** at the top of the page to commit\n4. Use **RESET TO DEFAULT** to wipe the custom message back to the default\n\nCommon uses: seasonal promotions, important notices (holiday closures), arrival instructions.",
     "tier": "manager",
     "topic": "online-scheduler"
   },
   {
     "id": "online-scheduler.background-image",
     "question": "How do I upload a custom background image for the online scheduler?",
-    "answer": "On **Admin → Appointments → Online Scheduler**, the **Custom Background Image** section (right column) has an upload area.\n\n1. Click the upload area or **Replace** if an image is already set\n2. Pick an image from your computer (JPG, PNG, or WebP recommended; keep under a few MB)\n3. The image uploads to AWS and a preview appears\n4. Click SAVE CHANGES on the main screen\n\nUse **Preview** to see it live on the scheduler and **Reset** to remove the custom image and fall back to the default background.\n\nFor best results use a subtle, high-resolution image that doesn't compete with the scheduler UI — landscape or dealership-exterior photos usually work well.",
+    "answer": "In **Settings → Appointments → Online Scheduler** (right column), the **Custom Background Image Upload** section.\n\nHelp text: *This image will be displayed in the background for online scheduler. For assistance, please contact support@mykaarma.com.*\n\n1. Click the upload area (or **Replace** if an image is already set)\n2. Pick an image from your computer (JPG / PNG / WebP recommended, under a few MB)\n3. The image uploads to AWS and a preview appears\n4. Click **SAVE CHANGES** on the main screen\n\n- Click **PREVIEW** to see it live on the scheduler\n- Click **RESET TO DEFAULT** to remove the custom image and fall back to the default background\n\nUse a subtle, high-resolution image that doesn't compete visually with the scheduler UI — dealership exterior or landscape photos usually work well.",
     "tier": "manager",
     "topic": "online-scheduler"
   },
   {
     "id": "online-scheduler.preview-changes",
     "question": "How do I preview my online scheduler changes before customers see them?",
-    "answer": "Two built-in preview options:\n\n**Preview the header message + background image:**\n- On **Admin → Appointments → Online Scheduler**, use the **Preview** button next to the Custom Header Message or next to the Custom Background Image. A popup opens showing how your customers will see it.\n\n**Preview the whole scheduler:**\n- Visit your public online scheduler URL (usually `yourdealer.mykaarma.com/onlinescheduler` or a subdomain of your dealer site). Open it in an incognito window so your admin session doesn't interfere.\n\nChanges you haven't saved yet are only shown in the built-in Preview popup. For a full live preview, save first and then open the public URL.",
+    "answer": "Two built-in preview options are in **Settings → Appointments → Online Scheduler**:\n\n- **PREVIEW** button next to **Custom Header Message** — opens a popup showing how your header message will appear\n- **PREVIEW** button next to **Custom Background Image** — shows the background image live\n\nFor a full end-to-end view, open your public online scheduler URL in an incognito browser window — that way your admin session doesn't interfere.\n\nChanges you haven't saved are only visible in the built-in Preview popup. For a full live preview, click **SAVE CHANGES** first, then refresh the public URL.",
     "tier": "manager",
     "topic": "online-scheduler"
   },
   {
     "id": "online-scheduler.default-next-appointment",
     "question": "How do I set the default time and mileage for the next service appointment?",
-    "answer": "Under **Admin → Appointments → Online Scheduler**, the **Default Next Appointment Settings** section has two fields:\n\n- **Time** — default weeks until the next service (e.g., 12 weeks for a quarterly service cadence)\n- **Mileage** — default distance (km or mi) until the next service\n\nThese defaults drive the \"next service due\" date/mileage shown on invoices and reminders. They are **defaults only** — individual services can still override them at the opcode level.\n\nTypical setups: 12 weeks / 5000 mi for standard oil changes; 26 weeks / 10000 mi for dealers on a longer service interval.",
+    "answer": "In **Settings → Appointments → Online Scheduler**, the **Default Next Appointment Settings** section has:\n\n- **Default time until the next Appointment:** in *weeks*\n- **Default mileage until the next Appointment:** in *miles*\n\nEnter your preferred defaults and click **SAVE CHANGES**.\n\nThese defaults power the \"next service due\" date / mileage on invoices and reminders. They are defaults — individual opcodes can override them at the opcode level (Settings → Appointments → Opcodes And Dealer Menus).\n\nTypical setups: 12 weeks / 5000 mi for standard oil changes; 26 weeks / 10000 mi for a longer service cadence.",
     "tier": "manager",
     "topic": "online-scheduler"
   },
   {
     "id": "online-scheduler.declined-services-price-expiration",
     "question": "How do I control how long previously declined service prices stay valid?",
-    "answer": "If your dealer has the \"Previously Declined Services\" integration enabled, you'll see **Price Expiration Duration for Previously Declined Services** in the right column of Online Scheduler settings.\n\nSet a duration in **months + days**. After a service is declined by the customer, its quoted price will continue to show on future scheduler visits until that duration expires — after which the price resets (typically requiring re-quoting).\n\nCommon setting: 3 months. Helps customers who return within a reasonable window see consistent pricing; prevents wildly outdated prices from lingering forever.\n\nIf you don't see this setting, the declined services feature isn't enabled for your dealer — contact myKaarma support.",
-    "tier": "manager",
-    "topic": "online-scheduler"
-  },
-  {
-    "id": "online-scheduler.transport-option-none-show",
-    "question": "How do I show or hide the \"None\" transport option on the online scheduler?",
-    "answer": "The \"None\" option (for customers who don't need a loaner, shuttle, or pickup) is controlled from the **Transport Options** tab, not the Online Scheduler settings screen.\n\n1. Go to **Admin → Appointments → Transport Options**\n2. Look for the toggle controlling the online scheduler \"None\" option (label may vary by version — e.g., \"Show None option online\")\n3. Enable or disable it\n4. Save\n\nWhen enabled, customers can explicitly pick \"None\" (or your custom label for it, see related article) instead of a transport option. When disabled, they must pick from your configured transport options — which is useful for dealers who always want to assign some form of transport.",
-    "tier": "manager",
-    "topic": "online-scheduler"
-  },
-  {
-    "id": "online-scheduler.transport-option-none-custom-label",
-    "question": "How do I customize the label or message for the \"None\" transport option?",
-    "answer": "Both the name and the accompanying message for the \"None\" option are in the **Admin → Appointments → Transport Options** tab.\n\n- **Custom Name** — replaces \"None\" with your wording (e.g., \"I'll drop off my vehicle\" or \"No transportation needed\")\n- **Custom Message** — short text shown to the customer when they select this option (e.g., \"Please plan to drop off your vehicle and pick it up when service is complete\")\n\nSet the values and save. Changes appear immediately on the online scheduler.",
-    "tier": "manager",
-    "topic": "online-scheduler"
-  },
-  {
-    "id": "online-scheduler.transport-option-available-online",
-    "question": "How do I make a transport option available (or hide it) on the online scheduler?",
-    "answer": "Each transport option has its own \"Available Online\" (or similarly named) toggle in the **Admin → Appointments → Transport Options** tab.\n\n1. Open Transport Options\n2. Click the transport option you want to configure (e.g., Loaner, Shuttle, Pickup and Delivery)\n3. Toggle whether it's available on the online scheduler\n4. Save\n\n**Why you might hide a transport option online** — some dealers offer loaners only to returning customers or only via phone. Hiding the option online prevents over-requests and forces customers to call for those cases.",
+    "answer": "If your dealer has the \"Previously Declined Services\" integration enabled, the **Price Expiration Duration For Previously Declined Services** section appears in the right column of Online Scheduler settings.\n\nHelp text: *Set the duration in form of month and days after which prices for declined services will expire.*\n\n- **Months** dropdown (0 – 12 months)\n- **Days** dropdown (0 – 30 days)\n\nAfter a service is declined by the customer, its quoted price continues to display on future scheduler visits until that duration expires, after which the price resets (customer sees no price and typically gets re-quoted).\n\nCommon setting: 3 months. Keeps returning-customer pricing consistent without letting outdated prices linger.\n\nIf you don't see this section, the declined-services feature isn't enabled for your dealer — contact myKaarma support.",
     "tier": "manager",
     "topic": "online-scheduler"
   },
   {
     "id": "online-scheduler.no-availability-troubleshoot",
     "question": "Why is the online scheduler showing no availability?",
-    "answer": "Work through these in order:\n\n1. **Dealer schedule closed** — check **Admin → Appointments → Dealer Schedule** for the affected day(s). A closed day will show no slots.\n2. **No individual advisors scheduled** — **Admin → Appointments → Individuals** — if no advisors are working that day, there's no capacity.\n3. **A capacity rule is blocking** — **Admin → Appointments → Capacity Rules** — look for a rule that restricts that day, transport option, or service. Disable or adjust it.\n4. **Minimum advance booking** — if the customer is trying to book sooner than your minimum advance (Online Scheduler → \"Scheduling of Appointment After Current Time\"), slots within that window are hidden. A 72-hour setting hides all slots for the next 3 days.\n5. **Transport option not available online** — if the customer selected a transport (e.g., Loaner) not marked Available Online, all subsequent slots will be empty.\n6. **Brand restriction** — if the customer's brand isn't in your \"Brands Available to Schedule\" list, they'll see no availability for that vehicle.\n7. **Cache** — have the customer try a fresh browser/incognito window.\n\nIf none of the above explains it, contact myKaarma support with the specific date, brand, and transport option the customer is trying to book.",
+    "answer": "Work through these in order:\n\n1. **Dealer schedule closed** — check **Settings → Appointments → Dealer Schedule**. A closed day shows no slots.\n2. **No individual advisors scheduled** — **Settings → Appointments → Individuals Schedule**. Without advisors, there's no capacity.\n3. **A capacity rule is blocking** — **Settings → Appointments → Capacity Rules**. Look for a rule restricting that day / transport option / opcode. Disable or adjust it.\n4. **Minimum advance notice** — in Online Scheduler settings, **Restriction of Online Appointment Scheduling**. If 72 hours is set, all slots in the next 3 days are hidden.\n5. **Transport option not available online** — a customer who picks a transport option that is NOT marked **Available Online** will see no availability. Check **Settings → Appointments → Transport Options** → each option's Available Online toggle.\n6. **Brand restriction** — if the customer's brand isn't in your **Brands available to schedule** list, they see nothing for that vehicle.\n7. **Cache** — have the customer try a fresh incognito browser window.\n8. **Online Reserve limit exhausted** — the Transport Option Availability Management section has a separate **Online Reserve** daily/weekly limit. If that's at 0 (or fully booked), online customers see no slots even though advisors can still book the Total capacity. See the transport options KB.\n\nIf none of the above explains it, contact myKaarma support with the specific date, brand, and transport option.",
     "tier": "manager",
     "topic": "online-scheduler"
   }
